@@ -1,0 +1,46 @@
+name: pholders_app
+description: PHolders - Healthcare platform for Doctors and Pharmacies.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Navigation - declarative URL-based routing
+  go_router: ^13.2.0
+
+  # State management - Redux as chosen by the team
+  flutter_redux: ^0.10.0
+  redux: ^5.0.0
+
+  # HTTP client for REST API
+  dio: ^5.4.0
+
+  # Secure token storage
+  flutter_secure_storage: ^9.0.0
+
+  # Dependency injection
+  get_it: ^7.6.7
+
+  # Equatable for value equality in state/models
+  equatable: ^2.0.5
+
+  # Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/PHolders-icon.png
+    - assets/doctors.png
+    - assets/inverted-commas-icon.png
