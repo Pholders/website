@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_web_plugins:
+    sdk: flutter
+
   # Navigation - declarative URL-based routing
   go_router: ^13.2.0
 
@@ -44,3 +47,18 @@ flutter:
     - assets/PHolders-icon.png
     - assets/doctors.png
     - assets/inverted-commas-icon.png
+    - assets/dashboard-icon.png
+    - assets/patients-icon.png
+    - assets/prescription-icon.png
+    - assets/appointments-icon.png
+    - assets/billing-icon.png
+    - assets/settings-icon.png
+    - assets/help-icon.png
+    - assets/MEMBER.png
+    - assets/arrow-actions-icon.png
+    - assets/bell-icon.png
+    - assets/calender.png
+    - assets/lock-icon.png
+    - assets/pill-icon.png
+    - assets/quotes-icon.png
+    - assets/pill-icon.png

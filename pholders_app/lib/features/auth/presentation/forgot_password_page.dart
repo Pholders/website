@@ -2,12 +2,10 @@
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_routes.dart';
+import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/public_navbar.dart';
-import 'widgets/auth_widgets.dart';
 
-/// Forgot password screen.
-///
-/// Matches Figma frame "Forgot password".
+/// Forgot password screen matching Figma design.
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
 
@@ -17,7 +15,6 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _emailController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
@@ -28,115 +25,179 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final semiCircleHeight = size.height * 0.58;
+    final semiCircleWidth = size.width * 0.62;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Positioned(
-            left: size.width * 0.18,
-            top: size.height * 0.32,
-            child: Container(
-              width: size.width * 0.64,
-              height: size.height * 0.92,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF6DD0D8).withValues(alpha: 0.12),
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: SizedBox(
+        width: size.width,
+        height: size.height,
+        child: Column(
+          children: [
+            // ── Navbar ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.only(top: 20, left: 60, right: 60),
+              child: PublicNavbar(
+                actionLabel: 'Login',
+                actionRoute: AppRoutes.login,
               ),
             ),
-          ),
-          // Shared public navbar
-          Positioned(
-            top: 36,
-            left: 77,
-            right: 77,
-            child: PublicNavbar(
-              actionLabel: 'Login',
-              actionRoute: AppRoutes.login,
-            ),
-          ),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6DD0D8).withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.lock_reset_outlined,
-                          size: 40,
-                          color: Color(0xFF309CA3),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Forgot Password',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        "Enter your email address and we'll send a password reset link.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black45,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      AuthTextField(
-                        controller: _emailController,
-                        hint: 'Email Address',
-                        icon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Required';
-                          if (!v.contains('@')) return 'Invalid email';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 32),
-                      AuthSubmitButton(
-                        label: 'Send Reset Link',
-                        isLoading: false,
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            context.go(AppRoutes.login);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      GestureDetector(
-                        onTap: () => context.go(AppRoutes.login),
-                        child: const Text(
-                          'Back to Login',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF309CA3),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
+            const SizedBox(height: 24),
+
+            // ── Hero text ────────────────────────────────────────────────
+            RichText(
+              textAlign: TextAlign.center,
+              text: const TextSpan(
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                  height: 1.3,
+                ),
+                children: [
+                  TextSpan(text: 'A '),
+                  TextSpan(
+                    text: 'Smarter',
+                    style: TextStyle(color: Color(0xFF309CA3)),
                   ),
+                  TextSpan(text: ' Way to Manage\nPatients'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Quote icon + description
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Image.asset('assets/inverted-commas-icon.png', width: 24, height: 24),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Access patient records, create secure digital prescriptions,\nand monitor health updates all in one platform.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Semi-circle with form ────────────────────────────────────
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Stack(
+                  alignment: Alignment.topCenter,
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Semi-circle
+                    Container(
+                      width: semiCircleWidth > 720 ? 720 : semiCircleWidth,
+                      height: semiCircleHeight,
+                      padding: EdgeInsets.only(
+                        top: semiCircleHeight * 0.18,
+                        left: semiCircleWidth * 0.15,
+                        right: semiCircleWidth * 0.15,
+                        bottom: 16,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF309CA3),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(500),
+                          topRight: Radius.circular(500),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Lock icon
+                          Image.asset(
+                            'assets/lock-icon.png',
+                            width: 60,
+                            height: 60,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Title
+                          const Text(
+                            'Forgot Password',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Enter your email address and we'll send a password reset link.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: Colors.black54),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Email field
+                          Container(
+                            height: 38,
+                            constraints: const BoxConstraints(maxWidth: 280),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.email_outlined, size: 14, color: Colors.black38),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _emailController,
+                                    style: const TextStyle(fontSize: 12),
+                                    decoration: const InputDecoration(
+                                      hintText: 'Email Address',
+                                      hintStyle: TextStyle(fontSize: 12, color: Colors.black38),
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Send Reset Link button
+                          GestureDetector(
+                            onTap: () => context.go(AppRoutes.login),
+                            child: Container(
+                              height: 42,
+                              constraints: const BoxConstraints(maxWidth: 320),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1A5C5F),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Send Reset Link',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

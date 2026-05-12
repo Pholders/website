@@ -11,6 +11,7 @@ import '../../features/auth/presentation/splash_page.dart';
 import '../../features/auth/presentation/landing_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
+import '../../features/auth/presentation/doctor_register_step2_page.dart';
 import '../../features/auth/presentation/verify_account_page.dart';
 import '../../features/auth/presentation/forgot_password_page.dart';
 
@@ -52,53 +53,11 @@ import '../../shared/widgets/shell_layout.dart';
 /// All route strings come from [AppRoutes] — never hardcoded here.
 GoRouter createRouter(Store<AppState> store) {
   return GoRouter(
-    initialLocation: AppRoutes.splash,
+    // Let GoRouter use the browser URL instead of forcing splash.
+    // initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
-    redirect: (BuildContext context, GoRouterState state) {
-      final authState = store.state.authState;
-      final isAuthenticated = authState.isAuthenticated;
-      final role = authState.role;
-
-      final isPublicRoute = [
-        AppRoutes.splash,
-        AppRoutes.landing,
-        AppRoutes.login,
-        AppRoutes.register,
-        AppRoutes.registerStep2,
-        AppRoutes.verifyAccount,
-        AppRoutes.forgotPassword,
-      ].contains(state.matchedLocation);
-
-      // Unauthenticated user trying to access a protected route → login
-      if (!isAuthenticated && !isPublicRoute) {
-        return AppRoutes.login;
-      }
-
-      // Authenticated user trying to access a public route → home
-      if (isAuthenticated &&
-          isPublicRoute &&
-          state.matchedLocation != AppRoutes.splash &&
-          state.matchedLocation != AppRoutes.landing) {
-        return role == AppConstants.roleDoctor
-            ? AppRoutes.doctorDashboard
-            : AppRoutes.pharmacyDashboard;
-      }
-      // Authenticated doctor trying to access pharmacy routes → doctor home
-      if (isAuthenticated &&
-          role == AppConstants.roleDoctor &&
-          state.matchedLocation.startsWith('/pharmacy')) {
-        return AppRoutes.doctorDashboard;
-      }
-
-      // Authenticated pharmacy trying to access doctor routes → pharmacy home
-      if (isAuthenticated &&
-          role == AppConstants.rolePharmacy &&
-          state.matchedLocation.startsWith('/doctor')) {
-        return AppRoutes.pharmacyDashboard;
-      }
-
-      return null; // No redirect needed
-    },
+    // TODO: Re-enable auth guards once authentication is implemented.
+    // redirect: (BuildContext context, GoRouterState state) { ... },
     routes: [
       // ─── Public routes ──────────────────────────────────────────────────────
       GoRoute(
@@ -116,6 +75,10 @@ GoRouter createRouter(Store<AppState> store) {
       GoRoute(
         path: AppRoutes.register,
         builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.registerStep2,
+        builder: (context, state) => const DoctorRegisterStep2Page(),
       ),
       GoRoute(
         path: AppRoutes.verifyAccount,

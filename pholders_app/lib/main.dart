@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:redux/redux.dart';
 
 import 'app/app_reducer.dart';
@@ -10,6 +11,9 @@ import 'shared/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Use path-based URLs (e.g. /doctor/appointments instead of /#/doctor/appointments)
+  usePathUrlStrategy();
 
   // 1. Set up dependency injection
   await setupServiceLocator();

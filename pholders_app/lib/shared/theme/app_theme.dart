@@ -38,9 +38,9 @@ class AppTheme {
   static const Color textPrimary = Color(0xFF1F2937);
   static const Color textSecondary = Color(0xFF6B7280);
   static const Color divider = Color(0xFFE5E7EB);
-  static const Color sidebarBackground = Color(0xFF1E293B);
-  static const Color sidebarText = Color(0xFFCBD5E1);
-  static const Color sidebarActiveItem = Color(0xFF1A73E8);
+  static const Color sidebarBackground = Color(0xFFE8F8F8);
+  static const Color sidebarText = Color(0xFF374151);
+  static const Color sidebarActiveItem = Color(0xFF309CA3);
 
   // ─── Spacing ────────────────────────────────────────────────────────────────
   static const double spacingXs = 4.0;

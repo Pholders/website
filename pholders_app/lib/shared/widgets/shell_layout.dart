@@ -6,18 +6,10 @@ import 'app_top_navbar.dart';
 
 /// The shared authenticated shell that wraps every protected page.
 ///
-/// Renders [AppTopNavbar] at the top, [AppSidebar] on the left (desktop),
-/// and the page [child] in the remaining space.
-///
-/// Layout adapts per breakpoint:
-/// - Desktop (≥ 1024px): full sidebar + content
-/// - Tablet (768–1023px): icon rail + content
-/// - Mobile (< 768px): no sidebar; bottom nav or drawer
+/// Renders the sidebar on the left and top navbar + content on the right.
+/// The sidebar spans full height (logo is inside the sidebar per Figma).
 class ShellLayout extends StatefulWidget {
-  /// The role of the authenticated user: 'doctor' or 'pharmacy'.
   final String role;
-
-  /// The current page widget provided by GoRouter's ShellRoute.
   final Widget child;
 
   const ShellLayout({
@@ -39,41 +31,31 @@ class _ShellLayoutState extends State<ShellLayout> {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      // Mobile: drawer-based navigation
       drawer: isMobile
           ? Drawer(
               child: AppSidebar(role: widget.role, collapsed: false),
             )
           : null,
-      body: Column(
+      body: Row(
         children: [
-          // ── Top Navbar ──────────────────────────────────────────────────────
-          AppTopNavbar(
-            role: widget.role,
-            onMenuTap: isMobile
-                ? () => Scaffold.of(context).openDrawer()
-                : null,
-          ),
+          // Sidebar spans full height
+          if (isDesktop)
+            AppSidebar(role: widget.role, collapsed: false),
+          if (isTablet)
+            AppSidebar(role: widget.role, collapsed: true),
 
-          // ── Body row ────────────────────────────────────────────────────────
+          // Right side: top navbar + page content
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
               children: [
-                // Sidebar: full on desktop, icon rail on tablet, hidden on mobile
-                if (isDesktop)
-                  AppSidebar(role: widget.role, collapsed: false),
-                if (isTablet)
-                  AppSidebar(role: widget.role, collapsed: true),
-
-                // Page content
+                AppTopNavbar(
+                  role: widget.role,
+                  onMenuTap: isMobile
+                      ? () => Scaffold.of(context).openDrawer()
+                      : null,
+                ),
                 Expanded(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppTheme.maxContentWidth,
-                    ),
-                    child: widget.child,
-                  ),
+                  child: widget.child,
                 ),
               ],
             ),

@@ -31,9 +31,11 @@ class _SplashPageState extends State<SplashPage>
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
 
-    // Auto-navigate to landing after 2.5 seconds
+    // Auto-navigate to landing after 2.5 seconds (only if user is on splash)
     Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) context.go(AppRoutes.landing);
+      if (mounted && GoRouterState.of(context).matchedLocation == '/') {
+        context.go(AppRoutes.landing);
+      }
     });
   }
 
