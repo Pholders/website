@@ -61,6 +61,7 @@ class AppRoutes {
   static const String pharmacyInventory = '/pharmacy/inventory';
   static const String pharmacyDispensingQueue = '/pharmacy/dispensing-queue';
   static const String pharmacyPatients = '/pharmacy/patients';
+  static const String pharmacyReports = '/pharmacy/reports';
   static const String pharmacyBilling = '/pharmacy/billing';
   static const String pharmacySettings = '/pharmacy/settings';
 }

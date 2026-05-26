@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
 
 /// The horizontal top navigation bar matching Figma design.
@@ -25,9 +26,20 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
     if (location.contains('appointments')) return 'Schedule';
     if (location.contains('patients')) return 'Patients';
     if (location.contains('prescriptions')) return 'Prescriptions';
+    if (location.contains('orders')) return 'Orders';
+    if (location.contains('inventory')) return 'Inventory';
+    if (location.contains('dispensing')) return 'Dispensing Queue';
+    if (location.contains('reports')) return 'Reports';
     if (location.contains('billing')) return 'Billing';
     if (location.contains('settings')) return 'Settings';
     return 'Dashboard';
+  }
+
+  String _getSearchHint() {
+    if (role == AppConstants.rolePharmacy) {
+      return 'Search for patient or medication...';
+    }
+    return 'Search for patient name, ID, or prescription...';
   }
 
   @override
@@ -38,7 +50,6 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
       height: 64,
       decoration: const BoxDecoration(
         color: AppTheme.surface,
-        border: Border(bottom: BorderSide(color: AppTheme.divider)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
@@ -61,7 +72,7 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
               color: AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             '>',
             style: TextStyle(
@@ -69,12 +80,12 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
               color: AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             pageName,
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
@@ -83,13 +94,13 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
 
           // Search bar
           Container(
-            width: 320,
+            width: 300,
             height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFF6DD0D8).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.divider),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
             child: Row(
               children: [
@@ -97,7 +108,7 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Search for patient name, ID, or prescription...',
+                    _getSearchHint(),
                     style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
@@ -123,14 +134,15 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
               Positioned(
-                right: 8,
-                top: 8,
+                right: 6,
+                top: 6,
                 child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444),
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
                     shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
                   ),
                 ),
               ),

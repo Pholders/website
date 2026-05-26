@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_helper.dart';
 import 'app_sidebar.dart';
 import 'app_top_navbar.dart';
+import 'pharmacy_sidebar.dart';
 
 /// The shared authenticated shell that wraps every protected page.
 ///
@@ -23,6 +25,13 @@ class ShellLayout extends StatefulWidget {
 }
 
 class _ShellLayoutState extends State<ShellLayout> {
+  Widget _buildSidebar({required bool collapsed}) {
+    if (widget.role == AppConstants.rolePharmacy) {
+      return PharmacySidebar(collapsed: collapsed);
+    }
+    return AppSidebar(role: widget.role, collapsed: collapsed);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveHelper.isDesktop(context);
@@ -33,16 +42,16 @@ class _ShellLayoutState extends State<ShellLayout> {
       backgroundColor: AppTheme.background,
       drawer: isMobile
           ? Drawer(
-              child: AppSidebar(role: widget.role, collapsed: false),
+              child: _buildSidebar(collapsed: false),
             )
           : null,
       body: Row(
         children: [
           // Sidebar spans full height
           if (isDesktop)
-            AppSidebar(role: widget.role, collapsed: false),
+            _buildSidebar(collapsed: false),
           if (isTablet)
-            AppSidebar(role: widget.role, collapsed: true),
+            _buildSidebar(collapsed: true),
 
           // Right side: top navbar + page content
           Expanded(

@@ -37,12 +37,103 @@ class _LoginPageState extends State<LoginPage> {
 
   void _submit(BuildContext context) {
     if (!_formKey.currentState!.validate()) return;
-    StoreProvider.of<AppState>(context).dispatch(
-      LoginRequestAction(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+
+    // ── DEV ONLY: Show role picker instead of real auth ──────────────────────
+    // TODO: Remove this dialog and use real LoginRequestAction once backend is ready.
+    _showDevRolePicker(context);
+  }
+
+  void _showDevRolePicker(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF309CA3).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.developer_mode,
+                  color: Color(0xFF309CA3),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Dev Mode — Choose Role',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Backend is under construction.\nPick a role to test the screens.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.black45),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DevRoleButton(
+                      icon: Icons.medical_services_outlined,
+                      label: 'Doctor',
+                      color: const Color(0xFF309CA3),
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _loginAs(context, 'doctor');
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _DevRoleButton(
+                      icon: Icons.local_pharmacy_outlined,
+                      label: 'Pharmacy',
+                      color: const Color(0xFF6C63FF),
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _loginAs(context, 'pharmacy');
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  void _loginAs(BuildContext context, String role) {
+    // Dispatch a fake successful login so the Redux store is in the right state.
+    StoreProvider.of<AppState>(context).dispatch(
+      LoginSuccessAction(
+        token: 'dev-token-${DateTime.now().millisecondsSinceEpoch}',
+        role: role,
+        userName: _emailController.text.trim().split('@').first,
+      ),
+    );
+
+    // Navigate to the appropriate dashboard.
+    if (role == 'doctor') {
+      context.go(AppRoutes.doctorDashboard);
+    } else {
+      context.go(AppRoutes.pharmacyDashboard);
+    }
   }
 
   @override
@@ -410,4 +501,49 @@ class _LoginViewModel {
     required this.isLoading,
     this.errorMessage,
   });
+}
+
+// ─── Dev role picker button ───────────────────────────────────────────────────
+
+class _DevRoleButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _DevRoleButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            children: [
+              Icon(icon, size: 36, color: color),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

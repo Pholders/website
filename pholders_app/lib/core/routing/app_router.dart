@@ -42,6 +42,7 @@ import '../../features/pharmacy/inventory/presentation/inventory_page.dart';
 import '../../features/pharmacy/dispensing_queue/presentation/dispensing_queue_page.dart';
 import '../../features/pharmacy/patients/presentation/pharmacy_patients_page.dart';
 import '../../features/pharmacy/billing/presentation/pharmacy_billing_page.dart';
+import '../../features/pharmacy/reports/presentation/pharmacy_reports_page.dart';
 import '../../features/pharmacy/settings/presentation/pharmacy_settings_page.dart';
 
 // ─── Shell layouts ────────────────────────────────────────────────────────────
@@ -225,6 +226,10 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.pharmacyBilling,
             builder: (context, state) => const PharmacyBillingPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacyReports,
+            builder: (context, state) => const PharmacyReportsPage(),
           ),
           GoRoute(
             path: AppRoutes.pharmacySettings,
