@@ -40,13 +40,13 @@ import '../../features/doctor/sick_notes/presentation/sick_notes_page.dart';
 import '../../features/doctor/appointments/presentation/appointments_page.dart';
 import '../../features/doctor/billing/presentation/billing_page.dart';
 import '../../features/doctor/settings/presentation/settings_page.dart';
-import '../../features/doctor/settings/presentation/doctor_profile_settings_page.dart';
-import '../../features/doctor/settings/presentation/doctor_professional_settings_page.dart';
-import '../../features/doctor/settings/presentation/doctor_fees_settings_page.dart';
-import '../../features/doctor/settings/presentation/doctor_notifications_settings_page.dart';
-import '../../features/doctor/settings/presentation/doctor_security_settings_page.dart';
-import '../../features/doctor/settings/presentation/doctor_devices_settings_page.dart';
-import '../../features/doctor/settings/presentation/doctor_login_activity_page.dart';
+import '../../features/doctor/settings/presentation/account_settings.dart';
+import '../../features/doctor/settings/presentation/practice_settings.dart';
+import '../../features/doctor/settings/presentation/security_settings.dart';
+import '../../features/doctor/settings/presentation/preferences_settings.dart';
+import '../../features/doctor/settings/presentation/integrations_settings.dart';
+import '../../features/doctor/settings/presentation/login_activity.dart';
+import '../../features/doctor/settings/presentation/support_legal_settings.dart';
 import '../../shared/pages/linked_services_page.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
@@ -232,35 +232,35 @@ GoRouter createRouter(Store<AppState> store) {
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsProfile,
-            builder: (context, state) => const DoctorProfileSettingsPage(),
+            builder: (context, state) => const AccountSettings(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsProfessional,
-            builder: (context, state) => const DoctorProfessionalSettingsPage(),
+            builder: (context, state) => const AccountSettings(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsFees,
-            builder: (context, state) => const DoctorFeesSettingsPage(),
+            builder: (context, state) => const PracticeSettings(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsNotifications,
-            builder: (context, state) => const DoctorNotificationsSettingsPage(),
+            builder: (context, state) => const PreferencesSettings(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsSecurity,
-            builder: (context, state) => const DoctorSecuritySettingsPage(),
+            builder: (context, state) => const SecuritySettingsPage(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsDevices,
-            builder: (context, state) => const DoctorDevicesSettingsPage(),
+            builder: (context, state) => const SecuritySettingsPage(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsLoginActivity,
-            builder: (context, state) => const DoctorLoginActivityPage(),
+            builder: (context, state) => const LoginActivityPage(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsLinkedServices,
-            builder: (context, state) => const LinkedServicesPage(),
+            builder: (context, state) => const IntegrationsSettings(),
           ),
         ],
       ),
