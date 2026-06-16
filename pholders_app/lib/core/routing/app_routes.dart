@@ -8,6 +8,11 @@ class AppRoutes {
   // ─── Public routes (no auth required) ───────────────────────────────────────
   static const String splash = '/';
   static const String landing = '/get-started';
+  static const String features = '/features';
+  static const String about = '/about';
+  static const String services = '/services';
+  static const String howItWorks = '/how-it-works';
+  static const String support = '/support';
   static const String login = '/login';
   static const String register = '/register';
   static const String registerStep2 = '/register/step-2';
@@ -35,6 +40,10 @@ class AppRoutes {
   static const String doctorPrescriptions = '/doctor/prescriptions';
   static const String doctorPrescriptionDetail =
       '/doctor/prescriptions/:prescriptionId';
+  static const String doctorNewPrescription = '/doctor/prescriptions/new';
+  static const String doctorPreviewPrescription = '/doctor/prescriptions/preview';
+  static const String doctorSearchScripts = '/doctor/search-scripts';
+  static const String doctorSickNotes = '/doctor/sick-notes';
   static const String doctorAppointments = '/doctor/appointments';
   static const String doctorBilling = '/doctor/billing';
   static const String doctorSettings = '/doctor/settings';
@@ -64,4 +73,5 @@ class AppRoutes {
   static const String pharmacyReports = '/pharmacy/reports';
   static const String pharmacyBilling = '/pharmacy/billing';
   static const String pharmacySettings = '/pharmacy/settings';
+  static const String pharmacySettingsLinkedServices = '/pharmacy/settings/linked-services';
 }

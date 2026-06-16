@@ -63,7 +63,7 @@ class _OrdersPageState extends State<OrdersPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildTabs(),
             const SizedBox(height: 4),
             Expanded(child: _buildTable()),

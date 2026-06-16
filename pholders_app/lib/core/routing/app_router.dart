@@ -14,6 +14,11 @@ import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/doctor_register_step2_page.dart';
 import '../../features/auth/presentation/verify_account_page.dart';
 import '../../features/auth/presentation/forgot_password_page.dart';
+import '../../features/public/presentation/features_page.dart';
+import '../../features/public/presentation/about_page.dart';
+import '../../features/public/presentation/services_page.dart';
+import '../../features/public/presentation/how_it_works_page.dart';
+import '../../features/public/presentation/support_page.dart';
 
 // ─── Doctor pages ─────────────────────────────────────────────────────────────
 import '../../features/doctor/dashboard/presentation/doctor_dashboard_page.dart';
@@ -28,9 +33,21 @@ import '../../features/doctor/patients/presentation/patient_documents_page.dart'
 import '../../features/doctor/patients/presentation/patient_history_page.dart';
 import '../../features/doctor/prescriptions/presentation/prescriptions_list_page.dart';
 import '../../features/doctor/prescriptions/presentation/prescription_detail_page.dart';
+import '../../features/doctor/prescriptions/presentation/new_prescription_page.dart';
+import '../../features/doctor/prescriptions/presentation/preview_prescription_page.dart';
+import '../../features/doctor/prescriptions/presentation/search_scripts_page.dart';
+import '../../features/doctor/sick_notes/presentation/sick_notes_page.dart';
 import '../../features/doctor/appointments/presentation/appointments_page.dart';
 import '../../features/doctor/billing/presentation/billing_page.dart';
 import '../../features/doctor/settings/presentation/settings_page.dart';
+import '../../features/doctor/settings/presentation/doctor_profile_settings_page.dart';
+import '../../features/doctor/settings/presentation/doctor_professional_settings_page.dart';
+import '../../features/doctor/settings/presentation/doctor_fees_settings_page.dart';
+import '../../features/doctor/settings/presentation/doctor_notifications_settings_page.dart';
+import '../../features/doctor/settings/presentation/doctor_security_settings_page.dart';
+import '../../features/doctor/settings/presentation/doctor_devices_settings_page.dart';
+import '../../features/doctor/settings/presentation/doctor_login_activity_page.dart';
+import '../../shared/pages/linked_services_page.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
 import '../../features/pharmacy/dashboard/presentation/pharmacy_dashboard_page.dart';
@@ -88,6 +105,26 @@ GoRouter createRouter(Store<AppState> store) {
       GoRoute(
         path: AppRoutes.forgotPassword,
         builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.features,
+        builder: (context, state) => const FeaturesPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.about,
+        builder: (context, state) => const AboutPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.services,
+        builder: (context, state) => const ServicesPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.howItWorks,
+        builder: (context, state) => const HowItWorksPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.support,
+        builder: (context, state) => const SupportPage(),
       ),
 
       // ─── Doctor shell (authenticated, role = doctor) ─────────────────────────
@@ -166,6 +203,22 @@ GoRouter createRouter(Store<AppState> store) {
             ),
           ),
           GoRoute(
+            path: AppRoutes.doctorNewPrescription,
+            builder: (context, state) => const NewPrescriptionPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorPreviewPrescription,
+            builder: (context, state) => const PreviewPrescriptionPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSearchScripts,
+            builder: (context, state) => const SearchScriptsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSickNotes,
+            builder: (context, state) => const SickNotesPage(),
+          ),
+          GoRoute(
             path: AppRoutes.doctorAppointments,
             builder: (context, state) => const AppointmentsPage(),
           ),
@@ -176,6 +229,38 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.doctorSettings,
             builder: (context, state) => const SettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsProfile,
+            builder: (context, state) => const DoctorProfileSettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsProfessional,
+            builder: (context, state) => const DoctorProfessionalSettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsFees,
+            builder: (context, state) => const DoctorFeesSettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsNotifications,
+            builder: (context, state) => const DoctorNotificationsSettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsSecurity,
+            builder: (context, state) => const DoctorSecuritySettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsDevices,
+            builder: (context, state) => const DoctorDevicesSettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsLoginActivity,
+            builder: (context, state) => const DoctorLoginActivityPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsLinkedServices,
+            builder: (context, state) => const LinkedServicesPage(),
           ),
         ],
       ),
@@ -234,6 +319,10 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.pharmacySettings,
             builder: (context, state) => const PharmacySettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsLinkedServices,
+            builder: (context, state) => const LinkedServicesPage(),
           ),
         ],
       ),
