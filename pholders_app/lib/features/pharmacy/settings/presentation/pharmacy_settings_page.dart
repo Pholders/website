@@ -41,7 +41,7 @@ class PharmacySettingsPage extends StatelessWidget {
   void _navigate(BuildContext context, String id) {
     switch (id) {
       case 'profile':
-        context.go(AppRoutes.pharmacySettingsLinkedServices);
+        context.go(AppRoutes.pharmacySettingsProfile);
         break;
       case 'linked_services':
         context.go(AppRoutes.pharmacySettingsLinkedServices);
