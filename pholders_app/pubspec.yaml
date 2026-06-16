@@ -19,6 +19,7 @@ dependencies:
   # State management - Redux as chosen by the team
   flutter_redux: ^0.10.0
   redux: ^5.0.0
+  file_picker: ^8.0.0
 
   # HTTP client for REST API
   dio: ^5.4.0

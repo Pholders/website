@@ -40,10 +40,12 @@ class PharmacySettingsPage extends StatelessWidget {
 
   void _navigate(BuildContext context, String id) {
     switch (id) {
+      case 'profile':
+        context.go(AppRoutes.pharmacySettingsLinkedServices);
+        break;
       case 'linked_services':
         context.go(AppRoutes.pharmacySettingsLinkedServices);
         break;
-      // TODO: add other settings sub-pages as they are built
       default:
         break;
     }

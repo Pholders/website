@@ -40,10 +40,33 @@ class SettingsPage extends StatelessWidget {
 
   void _navigate(BuildContext context, String id) {
     switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go(AppRoutes.doctorSettingsFees);
+        break;
+      case 'notifications':
+        context.go(AppRoutes.doctorSettingsNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_notifications':
+        context.go(AppRoutes.doctorSettingsNotifications);
+        break;
       case 'linked_services':
         context.go(AppRoutes.doctorSettingsLinkedServices);
         break;
-      // TODO: add other settings sub-pages as they are built
       default:
         break;
     }
