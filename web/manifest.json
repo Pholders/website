@@ -1,6 +1,11 @@
 {
+<<<<<<< HEAD
     "name": "doctor_app",
     "short_name": "doctor_app",
+=======
+    "name": "pholders_app",
+    "short_name": "pholders_app",
+>>>>>>> ebd9ff0d2f046df1133b3b423dcea86c51611aca
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
