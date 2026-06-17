@@ -12,6 +12,7 @@ import '../../features/auth/presentation/landing_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/doctor_register_step2_page.dart';
+import '../../features/auth/presentation/pharmacy_register_step2_page.dart';
 import '../../features/auth/presentation/verify_account_page.dart';
 import '../../features/auth/presentation/forgot_password_page.dart';
 import '../../features/public/presentation/features_page.dart';
@@ -61,6 +62,7 @@ import '../../features/pharmacy/patients/presentation/pharmacy_patients_page.dar
 import '../../features/pharmacy/billing/presentation/pharmacy_billing_page.dart';
 import '../../features/pharmacy/reports/presentation/pharmacy_reports_page.dart';
 import '../../features/pharmacy/settings/presentation/pharmacy_settings_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_profile_page.dart';
 
 // ─── Shell layouts ────────────────────────────────────────────────────────────
 import '../../shared/widgets/shell_layout.dart';
@@ -97,6 +99,10 @@ GoRouter createRouter(Store<AppState> store) {
       GoRoute(
         path: AppRoutes.registerStep2,
         builder: (context, state) => const DoctorRegisterStep2Page(),
+      ),
+      GoRoute(
+        path: AppRoutes.pharmacyRegisterStep2,
+        builder: (context, state) => const PharmacyRegisterStep2Page(),
       ),
       GoRoute(
         path: AppRoutes.verifyAccount,
@@ -319,6 +325,10 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.pharmacySettings,
             builder: (context, state) => const PharmacySettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsProfile,
+            builder: (context, state) => const PharmacyProfilePage(),
           ),
           GoRoute(
             path: AppRoutes.pharmacySettingsLinkedServices,

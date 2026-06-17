@@ -219,7 +219,11 @@ class _RegisterPageState extends State<RegisterPage> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: GestureDetector(
-                              onTap: () => context.go(AppRoutes.registerStep2),
+                              onTap: () => context.go(
+                                _selectedRole == 'pharmacy'
+                                    ? AppRoutes.pharmacyRegisterStep2
+                                    : AppRoutes.registerStep2,
+                              ),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                                 decoration: BoxDecoration(color: const Color(0xFF1A5C5F), borderRadius: BorderRadius.circular(6)),

@@ -16,6 +16,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String registerStep2 = '/register/step-2';
+  static const String pharmacyRegisterStep2 = '/register/pharmacy-step-2';
   static const String verifyAccount = '/verify';
   static const String forgotPassword = '/forgot-password';
 
@@ -73,5 +74,6 @@ class AppRoutes {
   static const String pharmacyReports = '/pharmacy/reports';
   static const String pharmacyBilling = '/pharmacy/billing';
   static const String pharmacySettings = '/pharmacy/settings';
+  static const String pharmacySettingsProfile = '/pharmacy/settings/profile';
   static const String pharmacySettingsLinkedServices = '/pharmacy/settings/linked-services';
 }
