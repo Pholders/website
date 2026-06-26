@@ -45,110 +45,125 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final pageName = _getPageName(context);
 
-    return Container(
-      height: 86,
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 18, 26, 10),
-      child: Row(
-        children: [
-          // Hamburger (mobile only)
-          if (onMenuTap != null) ...[
-            IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: onMenuTap,
-              tooltip: 'Open menu',
-            ),
-            const SizedBox(width: 8),
-          ],
-
-          // Breadcrumb
-          const Text(
-            'Pholders',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final searchBar = Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE5F8F9),
+            borderRadius: BorderRadius.circular(24),
           ),
-          const SizedBox(width: 6),
-          const Text(
-            '>',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            pageName,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-
-          const Spacer(),
-
-          // Search bar
-          Container(
-            width: 324,
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5F8F9),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.search,
-                    size: 18, color: AppTheme.textSecondary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _getSearchHint(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // Notification bell
-          Stack(
+          child: Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Image.asset(
-                  'assets/icons/bell-icon.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
+              const Icon(Icons.search, size: 18, color: AppTheme.textSecondary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _getSearchHint(),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        );
+
+        final leading = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onMenuTap != null) ...[
+              IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: onMenuTap,
+                tooltip: 'Open menu',
+              ),
+              const SizedBox(width: 8),
+            ],
+            const Text(
+              'Pholders',
+              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              '>',
+              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                pageName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        );
+
+        final bell = Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Image.asset(
+                'assets/icons/bell-icon.png',
+                width: 24,
+                height: 24,
+              ),
+            ),
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+              ),
+            ),
+          ],
+        );
+
+        return Container(
+          height: compact ? 118 : 86,
+          decoration: const BoxDecoration(color: AppTheme.surface),
+          padding: EdgeInsets.fromLTRB(24, compact ? 12 : 18, 26, 10),
+          child: compact
+              ? Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: leading),
+                        bell,
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    searchBar,
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: leading),
+                    SizedBox(
+                      width: constraints.maxWidth < 820 ? 240 : 324,
+                      child: searchBar,
+                    ),
+                    const SizedBox(width: 16),
+                    bell,
+                  ],
+                ),
+        );
+      },
     );
   }
 }

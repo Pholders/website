@@ -104,26 +104,40 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 20),
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: SettingsShell.pageMint,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: 230,
-                      child: _SettingsSidebar(
-                        menuItems: _menuItems,
-                        selectedItemId: _selectedItemId,
-                        onItemSelected: (id) =>
-                            setState(() => _selectedItemId = id),
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 760;
+                  final sidebar = _SettingsSidebar(
+                    menuItems: _menuItems,
+                    selectedItemId: _selectedItemId,
+                    compact: compact,
+                    onItemSelected: (id) =>
+                        setState(() => _selectedItemId = id),
+                  );
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: SettingsShell.pageMint,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    Expanded(child: _buildContent()),
-                  ],
-                ),
+                    child: compact
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(height: 220, child: sidebar),
+                              const SizedBox(height: 12),
+                              Expanded(child: _buildContent()),
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(width: 230, child: sidebar),
+                              Expanded(child: _buildContent()),
+                            ],
+                          ),
+                  );
+                },
               ),
             ),
           ],
@@ -192,28 +206,35 @@ class _SettingsSidebar extends StatelessWidget {
     required this.menuItems,
     required this.selectedItemId,
     required this.onItemSelected,
+    this.compact = false,
   });
 
   final List<SettingsMenuItem> menuItems;
   final String selectedItemId;
   final ValueChanged<String> onItemSelected;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(18),
-          bottomLeft: Radius.circular(18),
+          topLeft: const Radius.circular(18),
+          topRight: compact ? const Radius.circular(18) : Radius.zero,
+          bottomLeft: compact ? Radius.zero : const Radius.circular(18),
         ),
-        border: Border(left: BorderSide(color: SettingsShell.accent, width: 6)),
+        border: const Border(left: BorderSide(color: SettingsShell.accent, width: 6)),
       ),
       padding: const EdgeInsets.fromLTRB(26, 18, 18, 16),
       child: ListView.separated(
+        scrollDirection: compact ? Axis.horizontal : Axis.vertical,
         itemCount: menuItems.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 14),
-        itemBuilder: (context, index) => _buildItem(menuItems[index]),
+        separatorBuilder: (_, __) => SizedBox(width: compact ? 24 : 0, height: compact ? 0 : 14),
+        itemBuilder: (context, index) => SizedBox(
+          width: compact ? 190 : null,
+          child: _buildItem(menuItems[index]),
+        ),
       ),
     );
   }
@@ -240,9 +261,12 @@ class _SettingsSidebar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text(
-              item.label,
-              style: const TextStyle(fontSize: 14, color: Colors.black),
+            Expanded(
+              child: Text(
+                item.label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, color: Colors.black),
+              ),
             ),
           ],
         ),
@@ -256,6 +280,7 @@ class _SettingsSidebar extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 32, bottom: 8),
                 child: Text(
                   sub.label,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
                     color: selected

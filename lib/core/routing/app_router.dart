@@ -33,6 +33,7 @@ import '../../features/doctor/prescriptions/presentation/prescription_detail_pag
 import '../../features/doctor/appointments/presentation/appointments_page.dart';
 import '../../features/doctor/billing/presentation/billing_page.dart';
 import '../../features/doctor/settings/presentation/settings_page.dart';
+import '../../features/doctor/dashboard/help&support/help_support_page.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
 import '../../features/pharmacy/dashboard/presentation/pharmacy_dashboard_page.dart';
@@ -220,6 +221,10 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.doctorSettings,
             builder: (context, state) => const SettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSupport,
+            builder: (context, state) => const HelpPage(),
           ),
         ],
       ),

@@ -38,7 +38,7 @@ class AppRoutes {
   static const String doctorAppointments = '/doctor/appointments';
   static const String doctorBilling = '/doctor/billing';
   static const String doctorSettings = '/doctor/settings';
-    static const String doctorSupport = '/doctor/support';
+  static const String doctorSupport = '/doctor/support';
   static const String doctorSettingsProfile = '/doctor/settings/profile';
   static const String doctorSettingsProfessional =
       '/doctor/settings/professional';

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/app_state.dart';
+import '../../core/auth/auth_actions.dart';
 import '../../core/routing/app_routes.dart';
 import '../../shared/constants/app_constants.dart';
 
@@ -32,68 +35,83 @@ class AppSidebar extends StatelessWidget {
 
   static const List<_SidebarItem> _doctorItems = [
     _SidebarItem(
-        iconAsset: 'assets/icons/dashboard-icon.png',
-        route: AppRoutes.doctorDashboard,
-        tooltip: 'Dashboard'),
+      iconAsset: 'assets/icons/dashboard-icon.png',
+      route: AppRoutes.doctorDashboard,
+      tooltip: 'Dashboard',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/patients-icon.png',
-        route: AppRoutes.doctorPatients,
-        tooltip: 'Patients'),
+      iconAsset: 'assets/icons/patients-icon.png',
+      route: AppRoutes.doctorPatients,
+      tooltip: 'Patients',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/prescription-icon.png',
-        route: AppRoutes.doctorPrescriptions,
-        tooltip: 'Prescriptions'),
+      iconAsset: 'assets/icons/prescription-icon.png',
+      route: AppRoutes.doctorPrescriptions,
+      tooltip: 'Prescriptions',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/appointments-icon.png',
-        route: AppRoutes.doctorAppointments,
-        tooltip: 'Appointments'),
+      iconAsset: 'assets/icons/appointments-icon.png',
+      route: AppRoutes.doctorAppointments,
+      tooltip: 'Appointments',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/billing-icon.png',
-        route: AppRoutes.doctorBilling,
-        tooltip: 'Billing'),
+      iconAsset: 'assets/icons/billing-icon.png',
+      route: AppRoutes.doctorBilling,
+      tooltip: 'Billing',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/settings-icon.png',
-        route: AppRoutes.doctorSettings,
-        tooltip: 'Settings'),
+      iconAsset: 'assets/icons/settings-icon.png',
+      route: AppRoutes.doctorSettings,
+      tooltip: 'Settings',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/help-icon.png',
-        route: AppRoutes.doctorSettings,
-        tooltip: 'Help'),
+      iconAsset: 'assets/icons/help-icon.png',
+      route: AppRoutes.doctorSupport,
+      tooltip: 'Help',
+    ),
   ];
 
   static const List<_SidebarItem> _pharmacyItems = [
     _SidebarItem(
-        iconAsset: 'assets/icons/dashboard-icon.png',
-        route: AppRoutes.pharmacyDashboard,
-        tooltip: 'Dashboard'),
+      iconAsset: 'assets/icons/dashboard-icon.png',
+      route: AppRoutes.pharmacyDashboard,
+      tooltip: 'Dashboard',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/prescription-icon.png',
-        route: AppRoutes.pharmacyPrescriptions,
-        tooltip: 'Prescriptions'),
+      iconAsset: 'assets/icons/prescription-icon.png',
+      route: AppRoutes.pharmacyPrescriptions,
+      tooltip: 'Prescriptions',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/billing-icon.png',
-        route: AppRoutes.pharmacyOrders,
-        tooltip: 'Orders'),
+      iconAsset: 'assets/icons/billing-icon.png',
+      route: AppRoutes.pharmacyOrders,
+      tooltip: 'Orders',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/settings-icon.png',
-        route: AppRoutes.pharmacyInventory,
-        tooltip: 'Inventory'),
+      iconAsset: 'assets/icons/settings-icon.png',
+      route: AppRoutes.pharmacyInventory,
+      tooltip: 'Inventory',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/appointments-icon.png',
-        route: AppRoutes.pharmacyDispensingQueue,
-        tooltip: 'Dispensing Queue'),
+      iconAsset: 'assets/icons/appointments-icon.png',
+      route: AppRoutes.pharmacyDispensingQueue,
+      tooltip: 'Dispensing Queue',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/patients-icon.png',
-        route: AppRoutes.pharmacyPatients,
-        tooltip: 'Patients'),
+      iconAsset: 'assets/icons/patients-icon.png',
+      route: AppRoutes.pharmacyPatients,
+      tooltip: 'Patients',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/billing-icon.png',
-        route: AppRoutes.pharmacyBilling,
-        tooltip: 'Billing'),
+      iconAsset: 'assets/icons/billing-icon.png',
+      route: AppRoutes.pharmacyBilling,
+      tooltip: 'Billing',
+    ),
     _SidebarItem(
-        iconAsset: 'assets/icons/settings-icon.png',
-        route: AppRoutes.pharmacySettings,
-        tooltip: 'Settings'),
+      iconAsset: 'assets/icons/settings-icon.png',
+      route: AppRoutes.pharmacySettings,
+      tooltip: 'Settings',
+    ),
   ];
 
   @override
@@ -102,8 +120,10 @@ class AppSidebar extends StatelessWidget {
         role == AppConstants.roleDoctor ? _doctorItems : _pharmacyItems;
     final currentLocation = GoRouterState.of(context).matchedLocation;
 
+    final sidebarWidth = collapsed ? 80.0 : 120.0;
+
     return Container(
-      width: 120,
+      width: sidebarWidth,
       color: Colors.white,
       child: Column(
         children: [
@@ -134,16 +154,33 @@ class AppSidebar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Container(
-            width: 56,
-            height: 56,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFE3FAFA),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          Tooltip(
+            message: 'Log out',
+            child: InkWell(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+              onTap: () {
+                StoreProvider.of<AppState>(
+                  context,
+                ).dispatch(const LogoutAction());
+                context.go(AppRoutes.login);
+              },
+              child: Container(
+                width: 56,
+                height: 56,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE3FAFA),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: const Icon(
+                  Icons.logout_outlined,
+                  size: 26,
+                  color: Colors.black,
+                ),
+              ),
             ),
-            child: const Icon(Icons.logout_outlined,
-                size: 26, color: Colors.black),
           ),
         ],
       ),

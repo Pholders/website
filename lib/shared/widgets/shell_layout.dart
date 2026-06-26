@@ -11,12 +11,12 @@ import 'pharmacy_sidebar.dart';
 /// Renders the sidebar on the left and top navbar + content on the right.
 /// The sidebar spans full height (logo is inside the sidebar per Figma).
 class ShellLayout extends StatefulWidget {
-
   const ShellLayout({
     super.key,
     required this.role,
     required this.child,
   });
+
   final String role;
   final Widget child;
 
@@ -25,16 +25,18 @@ class ShellLayout extends StatefulWidget {
 }
 
 class _ShellLayoutState extends State<ShellLayout> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   Widget _buildSidebar({required bool collapsed}) {
     if (widget.role == AppConstants.rolePharmacy) {
       return PharmacySidebar(collapsed: collapsed);
     }
-    return AppSidebar
-    (role: widget.role, 
-    collapsed: collapsed,
-    onItemSelected: (dynamic _) {
-      // Handle sidebar item selection if needed
-    },);
+
+    return AppSidebar(
+      role: widget.role,
+      collapsed: collapsed,
+      onItemSelected: (dynamic _) {},
+    );
   }
 
   @override
@@ -44,6 +46,7 @@ class _ShellLayoutState extends State<ShellLayout> {
     final isMobile = ResponsiveHelper.isMobile(context);
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppTheme.background,
       drawer: isMobile
           ? Drawer(
@@ -52,25 +55,21 @@ class _ShellLayoutState extends State<ShellLayout> {
           : null,
       body: Row(
         children: [
-          // Sidebar spans full height
           if (isDesktop)
             _buildSidebar(collapsed: false),
           if (isTablet)
             _buildSidebar(collapsed: true),
 
-          // Right side: top navbar + page content
           Expanded(
             child: Column(
               children: [
                 AppTopNavbar(
                   role: widget.role,
                   onMenuTap: isMobile
-                      ? () => Scaffold.of(context).openDrawer()
+                      ? () => _scaffoldKey.currentState?.openDrawer()
                       : null,
                 ),
-                Expanded(
-                  child: widget.child,
-                ),
+                Expanded(child: widget.child),
               ],
             ),
           ),
