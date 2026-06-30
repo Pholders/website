@@ -25,26 +25,95 @@ class _InventoryPageState extends State<InventoryPage> {
 
   final List<String> _tabs = [
     'All',
-    'New',
-    'Processing',
-    'Ready',
-    'Out for Delivery',
-    'Completed',
-    'Cancelled',
+    'In Stock',
+    'Low Stock',
+    'Out of Stock',
   ];
 
   // Mock data
-  final List<_InventoryItem> _items = List.generate(
-    13,
-    (i) => const _InventoryItem(
-      orderId: '#10234',
-      patient: 'Prince Mashumu',
-      items: '2 Items',
-      total: 'R450',
-      payment: 'Pending',
-      status: 'Processing',
+  final List<_InventoryItem> _items = [
+    const _InventoryItem(
+      medicationId: 'MED-001',
+      medicationName: 'Paracetamol 500mg',
+      sku: 'SKU-PAR-500',
+      quantity: 450,
+      reorderLevel: 100,
+      unitPrice: 'R2.50',
+      status: 'In Stock',
     ),
-  );
+    const _InventoryItem(
+      medicationId: 'MED-002',
+      medicationName: 'Amoxicillin 250mg',
+      sku: 'SKU-AMX-250',
+      quantity: 85,
+      reorderLevel: 100,
+      unitPrice: 'R4.20',
+      status: 'Low Stock',
+    ),
+    const _InventoryItem(
+      medicationId: 'MED-003',
+      medicationName: 'Ibuprofen 200mg',
+      sku: 'SKU-IBU-200',
+      quantity: 0,
+      reorderLevel: 80,
+      unitPrice: 'R1.80',
+      status: 'Out of Stock',
+    ),
+    const _InventoryItem(
+      medicationId: 'MED-004',
+      medicationName: 'Aspirin 100mg',
+      sku: 'SKU-ASP-100',
+      quantity: 320,
+      reorderLevel: 100,
+      unitPrice: 'R3.15',
+      status: 'In Stock',
+    ),
+    const _InventoryItem(
+      medicationId: 'MED-005',
+      medicationName: 'Lisinopril 10mg',
+      sku: 'SKU-LIS-10',
+      quantity: 45,
+      reorderLevel: 100,
+      unitPrice: 'R5.90',
+      status: 'Low Stock',
+    ),
+    const _InventoryItem(
+      medicationId: 'MED-006',
+      medicationName: 'Atorvastatin 20mg',
+      sku: 'SKU-ATO-20',
+      quantity: 215,
+      reorderLevel: 100,
+      unitPrice: 'R6.40',
+      status: 'In Stock',
+    ),
+    const _InventoryItem(
+      medicationId: 'MED-007',
+      medicationName: 'Metformin 500mg',
+      sku: 'SKU-MET-500',
+      quantity: 0,
+      reorderLevel: 150,
+      unitPrice: 'R2.75',
+      status: 'Out of Stock',
+    ),
+    const _InventoryItem(
+      medicationId: 'MED-008',
+      medicationName: 'Omeprazole 20mg',
+      sku: 'SKU-OMP-20',
+      quantity: 60,
+      reorderLevel: 100,
+      unitPrice: 'R4.60',
+      status: 'Low Stock',
+    ),
+    const _InventoryItem(
+      medicationId: 'MED-009',
+      medicationName: 'Cetirizine 10mg',
+      sku: 'SKU-CET-10',
+      quantity: 580,
+      reorderLevel: 200,
+      unitPrice: 'R3.20',
+      status: 'In Stock',
+    ),
+  ];
 
   List<_InventoryItem> get _filteredItems {
     final tab = _tabs[_selectedTab];
@@ -116,7 +185,7 @@ class _InventoryPageState extends State<InventoryPage> {
           Image.asset('assets/plus-icon.png', width: 18, height: 18, color: Colors.black),
           const SizedBox(width: 8),
           const Text(
-            'New Order',
+            'Add Medication',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -160,7 +229,7 @@ class _InventoryPageState extends State<InventoryPage> {
         }),
         const Spacer(),
         Text(
-          'Total: 140',
+          'Total Items: ${_items.length}',
           style: TextStyle(
               fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted),
         ),
@@ -194,13 +263,14 @@ class _InventoryPageState extends State<InventoryPage> {
                     ),
                     child: const Row(
                       children: [
-                        Expanded(flex: 2, child: _ColHeader('Order ID')),
-                        Expanded(flex: 3, child: _ColHeader('Patient')),
-                        Expanded(flex: 2, child: _ColHeader('Items')),
-                        Expanded(flex: 2, child: _ColHeader('Total')),
-                        Expanded(flex: 2, child: _ColHeader('Payment')),
-                        Expanded(flex: 2, child: _ColHeader('Status')),
-                        Expanded(flex: 2, child: _ColHeader('Action')),
+                        Expanded(flex: 1, child: _ColHeader('Med ID')),
+                        Expanded(flex: 2, child: _ColHeader('Medication Name')),
+                        Expanded(flex: 1, child: _ColHeader('SKU')),
+                        Expanded(flex: 1, child: _ColHeader('Quantity')),
+                        Expanded(flex: 1, child: _ColHeader('Reorder Level')),
+                        Expanded(flex: 1, child: _ColHeader('Unit Price')),
+                        Expanded(flex: 1, child: _ColHeader('Status')),
+                        Expanded(flex: 1, child: _ColHeader('Action')),
                       ],
                     ),
                   ),
@@ -220,6 +290,19 @@ class _InventoryPageState extends State<InventoryPage> {
     );
   }
 
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'In Stock':
+        return const Color(0xFF34A853); // Green
+      case 'Low Stock':
+        return _pendingOrange;
+      case 'Out of Stock':
+        return const Color(0xFFD93025); // Red
+      default:
+        return _textMuted;
+    }
+  }
+
   Widget _buildRow(_InventoryItem item) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -228,11 +311,11 @@ class _InventoryPageState extends State<InventoryPage> {
       ),
       child: Row(
         children: [
-          // Order ID
+          // Medication ID
           Expanded(
-            flex: 2,
+            flex: 1,
             child: Text(
-              item.orderId,
+              item.medicationId,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
@@ -240,28 +323,28 @@ class _InventoryPageState extends State<InventoryPage> {
               ),
             ),
           ),
-          // Patient
+          // Medication Name
           Expanded(
-            flex: 3,
+            flex: 2,
             child: Text(
-              item.patient,
+              item.medicationName,
               style: const TextStyle(fontSize: 13, color: _textDark),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          // Items
+          // SKU
           Expanded(
-            flex: 2,
+            flex: 1,
             child: Text(
-              item.items,
+              item.sku,
               style: TextStyle(fontSize: 13, color: _textMuted),
             ),
           ),
-          // Total
+          // Quantity
           Expanded(
-            flex: 2,
+            flex: 1,
             child: Text(
-              item.total,
+              item.quantity.toString(),
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
@@ -269,38 +352,37 @@ class _InventoryPageState extends State<InventoryPage> {
               ),
             ),
           ),
-          // Payment
+          // Reorder Level
           Expanded(
-            flex: 2,
-            child: Row(
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _pendingOrange,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  item.payment,
-                  style: TextStyle(fontSize: 12, color: _textMuted),
-                ),
-              ],
+            flex: 1,
+            child: Text(
+              item.reorderLevel.toString(),
+              style: TextStyle(fontSize: 12, color: _textMuted),
+            ),
+          ),
+          // Unit Price
+          Expanded(
+            flex: 1,
+            child: Text(
+              item.unitPrice,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: _textDark,
+              ),
             ),
           ),
           // Status
           Expanded(
-            flex: 2,
+            flex: 1,
             child: Row(
               children: [
                 Container(
                   width: 7,
                   height: 7,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _processingBlue,
+                    color: _getStatusColor(item.status),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -313,21 +395,21 @@ class _InventoryPageState extends State<InventoryPage> {
           ),
           // Action
           Expanded(
-            flex: 2,
+            flex: 1,
             child: Align(
               alignment: Alignment.centerLeft,
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFF6DD0D8),
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
                 ),
                 child: const Text(
-                  'Mark Ready',
+                  'Edit',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
@@ -363,19 +445,21 @@ class _ColHeader extends StatelessWidget {
 // ─── Data model ──────────────────────────────────────────────────────────────
 
 class _InventoryItem {
-  final String orderId;
-  final String patient;
-  final String items;
-  final String total;
-  final String payment;
+  final String medicationId;
+  final String medicationName;
+  final String sku;
+  final int quantity;
+  final int reorderLevel;
+  final String unitPrice;
   final String status;
 
   const _InventoryItem({
-    required this.orderId,
-    required this.patient,
-    required this.items,
-    required this.total,
-    required this.payment,
+    required this.medicationId,
+    required this.medicationName,
+    required this.sku,
+    required this.quantity,
+    required this.reorderLevel,
+    required this.unitPrice,
     required this.status,
   });
 }

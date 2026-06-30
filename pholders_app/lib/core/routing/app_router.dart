@@ -48,6 +48,7 @@ import '../../features/doctor/settings/presentation/preferences_settings.dart';
 import '../../features/doctor/settings/presentation/integrations_settings.dart';
 import '../../features/doctor/settings/presentation/login_activity.dart';
 import '../../features/doctor/settings/presentation/support_legal_settings.dart';
+import '../../features/doctor/notifications/presentation/notifications_page.dart';
 import '../../shared/pages/linked_services_page.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ import '../../features/pharmacy/orders/presentation/orders_page.dart';
 import '../../features/pharmacy/orders/presentation/order_detail_page.dart';
 import '../../features/pharmacy/inventory/presentation/inventory_page.dart';
 import '../../features/pharmacy/dispensing_queue/presentation/dispensing_queue_page.dart';
+import '../../features/pharmacy/notifications/presentation/pharmacy_notifications_page.dart';
 import '../../features/pharmacy/patients/presentation/pharmacy_patients_page.dart';
 import '../../features/pharmacy/billing/presentation/pharmacy_billing_page.dart';
 import '../../features/pharmacy/reports/presentation/pharmacy_reports_page.dart';
@@ -233,6 +235,10 @@ GoRouter createRouter(Store<AppState> store) {
             builder: (context, state) => const BillingPage(),
           ),
           GoRoute(
+            path: AppRoutes.doctorNotifications,
+            builder: (context, state) => const DoctorNotificationsPage(),
+          ),
+          GoRoute(
             path: AppRoutes.doctorSettings,
             builder: (context, state) => const SettingsPage(),
           ),
@@ -321,6 +327,10 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.pharmacyReports,
             builder: (context, state) => const PharmacyReportsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacyNotifications,
+            builder: (context, state) => const PharmacyNotificationsPage(),
           ),
           GoRoute(
             path: AppRoutes.pharmacySettings,

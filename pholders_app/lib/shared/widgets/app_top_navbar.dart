@@ -123,30 +123,39 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
           const SizedBox(width: 16),
 
           // Notification bell
-          Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Image.asset(
-                  'assets/bell-icon.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
+          GestureDetector(
+            onTap: () {
+              if (role == AppConstants.roleDoctor) {
+                context.go('/doctor/notifications');
+              } else if (role == AppConstants.rolePharmacy) {
+                context.go('/pharmacy/notifications');
+              }
+            },
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Image.asset(
+                    'assets/bell-icon.png',
+                    width: 24,
+                    height: 24,
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
