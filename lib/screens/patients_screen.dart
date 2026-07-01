@@ -1,24 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:doctor_app/screens/patient_profile_screen.dart';
 
-class DoctorApp extends StatelessWidget {
-  const DoctorApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Doctor App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'SF Pro Display', // swap for your project font
-        scaffoldBackgroundColor: const Color(0xFFF4FAFA),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2EC4C4)),
-        useMaterial3: true,
-      ),
-      home: const AppShell(),
-    );
-  }
-}
-
 // ─── Colours ─────────────────────────────────────────────────────────────────
 class AppColors {
   static const teal = Color(0xFF2EC4C4);
@@ -115,212 +97,6 @@ List<Patient> _generateMockPatients() {
       avatarInitials: names[i].split(' ').map((w) => w[0]).join(),
     );
   });
-}
-
-// ─── App shell with sidebar ───────────────────────────────────────────────────
-class AppShell extends StatefulWidget {
-  const AppShell({super.key});
-  @override
-  State<AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends State<AppShell> {
-  int _selectedNav = 1; // Patients is selected
-  Patient? _selectedPatient; // null = show patients list
-
-  final _navItems = [
-    _NavItem(icon: Icons.grid_view_rounded, label: 'Dashboard'),
-    _NavItem(icon: Icons.person_outline_rounded, label: 'Patients'),
-    _NavItem(icon: Icons.medication_outlined, label: 'Prescriptions'),
-    _NavItem(icon: Icons.calendar_month_outlined, label: 'Appointments'),
-    _NavItem(icon: Icons.account_balance_wallet_outlined, label: 'Billing & Payments'),
-    _NavItem(icon: Icons.settings_outlined, label: 'Settings'),
-    _NavItem(icon: Icons.info_outline_rounded, label: 'Help & Support'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          _Sidebar(
-            items: _navItems,
-            selected: _selectedNav,
-            onSelect: (i) => setState(() {
-              _selectedNav = i;
-              _selectedPatient = null; // go back to list on nav change
-            }),
-          ),
-          Expanded(
-            child: _selectedPatient != null
-                ? PatientProfileScreen(
-                    patient: _selectedPatient!,
-                    onBack: () => setState(() => _selectedPatient = null),
-                  )
-                : PatientsScreen(
-                    onPatientTap: (p) => setState(() => _selectedPatient = p),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  final IconData icon;
-  final String label;
-  const _NavItem({required this.icon, required this.label});
-}
-
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
-class _Sidebar extends StatelessWidget {
-  final List<_NavItem> items;
-  final int selected;
-  final ValueChanged<int> onSelect;
-
-  const _Sidebar({required this.items, required this.selected, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 220,
-      color: AppColors.sidebar,
-      child: Column(
-        children: [
-          // Logo
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.teal, width: 2),
-                  ),
-                  child: const Icon(Icons.favorite_border_rounded,
-                      color: AppColors.teal, size: 22),
-                ),
-              ],
-            ),
-          ),
-
-          // Nav items
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: items.length,
-              itemBuilder: (ctx, i) {
-                final active = i == selected;
-                return GestureDetector(
-                  onTap: () => onSelect(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    margin: const EdgeInsets.symmetric(vertical: 3),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                    decoration: BoxDecoration(
-                      color: active ? AppColors.tealLight : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(items[i].icon,
-                            size: 20,
-                            color: active ? AppColors.teal : AppColors.textSecondary),
-                        const SizedBox(width: 12),
-                        Text(
-                          items[i].label,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                            color: active ? AppColors.teal : AppColors.textPrimary,
-                          ),
-                        ),
-                        if (active)
-                          Container(
-                            margin: const EdgeInsets.only(left: 6),
-                            width: 4,
-                            height: 4,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.teal,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // Membership card
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.textPrimary,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Activate Membership',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  const Text('Check your benefits',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.teal),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('Check now',
-                        style: TextStyle(color: AppColors.teal, fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Doctor profile
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F8F8),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: AppColors.tealLight,
-                    child: const Icon(Icons.person, color: AppColors.teal, size: 22),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text('Dr. Sam Smith',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  ),
-                  const Icon(Icons.logout_rounded, size: 18, color: AppColors.textSecondary),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ─── Patients screen ─────────────────────────────────────────────────────────
@@ -663,7 +439,7 @@ class _PatientTable extends StatelessWidget {
                         style: TextStyle(color: AppColors.textSecondary)))
                 : ListView.separated(
                     itemCount: patients.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         const Divider(height: 1, color: AppColors.border),
                     itemBuilder: (ctx, i) => _PatientRow(
                       patient: patients[i],
@@ -1079,7 +855,7 @@ class _PatientFormDialogState extends State<_PatientFormDialog> {
               const Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<PatientStatus>(
-                value: _status,
+                initialValue: _status,
                 decoration: _dropDecoration(),
                 items: PatientStatus.values.map((s) {
                   return DropdownMenuItem(value: s, child: Text(s.name[0].toUpperCase() + s.name.substring(1)));
@@ -1092,7 +868,7 @@ class _PatientFormDialogState extends State<_PatientFormDialog> {
               const Text('Priority', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: _priority,
+                initialValue: _priority,
                 decoration: _dropDecoration(),
                 items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
                 onChanged: (v) => setState(() => _priority = v!),
@@ -1103,7 +879,7 @@ class _PatientFormDialogState extends State<_PatientFormDialog> {
               const Text('Category', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<PatientCategory>(
-                value: _category,
+                initialValue: _category,
                 decoration: _dropDecoration(),
                 items: const [
                   DropdownMenuItem(value: PatientCategory.outpatient, child: Text('Outpatient')),

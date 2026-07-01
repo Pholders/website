@@ -1437,7 +1437,7 @@ class _UploadDocumentDialogState extends State<_UploadDocumentDialog> {
                     child: _UploadField(
                       label: 'Document Type',
                       child: DropdownButtonFormField<DocType>(
-                        value: _type,
+                        initialValue: _type,
                         decoration: _inputDec(''),
                         isExpanded: true,
                         items: DocType.values
@@ -1456,7 +1456,7 @@ class _UploadDocumentDialogState extends State<_UploadDocumentDialog> {
                     child: _UploadField(
                       label: 'File Format',
                       child: DropdownButtonFormField<String>(
-                        value: _fileExt,
+                        initialValue: _fileExt,
                         decoration: _inputDec(''),
                         isExpanded: true,
                         items: _extensions
@@ -1480,7 +1480,7 @@ class _UploadDocumentDialogState extends State<_UploadDocumentDialog> {
                     child: _UploadField(
                       label: 'Uploaded By',
                       child: DropdownButtonFormField<String>(
-                        value: _uploadedBy,
+                        initialValue: _uploadedBy,
                         decoration: _inputDec(''),
                         isExpanded: true,
                         items: _doctors

@@ -70,6 +70,17 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     return Column(
       children: [
         _buildTopBar(),
+        // ── Tab bar pinned — lives OUTSIDE the scroll view so it never scrolls away
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              _buildProfileTabs(),
+              Divider(height: 1, thickness: 1, color: AppProfileColors.border),
+            ],
+          ),
+        ),
         Expanded(
           child: Container(
             color: AppProfileColors.bg,
@@ -78,7 +89,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildProfileTabs(),
                   // ── Tab content ──────────────────────────────────────────
                   if (_tabIndex == 0) ...[
                     const SizedBox(height: 20),
