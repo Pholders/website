@@ -1,7 +1,9 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../shared/widgets/settings_shell.dart';
 
 class PreferencesSettings extends StatelessWidget {
@@ -77,6 +79,8 @@ class PreferencesSettings extends StatelessWidget {
             _SwitchLine('Hide sensitive content'),
           ],
         ),
+        SizedBox(height: 18),
+        _NotificationCentreSection(),
         SizedBox(height: 6),
         SettingsFullWidthAction('Save Changes'),
       ],
@@ -151,6 +155,64 @@ class _DividerGap extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 12),
       child: Divider(color: SettingsShell.divider, thickness: 2, height: 2),
+    );
+  }
+}
+
+class _NotificationCentreSection extends StatelessWidget {
+  const _NotificationCentreSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SettingsSectionTitle('Notification Centre'),
+          const SizedBox(height: 9),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F8F8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFD1F5F5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.inbox_outlined, color: Color(0xFF309CA3), size: 20),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'View all your notifications and alert history',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                InkWell(
+                  onTap: () => context.go(AppRoutes.doctorNotifications),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF309CA3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'View Centre',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

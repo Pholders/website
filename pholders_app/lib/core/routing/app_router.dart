@@ -48,6 +48,7 @@ import '../../features/doctor/settings/presentation/preferences_settings.dart';
 import '../../features/doctor/settings/presentation/integrations_settings.dart';
 import '../../features/doctor/settings/presentation/login_activity.dart';
 import '../../features/doctor/settings/presentation/support_legal_settings.dart';
+import '../../features/doctor/notifications/presentation/notifications_page.dart';
 import '../../shared/pages/linked_services_page.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
@@ -59,10 +60,16 @@ import '../../features/pharmacy/orders/presentation/order_detail_page.dart';
 import '../../features/pharmacy/inventory/presentation/inventory_page.dart';
 import '../../features/pharmacy/dispensing_queue/presentation/dispensing_queue_page.dart';
 import '../../features/pharmacy/patients/presentation/pharmacy_patients_page.dart';
+import '../../features/pharmacy/notifications/presentation/pharmacy_notifications_page.dart';
 import '../../features/pharmacy/billing/presentation/pharmacy_billing_page.dart';
 import '../../features/pharmacy/reports/presentation/pharmacy_reports_page.dart';
 import '../../features/pharmacy/settings/presentation/pharmacy_settings_page.dart';
 import '../../features/pharmacy/settings/presentation/pharmacy_profile_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_personal_info_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_details_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_professional_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_notification_settings_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_notification_center_page.dart';
 
 // ─── Shell layouts ────────────────────────────────────────────────────────────
 import '../../shared/widgets/shell_layout.dart';
@@ -268,6 +275,10 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.doctorSettingsLinkedServices,
             builder: (context, state) => const IntegrationsSettings(),
           ),
+          GoRoute(
+            path: AppRoutes.doctorNotifications,
+            builder: (context, state) => const DoctorNotificationsPage(),
+          ),
         ],
       ),
 
@@ -315,6 +326,10 @@ GoRouter createRouter(Store<AppState> store) {
             builder: (context, state) => const PharmacyPatientsPage(),
           ),
           GoRoute(
+            path: AppRoutes.pharmacyNotifications,
+            builder: (context, state) => const PharmacyNotificationsPage(),
+          ),
+          GoRoute(
             path: AppRoutes.pharmacyBilling,
             builder: (context, state) => const PharmacyBillingPage(),
           ),
@@ -329,6 +344,26 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.pharmacySettingsProfile,
             builder: (context, state) => const PharmacyProfilePage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsPersonalInfo,
+            builder: (context, state) => const PharmacyPersonalInfoPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsPharmacyDetails,
+            builder: (context, state) => const PharmacyDetailsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsProfessional,
+            builder: (context, state) => const PharmacyProfessionalPage(),
+          ),
+                    GoRoute(
+            path: AppRoutes.pharmacySettingsNotifications,
+            builder: (context, state) => const PharmacyNotificationSettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsNotificationCenter,
+            builder: (context, state) => const PharmacyNotificationCenterPage(),
           ),
           GoRoute(
             path: AppRoutes.pharmacySettingsLinkedServices,

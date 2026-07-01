@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/routing/app_routes.dart';
 import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
 
@@ -25,6 +26,7 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
     if (location.contains('dashboard')) return 'Dashboard';
     if (location.contains('appointments')) return 'Schedule';
     if (location.contains('patients')) return 'Patients';
+    if (location.contains('notifications')) return 'Notifications';
     if (location.contains('prescriptions')) return 'Prescriptions';
     if (location.contains('orders')) return 'Orders';
     if (location.contains('inventory')) return 'Inventory';
@@ -45,6 +47,7 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final pageName = _getPageName(context);
+    final isPharmacy = role == AppConstants.rolePharmacy;
 
     return Container(
       height: 64,
@@ -123,30 +126,36 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
           const SizedBox(width: 16),
 
           // Notification bell
-          Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Image.asset(
-                  'assets/bell-icon.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
+          InkWell(
+            onTap: isPharmacy 
+                ? () => context.go(AppRoutes.pharmacyNotifications)
+                : () => context.go(AppRoutes.doctorNotifications),
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Image(
+                    image: AssetImage('assets/bell-icon.png'),
+                    width: 24,
+                    height: 24,
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
