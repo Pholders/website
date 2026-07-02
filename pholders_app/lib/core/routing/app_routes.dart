@@ -38,7 +38,7 @@ class AppRoutes {
       '/doctor/patients/:patientId/documents';
   static const String doctorPatientHistory =
       '/doctor/patients/:patientId/history';
-  static const String doctorPrescriptions = '/doctor/prescriptions';
+  static const String doctorPrescriptions = '/prescriptions';
   static const String doctorPrescriptionDetail =
       '/doctor/prescriptions/:prescriptionId';
   static const String doctorNewPrescription = '/doctor/prescriptions/new';

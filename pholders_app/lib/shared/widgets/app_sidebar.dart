@@ -58,11 +58,11 @@ class AppSidebar extends StatelessWidget {
       iconAsset: 'assets/prescription-icon.png',
       route: AppRoutes.doctorNewPrescription,
     ),
-    _SidebarItem(
-      label: 'Prescriptions',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorPrescriptions,
-    ),
+        _SidebarItem(
+          label: 'Prescriptions',
+          iconAsset: 'assets/prescription-icon.png',
+          route: AppRoutes.doctorPrescriptions,
+        ),
     _SidebarItem(
       label: 'Search Scripts',
       iconAsset: 'assets/prescription-icon.png',
