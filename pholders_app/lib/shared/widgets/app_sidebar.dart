@@ -58,11 +58,11 @@ class AppSidebar extends StatelessWidget {
       iconAsset: 'assets/prescription-icon.png',
       route: AppRoutes.doctorNewPrescription,
     ),
-    _SidebarItem(
-      label: 'Prescriptions',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorPrescriptions,
-    ),
+        _SidebarItem(
+          label: 'Prescriptions',
+          iconAsset: 'assets/prescription-icon.png',
+          route: AppRoutes.doctorPrescriptions,
+        ),
     _SidebarItem(
       label: 'Search Scripts',
       iconAsset: 'assets/prescription-icon.png',
@@ -77,6 +77,11 @@ class AppSidebar extends StatelessWidget {
       label: 'Sick Notes',
       iconAsset: 'assets/prescription-icon.png',
       route: AppRoutes.doctorSickNotes,
+    ),
+    _SidebarItem(
+      label: 'Notifications',
+      iconAsset: 'assets/bell-icon.png',
+      route: AppRoutes.doctorNotifications,
     ),
     _SidebarItem(
       label: 'Billing & Payments',
@@ -121,6 +126,11 @@ class AppSidebar extends StatelessWidget {
       label: 'Patients',
       iconAsset: 'assets/patients-icon.png',
       route: AppRoutes.pharmacyPatients,
+    ),
+    _SidebarItem(
+      label: 'Notifications',
+      iconAsset: 'assets/bell-icon.png',
+      route: AppRoutes.pharmacyNotifications,
     ),
     _SidebarItem(
       label: 'Billing & Payments',

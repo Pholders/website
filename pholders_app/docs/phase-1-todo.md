@@ -23,13 +23,13 @@
 
 ## PHARMACY APP (UI Only)
 
-- [ ] Claim Script flow (button + status update on prescription list)
-- [ ] Claimed Script Detail view (patient info, medical aid, delivery/collection choice)
-- [ ] Mark Script as Processed (status button on detail page)
-- [ ] Dispensing Queue screen (list of scripts in progress)
-- [ ] Mark Order Ready (status button on order detail)
-- [ ] Pharmacist Registration screens (Step 1 + Step 2)
-- [ ] Pharmacist Profile screen (full details form)
-- [ ] Pharmacy Profile Settings page
-- [ ] Stock Management screen (edit stock levels, low stock indicator)
-- [ ] Patient Notification indicator (processed badge/status)
+- [ ] Claim Script flow (button + status update on prescription list)  - Done 
+- [ ] Claimed Script Detail view (patient info, medical aid, delivery/collection choice) - Done
+- [ ] Mark Script as Processed (status button on detail page) -Done
+- [ ] Dispensing Queue screen (list of scripts in progress)  - Done
+- [ ] Mark Order Ready (status button on order detail) - Done
+- [ ] Pharmacist Registration screens (Step 1 + Step 2) - Done
+- [ ] Pharmacist Profile screen (full details form) -  Done
+- [ ] Pharmacy Profile Settings page - Done 
+- [ ] Stock Management screen (edit stock levels, low stock indicator) done
+- [ ] Patient Notification indicator (processed badge/status) done

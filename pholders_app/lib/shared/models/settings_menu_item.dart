@@ -2,6 +2,7 @@
 enum IconType {
   account,
   practice,
+  notifications,
   security,
   preferences,
   integrations,

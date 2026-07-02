@@ -41,7 +41,7 @@ class _PharmacyPrescriptionsPageState extends State<PharmacyPrescriptionsPage> {
   ];
 
   // Mock data
-  final List<_PrescriptionData> _prescriptions = const [
+  final List<_PrescriptionData> _prescriptions = [
     _PrescriptionData(
       patient: 'Maria Wilson',
       doctor: 'Dr Sara Smith',
@@ -391,20 +391,156 @@ class _PharmacyPrescriptionsPageState extends State<PharmacyPrescriptionsPage> {
           // Status
           Expanded(
             flex: 2,
-            child: _StatusBadge(status: rx.status),
+            child: Row(
+              children: [
+                _StatusBadge(status: rx.status),
+                if (rx.status != 'New') ...[
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: 'Patient notified',
+                    child: Container(
+                      width: 18, height: 18,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0x3334D399),
+                      ),
+                      child: const Icon(Icons.notifications_active, size: 10, color: Color(0xFF34D399)),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           // Action
           Expanded(
             flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: _ActionButton(status: rx.status),
+              child: _ActionButton(
+                status: rx.status,
+                onTap: () => _handleAction(rx),
+              ),
             ),
           ),
         ],
       ),
       ),
     );
+  }
+
+  // ─── Claim / Status Progression Logic ──────────────────────────────────────
+  void _handleAction(_PrescriptionData rx) {
+    final nextStatus = _getNextStatus(rx.status);
+    if (nextStatus == null) return;
+
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          _getConfirmTitle(rx.status),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          _getConfirmMessage(rx),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                rx.status = nextStatus;
+              });
+              // Simulate patient notification
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('✓ ${rx.patient} notified — Script status: $nextStatus'),
+                  backgroundColor: const Color(0xFF309CA3),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF309CA3),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(_getConfirmAction(rx.status)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _getNextStatus(String current) {
+    switch (current) {
+      case 'New':
+        return 'Accepted';
+      case 'Accepted':
+        return 'In-Progress';
+      case 'In-Progress':
+        return 'Ready';
+      case 'Ready':
+        return 'Dispensed';
+      default:
+        return null; // Already dispensed
+    }
+  }
+
+  String _getConfirmTitle(String status) {
+    switch (status) {
+      case 'New':
+        return 'Claim Prescription?';
+      case 'Accepted':
+        return 'Start Processing?';
+      case 'In-Progress':
+        return 'Mark as Ready?';
+      case 'Ready':
+        return 'Mark as Dispensed?';
+      default:
+        return 'Update Status?';
+    }
+  }
+
+  String _getConfirmMessage(_PrescriptionData rx) {
+    switch (rx.status) {
+      case 'New':
+        return 'Claiming this prescription will lock it to your pharmacy. '
+            'No other pharmacy can claim it.\n\n'
+            'Patient: ${rx.patient}\nMedication: ${rx.medication}';
+      case 'Accepted':
+        return 'This will move the prescription to In-Progress. '
+            'The patient will be notified that preparation has started.';
+      case 'In-Progress':
+        return 'This will mark the prescription as Ready for collection/delivery. '
+            'The patient will be notified.';
+      case 'Ready':
+        return 'Confirm that the medication has been dispensed to the patient.';
+      default:
+        return 'Update the prescription status.';
+    }
+  }
+
+  String _getConfirmAction(String status) {
+    switch (status) {
+      case 'New':
+        return 'Claim';
+      case 'Accepted':
+        return 'Process';
+      case 'In-Progress':
+        return 'Mark Ready';
+      case 'Ready':
+        return 'Dispense';
+      default:
+        return 'Confirm';
+    }
   }
 }
 
@@ -477,7 +613,8 @@ class _StatusBadge extends StatelessWidget {
 /// Action button that changes based on prescription status.
 class _ActionButton extends StatelessWidget {
   final String status;
-  const _ActionButton({required this.status});
+  final VoidCallback? onTap;
+  const _ActionButton({required this.status, this.onTap});
 
   String get _label {
     switch (status) {
@@ -490,56 +627,33 @@ class _ActionButton extends StatelessWidget {
       case 'Ready':
         return 'Complete';
       case 'Dispensed':
-        return 'Complete';
+        return 'Done';
       default:
         return 'View';
     }
   }
 
-  Color get _bgColor {
-    switch (status) {
-      case 'New':
-        return const Color(0xFF6DD0D8);
-      case 'Accepted':
-        return const Color(0xFF6DD0D8);
-      case 'In-Progress':
-        return const Color(0xFF6DD0D8);
-      case 'Ready':
-      case 'Dispensed':
-        return const Color(0xFF6DD0D8);
-      default:
-        return const Color(0xFF6DD0D8);
-    }
-  }
-
-  Color get _textColor {
-    switch (status) {
-      case 'New':
-      case 'Accepted':
-      case 'In-Progress':
-      case 'Ready':
-      case 'Dispensed':
-        return Colors.white;
-      default:
-        return Colors.white;
-    }
-  }
+  bool get _isActive => status != 'Dispensed';
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      decoration: BoxDecoration(
-        color: _bgColor,
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-      ),
-      child: Text(
-        _label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: _textColor,
+    return InkWell(
+      onTap: _isActive ? onTap : null,
+      borderRadius: BorderRadius.circular(25),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        decoration: BoxDecoration(
+          color: _isActive ? const Color(0xFF6DD0D8) : const Color(0xFFE5E7EB),
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+        ),
+        child: Text(
+          _label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _isActive ? Colors.white : const Color(0xFF6B7280),
+          ),
         ),
       ),
     );
@@ -553,9 +667,9 @@ class _PrescriptionData {
   final String doctor;
   final String medication;
   final String date;
-  final String status;
+  String status;
 
-  const _PrescriptionData({
+  _PrescriptionData({
     required this.patient,
     required this.doctor,
     required this.medication,
