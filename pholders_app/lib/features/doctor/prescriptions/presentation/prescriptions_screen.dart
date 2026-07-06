@@ -145,9 +145,11 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Container(
         decoration: BoxDecoration(
           color: RxColors.cardBg,
           borderRadius: BorderRadius.circular(16),
@@ -284,9 +286,10 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                         .toList(),
                   ),
           ],
-        ),
-      ),
-    );
+        ),        // closes Column
+        ),        // closes Container
+      ),          // closes SingleChildScrollView
+    );            // closes Material
   }
 }
 

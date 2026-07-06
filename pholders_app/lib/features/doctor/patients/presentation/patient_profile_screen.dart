@@ -162,21 +162,24 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             ),
           ),
           const Spacer(),
-          Expanded(
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4FAFA),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppProfileColors.border),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search for patient name, ID, or prescription...',
-                  hintStyle: TextStyle(color: AppProfileColors.textSecondary, fontSize: 12),
-                  prefixIcon: Icon(Icons.search, size: 18, color: AppProfileColors.textSecondary),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                    Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4FAFA),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppProfileColors.border),
+                ),
+                child: const TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search for patient name, ID, or prescription...',
+                    hintStyle: TextStyle(color: AppProfileColors.textSecondary, fontSize: 12),
+                    prefixIcon: Icon(Icons.search, size: 18, color: AppProfileColors.textSecondary),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  ),
                 ),
               ),
             ),

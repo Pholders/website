@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class DoctorDashboardPage extends StatefulWidget {
   const DoctorDashboardPage({super.key});
@@ -28,7 +28,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
       'status': 'Attention Needed',
       'priority': 'High',
       'type': 'All',
-      'avatar': 'assets/icons/DrSam.png',
+      'avatar': 'assets/doctors.png',
     },
     {
       'name': 'Maria Wilson',
@@ -37,7 +37,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
       'status': 'Monitored',
       'priority': 'Low',
       'type': 'Outpatients',
-      'avatar': 'assets/icons/DrSam.png',
+      'avatar': 'assets/doctors.png',
     },
   ];
 

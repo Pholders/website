@@ -1,17 +1,34 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
+import '../../../../shared/widgets/settings_sidebar.dart';
+import '../../../../core/routing/app_routes.dart';
 
 class IntegrationsSettings extends StatelessWidget {
   const IntegrationsSettings({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Linked Services',
-      children: const [
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'linked_services',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Linked Services',
+                children: const [
         _IntegrationSection(
           title: 'Medical Aid',
           rows: [
@@ -74,10 +91,67 @@ class IntegrationsSettings extends StatelessWidget {
                 action: 'Connect'),
           ],
         ),
-        SizedBox(height: 18),
+                SizedBox(height: 18),
         SettingsFullWidthAction('Manage Integrations'),
       ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go(AppRoutes.doctorSettingsFees);
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 

@@ -361,9 +361,11 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   Widget build(BuildContext context) {
     final filtered = _filtered;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Container(
         decoration: BoxDecoration(
           color: DocColors.cardBg,
           borderRadius: BorderRadius.circular(16),
@@ -613,9 +615,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                         .toList(),
                   ),
           ],
-        ),
-      ),
-    );
+        ),        // closes Column
+        ),        // closes Container
+      ),          // closes SingleChildScrollView
+    );            // closes Material
   }
 }
 

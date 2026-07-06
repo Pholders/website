@@ -408,9 +408,11 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
     final grouped = _grouped(filtered);
     final groupKeys = grouped.keys.toList();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Container(
         decoration: BoxDecoration(
           color: HistColors.cardBg,
           borderRadius: BorderRadius.circular(16),
@@ -615,9 +617,10 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
                     }).toList(),
                   ),
           ],
-        ),
-      ),
-    );
+        ),        // closes Column
+        ),        // closes Container
+      ),          // closes SingleChildScrollView
+    );            // closes Material
   }
 }
 

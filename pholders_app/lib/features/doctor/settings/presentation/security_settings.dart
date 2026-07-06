@@ -1,8 +1,11 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
+import '../../../../shared/widgets/settings_sidebar.dart';
+import '../../../../core/routing/app_routes.dart';
 
 class SecuritySettingsPage extends StatelessWidget {
   const SecuritySettingsPage({super.key, this.initialTab = 0});
@@ -20,6 +23,58 @@ class SecuritySettingsPage extends StatelessWidget {
         return const _SecuritySettings();
     }
   }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go(AppRoutes.doctorSettingsFees);
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 class _SecuritySettings extends StatelessWidget {
@@ -27,9 +82,23 @@ class _SecuritySettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Security Settings',
-      children: const [
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'security_settings',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Security Settings',
+                children: const [
         _Section(
           title: 'Password & Authentication',
           children: [
@@ -58,7 +127,7 @@ class _SecuritySettings extends StatelessWidget {
           ],
         ),
         _DividerGap(),
-        _Section(
+                _Section(
           title: 'Security Alerts',
           children: [
             _SwitchLine('Login Alerts'),
@@ -68,7 +137,64 @@ class _SecuritySettings extends StatelessWidget {
           ],
         ),
       ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go(AppRoutes.doctorSettingsFees);
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -77,9 +203,23 @@ class _DeviceManagement extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Device Management',
-      children: [
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'device_management',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Device Management',
+                children: [
         const SettingsSectionTitle('Current Device'),
         const SizedBox(height: 16),
         const Row(
@@ -109,10 +249,67 @@ class _DeviceManagement extends StatelessWidget {
         const SizedBox(height: 10),
         const _DeviceRow(
             icon: Icons.laptop_mac, name: 'MacBook - Durban - 3 days ago'),
-        const SizedBox(height: 14),
+                const SizedBox(height: 14),
         const SettingsFullWidthAction('Log out of all devices'),
       ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go(AppRoutes.doctorSettingsFees);
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -121,9 +318,23 @@ class _LoginActivity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Login Activity',
-      children: [
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'login_activity',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Login Activity',
+                children: [
         const Padding(
           padding: EdgeInsets.only(left: 20),
           child: Column(
@@ -200,10 +411,67 @@ class _LoginActivity extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         const SettingsDivider(),
-        const SizedBox(height: 14),
+                const SizedBox(height: 14),
         const SettingsFullWidthAction('Report Suspicious Activity'),
       ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go(AppRoutes.doctorSettingsFees);
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 

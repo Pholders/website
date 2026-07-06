@@ -137,9 +137,11 @@ class _MedicationScreenState extends State<MedicationScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+    return Material(
+      color: Colors.transparent,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
         children: [
           // Top row: Medications card + Medical history card
           Row(
@@ -155,7 +157,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
           _buildMedHistoryTable(),
         ],
       ),
-    );
+     ), );
   }
 
   // ── Medications card ─────────────────────────────────────────────────────────
@@ -277,7 +279,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
     );
   }
 
-  // ── Medication history table ───────────────────────────────────────────────────
+    // ── Medication history table ───────────────────────────────────────────────────
   Widget _buildMedHistoryTable() {
     return Container(
       decoration: BoxDecoration(

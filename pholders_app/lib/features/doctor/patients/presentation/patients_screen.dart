@@ -169,45 +169,38 @@ class _PatientsScreenState extends State<PatientsScreen> {
     if (confirmed == true) setState(() => _allPatients.removeWhere((p) => p.id == patient.id));
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _TopBar(searchController: _searchController, onSearch: (q) => setState(() => _searchQuery = q)),
-        Expanded(
-          child: Container(
-            color: AppColors.bg,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Header(total: _allPatients.length, onAdd: _addPatient),
-                  const SizedBox(height: 4),
-                  const Text('Stay organised and on track with calendar',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                  const SizedBox(height: 16),
-                  _AlertBanner(),
-                  const SizedBox(height: 16),
-                  _TabBar(
-                    selected: _tabIndex,
-                    onSelect: (i) => setState(() => _tabIndex = i),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: _PatientTable(
-                      patients: _filtered,
-                      onEdit: _editPatient,
-                      onDelete: _deletePatient,
-                      onRowTap: widget.onPatientTap,
-                    ),
-                  ),
-                ],
+    return Container(
+      color: AppColors.bg,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(total: _allPatients.length, onAdd: _addPatient),
+            const SizedBox(height: 4),
+            const Text('Stay organised and on track with calendar',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 16),
+            _AlertBanner(),
+            const SizedBox(height: 16),
+            _TabBar(
+              selected: _tabIndex,
+              onSelect: (i) => setState(() => _tabIndex = i),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _PatientTable(
+                patients: _filtered,
+                onEdit: _editPatient,
+                onDelete: _deletePatient,
+                onRowTap: widget.onPatientTap,
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

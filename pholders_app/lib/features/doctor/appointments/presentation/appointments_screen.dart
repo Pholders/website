@@ -81,9 +81,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Container(
         decoration: BoxDecoration(
           color: ApptColors.cardBg,
           borderRadius: BorderRadius.circular(16),
@@ -272,9 +274,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             // ── Timeline ─────────────────────────────────────────────────────
             _buildTimeline(),
           ],
-        ),
-      ),
-    );
+        ),        // closes Column
+        ),        // closes Container
+      ),          // closes SingleChildScrollView
+    );            // closes Material
   }
 
   // ── Timeline view ─────────────────────────────────────────────────────────
