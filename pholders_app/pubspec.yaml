@@ -35,6 +35,10 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.6
 
+  # PDF generation and download
+  pdf: ^3.10.0
+  printing: ^5.11.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

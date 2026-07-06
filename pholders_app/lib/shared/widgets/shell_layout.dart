@@ -8,7 +8,7 @@ import 'app_top_navbar.dart';
 ///
 /// Renders the sidebar on the left and top navbar + content on the right.
 /// The sidebar spans full height (logo is inside the sidebar per Figma).
-class ShellLayout extends StatefulWidget {
+class ShellLayout extends StatelessWidget {
   final String role;
   final Widget child;
 
@@ -19,43 +19,45 @@ class ShellLayout extends StatefulWidget {
   });
 
   @override
-  State<ShellLayout> createState() => _ShellLayoutState();
-}
-
-class _ShellLayoutState extends State<ShellLayout> {
-  @override
   Widget build(BuildContext context) {
-    final isDesktop = ResponsiveHelper.isDesktop(context);
-    final isTablet = ResponsiveHelper.isTablet(context);
-    final isMobile = ResponsiveHelper.isMobile(context);
+    final bool isDesktop = ResponsiveHelper.isDesktop(context);
+    final bool isTablet = ResponsiveHelper.isTablet(context);
+    final bool showRail = isTablet;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      drawer: isMobile
-          ? Drawer(
-              child: AppSidebar(role: widget.role, collapsed: false),
-            )
-          : null,
+      appBar: isDesktop
+          ? null
+          : AppTopNavbar(
+              role: role,
+              onMenuTap: () => Scaffold.of(context).openDrawer(),
+            ),
+      drawer: isDesktop
+          ? null
+          : Drawer(
+              backgroundColor: AppTheme.background,
+              child: SafeArea(
+                child: AppSidebar(role: role, collapsed: false),
+              ),
+            ),
       body: Row(
         children: [
-          // Sidebar spans full height
-          if (isDesktop)
-            AppSidebar(role: widget.role, collapsed: false),
-          if (isTablet)
-            AppSidebar(role: widget.role, collapsed: true),
-
-          // Right side: top navbar + page content
+          if (isDesktop) ...[
+            AppSidebar(role: role, collapsed: false),
+          ] else if (showRail) ...[
+            AppSidebar(role: role, collapsed: true),
+          ],
           Expanded(
             child: Column(
               children: [
-                AppTopNavbar(
-                  role: widget.role,
-                  onMenuTap: isMobile
-                      ? () => Scaffold.of(context).openDrawer()
-                      : null,
-                ),
+                if (isDesktop)
+                  AppTopNavbar(role: role, onMenuTap: null),
                 Expanded(
-                  child: widget.child,
+                  child: Container(
+                    color: AppTheme.background,
+                    padding: const EdgeInsets.all(24),
+                    child: child,
+                  ),
                 ),
               ],
             ),
