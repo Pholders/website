@@ -19,6 +19,7 @@ dependencies:
   # State management - Redux as chosen by the team
   flutter_redux: ^0.10.0
   redux: ^5.0.0
+  file_picker: ^8.0.0
 
   # HTTP client for REST API
   dio: ^5.4.0
@@ -34,6 +35,8 @@ dependencies:
 
   # Icons
   cupertino_icons: ^1.0.6
+  pdf: ^3.12.0
+  barcode: ^2.2.9
 
   # PDF generation and download
   pdf: ^3.10.0
@@ -66,3 +69,34 @@ flutter:
     - assets/pill-icon.png
     - assets/quotes-icon.png
     - assets/pill-icon.png
+    - assets/main-icon.png
+    - assets/operations-icon.png
+    - assets/customers-icon.png
+    - assets/Insights-icon.png
+    - assets/financial-icon.png
+    - assets/system-icon.png
+    - assets/logout-icon.png
+    - assets/black-pill-icon.png
+    - assets/completed-icon.png
+    - assets/dispensing-icon.png
+    - assets/incoming-prescriptions-icon.png
+    - assets/orders-icon.png
+    - assets/pickup-icon.png
+    - assets/refresh-icon.png
+    - assets/scanner-icon.png
+    - assets/printer-icon.png
+    - assets/share-icon.png
+    - assets/call-icon.png
+    - assets/plus-icon.png
+    - assets/edit-icon.png
+    - assets/whatsapp-icon.png
+    - assets/paypal-icon.png
+    - assets/outlook-icon.png
+    - assets/google-calender-icon.png
+    - assets/discovery-icon.png
+    - assets/bonitas-icon.png
+    - assets/momentum-icon.png
+    - assets/google-calender-icon.png
+    - assets/outlook-icon.png
+    - assets/paypal-icon.png
+    - assets/whatsapp-icon.png

@@ -8,9 +8,15 @@ class AppRoutes {
   // ─── Public routes (no auth required) ───────────────────────────────────────
   static const String splash = '/';
   static const String landing = '/get-started';
+  static const String features = '/features';
+  static const String about = '/about';
+  static const String services = '/services';
+  static const String howItWorks = '/how-it-works';
+  static const String support = '/support';
   static const String login = '/login';
   static const String register = '/register';
   static const String registerStep2 = '/register/step-2';
+  static const String pharmacyRegisterStep2 = '/register/pharmacy-step-2';
   static const String verifyAccount = '/verify';
   static const String forgotPassword = '/forgot-password';
 
@@ -32,9 +38,13 @@ class AppRoutes {
       '/doctor/patients/:patientId/documents';
   static const String doctorPatientHistory =
       '/doctor/patients/:patientId/history';
-  static const String doctorPrescriptions = '/doctor/prescriptions';
+  static const String doctorPrescriptions = '/prescriptions';
   static const String doctorPrescriptionDetail =
       '/doctor/prescriptions/:prescriptionId';
+  static const String doctorNewPrescription = '/doctor/prescriptions/new';
+  static const String doctorPreviewPrescription = '/doctor/prescriptions/preview';
+  static const String doctorSearchScripts = '/doctor/search-scripts';
+  static const String doctorSickNotes = '/doctor/sick-notes';
   static const String doctorAppointments = '/doctor/appointments';
   static const String doctorBilling = '/doctor/billing';
   static const String doctorSettings = '/doctor/settings';
@@ -50,6 +60,10 @@ class AppRoutes {
       '/doctor/settings/login-activity';
   static const String doctorSettingsLinkedServices =
       '/doctor/settings/linked-services';
+  static const String doctorSettingsPreferences = '/doctor/settings/preferences';
+  static const String doctorSettingsPractice = '/doctor/settings/practice';
+  static const String doctorSettingsSupportLegal = '/doctor/settings/support-legal';
+  static const String doctorNotifications = '/doctor/notifications';
 
   // ─── Pharmacy routes ─────────────────────────────────────────────────────────
   static const String pharmacyDashboard = '/pharmacy/dashboard';
@@ -61,6 +75,15 @@ class AppRoutes {
   static const String pharmacyInventory = '/pharmacy/inventory';
   static const String pharmacyDispensingQueue = '/pharmacy/dispensing-queue';
   static const String pharmacyPatients = '/pharmacy/patients';
+  static const String pharmacyNotifications = '/pharmacy/notifications';
+  static const String pharmacyReports = '/pharmacy/reports';
   static const String pharmacyBilling = '/pharmacy/billing';
   static const String pharmacySettings = '/pharmacy/settings';
+  static const String pharmacySettingsProfile = '/pharmacy/settings/profile';
+  static const String pharmacySettingsPersonalInfo = '/pharmacy/settings/personal-info';
+    static const String pharmacySettingsPharmacyDetails = '/pharmacy/settings/pharmacy-details';
+  static const String pharmacySettingsProfessional = '/pharmacy/settings/professional';
+  static const String pharmacySettingsNotifications = '/pharmacy/settings/notifications';
+  static const String pharmacySettingsNotificationCenter = '/pharmacy/settings/notifications/center';
+  static const String pharmacySettingsLinkedServices = '/pharmacy/settings/linked-services';
 }

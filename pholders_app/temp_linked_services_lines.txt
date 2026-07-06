@@ -1,0 +1,353 @@
+1	import 'package:flutter/material.dart';
+2	import 'package:go_router/go_router.dart';
+3	
+4	import '../widgets/settings_sidebar.dart';
+5	
+6	/// Linked Services settings page — used by both doctor and pharmacy.
+7	///
+8	/// Layout: SettingsSidebar on the left + content on the right.
+9	/// Shows Medical Aid, Calendar, Payments, and Communication integrations.
+10	class LinkedServicesPage extends StatefulWidget {
+11	  const LinkedServicesPage({super.key});
+12	
+13	  @override
+14	  State<LinkedServicesPage> createState() => _LinkedServicesPageState();
+15	}
+16	
+17	class _LinkedServicesPageState extends State<LinkedServicesPage> {
+18	  String _selectedSettingsItem = 'linked_services';
+19	
+20	  // ─── Colors ──────────────────────────────────────────────────────────────
+21	  static const Color _teal = Color(0xFF309CA3);
+22	  static const Color _tealBorder = Color(0xFF6DD0D8);
+23	  static const Color _bgLight = Color(0xFFE8F8F8);
+24	  static const Color _textDark = Color(0xFF1F2937);
+25	  static const Color _textMuted = Color(0xFF6B7280);
+26	
+27	  // ─── Mock connection state ────────────────────────────────────────────────
+28	  final Map<String, bool> _connected = {
+29	    'discovery': true,
+30	    'bonitas': false,
+31	    'momentum': false,
+32	    'google_calendar': false,
+33	    'outlook_calendar': true,
+34	    'paypal': false,
+35	    'whatsapp': false,
+36	  };
+37	
+38	  @override
+39	  Widget build(BuildContext context) {
+40	    return Scaffold(
+41	      backgroundColor: _bgLight,
+42	      body: Row(
+43	        crossAxisAlignment: CrossAxisAlignment.start,
+44	        children: [
+45	          // ── Settings sidebar ──────────────────────────────────────────────
+46	          SettingsSidebar(
+47	            selectedItemId: _selectedSettingsItem,
+48	            onMenuItemSelected: (id) {
+49	              setState(() => _selectedSettingsItem = id);
+50	              // TODO: navigate to the selected settings sub-page
+51	            },
+52	          ),
+53	          // ── Page content ──────────────────────────────────────────────────
+54	          Expanded(
+55	            child: SingleChildScrollView(
+56	              padding: const EdgeInsets.all(24),
+57	              child: Align(
+58	                alignment: Alignment.topCenter,
+59	                child: ConstrainedBox(
+60	                  constraints: const BoxConstraints(maxWidth: 980),
+61	                  child: _buildContent(),
+62	                ),
+63	              ),
+64	            ),
+65	          ),
+66	        ],
+67	      ),
+68	    );
+69	  }
+70	
+71	  Widget _buildContent() {
+72	    return ClipRRect(
+73	      borderRadius: BorderRadius.circular(25),
+74	      child: Container(
+75	        decoration: BoxDecoration(
+76	          color: Colors.white,
+77	          borderRadius: BorderRadius.circular(25),
+78	          border: Border(
+79	            bottom: BorderSide(width: 10, color: _tealBorder),
+80	          ),
+81	          boxShadow: [
+82	            BoxShadow(
+83	              color: Colors.black.withOpacity(0.04),
+84	              blurRadius: 24,
+85	              offset: const Offset(0, 14),
+86	            ),
+87	          ],
+88	        ),
+89	        child: Column(
+90	          crossAxisAlignment: CrossAxisAlignment.stretch,
+91	          children: [
+92	            Padding(
+93	              padding: const EdgeInsets.all(28),
+94	              child: Column(
+95	                crossAxisAlignment: CrossAxisAlignment.start,
+96	                children: [
+97	                      _buildHeader(),
+98	                      const SizedBox(height: 20),
+99	                      _buildSection('Medical Aid', [
+100	                        _ServiceItem(
+101	                          id: 'discovery',
+102	                          name: 'Discovery',
+103	                          subtitle: 'Last synced 2 hours ago',
+104	                          iconAsset: 'assets/discovery-icon.png',
+105	                        ),
+106	                        _ServiceItem(
+107	                          id: 'bonitas',
+108	                          name: 'Bonitas',
+109	                          iconAsset: 'assets/bonitas-icon.png',
+110	                        ),
+111	                        _ServiceItem(
+112	                          id: 'momentum',
+113	                          name: 'Momentum',
+114	                          iconAsset: 'assets/momentum-icon.png',
+115	                        ),
+116	                      ]),
+117	                      const SizedBox(height: 18),
+118	                      _buildSection('Calendar', [
+119	                        _ServiceItem(
+120	                          id: 'google_calendar',
+121	                          name: 'Google Calendar',
+122	                          subtitle: 'Last synced 5 minutes ago',
+123	                          iconAsset: 'assets/google-calender-icon.png',
+124	                        ),
+125	                        _ServiceItem(
+126	                          id: 'outlook_calendar',
+127	                          name: 'Outlook Calendar',
+128	                          subtitle: 'Last synced 5 minutes ago',
+129	                          iconAsset: 'assets/outlook-icon.png',
+130	                        ),
+131	                      ]),
+132	                      const SizedBox(height: 18),
+133	                      _buildSection('Payments', [
+134	                        _ServiceItem(
+135	                          id: 'paypal',
+136	                          name: 'PayPal',
+137	                          subtitle: 'Last synced 4 hours ago',
+138	                          iconAsset: 'assets/paypal-icon.png',
+139	                        ),
+140	                      ]),
+141	                      const SizedBox(height: 18),
+142	                      _buildSection('Communication', [
+143	                        _ServiceItem(
+144	                          id: 'whatsapp',
+145	                          name: 'WhatsApp Notifications',
+146	                          iconAsset: 'assets/whatsapp-icon.png',
+147	                        ),
+148	                      ]),
+149	                      const SizedBox(height: 28),
+150	                      _buildManageIntegrationsButton(),
+151	                    ],
+152	                  ),
+153	                ),
+154	              ),
+155	            ],
+156	          ),
+157	        ),
+158	      ),
+159	    );
+160	  }
+161	
+162	  // ─── Header ──────────────────────────────────────────────────────────────
+163	  Widget _buildHeader() {
+164	    return Row(
+165	      children: [
+166	        InkWell(
+167	          onTap: () => context.pop(),
+168	          borderRadius: BorderRadius.circular(12),
+169	          child: Container(
+170	            width: 34,
+171	            height: 34,
+172	            decoration: BoxDecoration(
+173	              color: const Color(0x14309CA3),
+174	              borderRadius: BorderRadius.circular(12),
+175	            ),
+176	            child: const Icon(Icons.arrow_back, size: 18, color: _teal),
+177	          ),
+178	        ),
+179	        const SizedBox(width: 16),
+180	        const Expanded(
+181	          child: Text(
+182	            'Linked Services',
+183	            style: TextStyle(
+184	              fontSize: 28,
+185	              fontWeight: FontWeight.w700,
+186	              color: _textDark,
+187	              letterSpacing: 0.2,
+188	            ),
+189	          ),
+190	        ),
+191	      ],
+192	    );
+193	  }
+194	
+195	  // ─── Section ─────────────────────────────────────────────────────────────
+196	  Widget _buildSection(String title, List<_ServiceItem> items) {
+197	    return Column(
+198	      crossAxisAlignment: CrossAxisAlignment.start,
+199	      children: [
+200	        Text(
+201	          title,
+202	          style: const TextStyle(
+203	            fontSize: 15,
+204	            fontWeight: FontWeight.w700,
+205	            color: _textDark,
+206	          ),
+207	        ),
+208	        const SizedBox(height: 12),
+209	        Container(
+210	          decoration: BoxDecoration(
+211	            color: const Color(0xFFF8FEFF),
+212	            borderRadius: BorderRadius.circular(18),
+213	            border: Border.all(color: const Color(0xFFE5E7EB)),
+214	          ),
+215	          child: Column(
+216	            children: List.generate(
+217	              items.length,
+218	              (index) {
+219	                return Column(
+220	                  children: [
+221	                    _buildServiceRow(items[index]),
+222	                    if (index < items.length - 1)
+223	                      const Divider(
+224	                        height: 1,
+225	                        thickness: 1,
+226	                        indent: 20,
+227	                        endIndent: 20,
+228	                        color: Color(0xFFE5E7EB),
+229	                      ),
+230	                  ],
+231	                );
+232	              },
+233	            ),
+234	          ),
+235	        ),
+236	      ],
+237	    );
+238	  }
+239	
+240	  Widget _buildServiceRow(_ServiceItem item) {
+241	    final isConnected = _connected[item.id] ?? false;
+242	
+243	    return Padding(
+244	      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+245	      child: Row(
+246	        children: [
+247	          Container(
+248	            width: 42,
+249	            height: 42,
+250	            decoration: BoxDecoration(
+251	              color: const Color(0x14309CA3),
+252	              borderRadius: BorderRadius.circular(12),
+253	            ),
+254	            child: Image.asset(
+255	              item.iconAsset,
+256	              width: 20,
+257	              height: 20,
+258	              fit: BoxFit.contain,
+259	            ),
+260	          ),
+261	          const SizedBox(width: 14),
+262	          Expanded(
+263	            child: Column(
+264	              crossAxisAlignment: CrossAxisAlignment.start,
+265	              children: [
+266	                Text(
+267	                  item.name,
+268	                  style: const TextStyle(
+269	                    fontSize: 15,
+270	                    fontWeight: FontWeight.w600,
+271	                    color: _textDark,
+272	                  ),
+273	                ),
+274	                if (item.subtitle != null) ...[
+275	                  const SizedBox(height: 4),
+276	                  Text(
+277	                    item.subtitle!,
+278	                    style: const TextStyle(
+279	                      fontSize: 12,
+280	                      color: _textMuted,
+281	                    ),
+282	                  ),
+283	                ],
+284	              ],
+285	            ),
+286	          ),
+287	          const SizedBox(width: 14),
+288	          InkWell(
+289	            onTap: () => setState(() => _connected[item.id] = !isConnected),
+290	            borderRadius: BorderRadius.circular(12),
+291	            child: Container(
+292	              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+293	              decoration: BoxDecoration(
+294	                color: isConnected ? const Color(0x15309CA3) : Colors.white,
+295	                borderRadius: BorderRadius.circular(12),
+296	                border: Border.all(
+297	                  color: isConnected ? _tealBorder : const Color(0xFFE5E7EB),
+298	                ),
+299	              ),
+300	              child: Text(
+301	                isConnected ? 'Disconnect' : 'Connect',
+302	                style: TextStyle(
+303	                  fontSize: 13,
+304	                  fontWeight: FontWeight.w700,
+305	                  color: isConnected ? _teal : _textDark,
+306	                ),
+307	              ),
+308	            ),
+309	          ),
+310	        ],
+311	      ),
+312	    );
+313	  }
+314	
+315	  // ─── Manage Integrations button ───────────────────────────────────────────
+316	  Widget _buildManageIntegrationsButton() {
+317	    return Container(
+318	      width: double.infinity,
+319	      padding: const EdgeInsets.symmetric(vertical: 16),
+320	      decoration: BoxDecoration(
+321	        color: const Color(0xFFF2FCFD),
+322	        borderRadius: BorderRadius.circular(16),
+323	        border: Border.all(color: _tealBorder),
+324	      ),
+325	      child: const Center(
+326	        child: Text(
+327	          'Manage Integrations',
+328	          style: TextStyle(
+329	            fontSize: 15,
+330	            fontWeight: FontWeight.w700,
+331	            color: _textDark,
+332	          ),
+333	        ),
+334	      ),
+335	    );
+336	  }
+337	}
+338	
+339	// ─── Data model ──────────────────────────────────────────────────────────────
+340	
+341	class _ServiceItem {
+342	  final String id;
+343	  final String name;
+344	  final String? subtitle;
+345	  final String iconAsset;
+346	
+347	  const _ServiceItem({
+348	    required this.id,
+349	    required this.name,
+350	    this.subtitle,
+351	    required this.iconAsset,
+352	  });
+353	}

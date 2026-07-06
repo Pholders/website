@@ -25,11 +25,14 @@ class _SidebarItem {
 class AppSidebar extends StatelessWidget {
   final String role;
   final bool collapsed;
+  /// When true the sidebar shows icons only (used on settings pages to save space).
+  final bool settingsMode;
 
   const AppSidebar({
     super.key,
     required this.role,
     required this.collapsed,
+    this.settingsMode = false,
   });
 
   // ─── Colors matching Figma ───────────────────────────────────────────────
@@ -51,14 +54,34 @@ class AppSidebar extends StatelessWidget {
       route: AppRoutes.doctorPatients,
     ),
     _SidebarItem(
-      label: 'Prescriptions',
+      label: 'New Script',
       iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorPrescriptions,
+      route: AppRoutes.doctorNewPrescription,
+    ),
+        _SidebarItem(
+          label: 'Prescriptions',
+          iconAsset: 'assets/prescription-icon.png',
+          route: AppRoutes.doctorPrescriptions,
+        ),
+    _SidebarItem(
+      label: 'Search Scripts',
+      iconAsset: 'assets/prescription-icon.png',
+      route: AppRoutes.doctorSearchScripts,
     ),
     _SidebarItem(
       label: 'Appointments',
       iconAsset: 'assets/appointments-icon.png',
       route: AppRoutes.doctorAppointments,
+    ),
+    _SidebarItem(
+      label: 'Sick Notes',
+      iconAsset: 'assets/prescription-icon.png',
+      route: AppRoutes.doctorSickNotes,
+    ),
+    _SidebarItem(
+      label: 'Notifications',
+      iconAsset: 'assets/bell-icon.png',
+      route: AppRoutes.doctorNotifications,
     ),
     _SidebarItem(
       label: 'Billing & Payments',
@@ -69,11 +92,6 @@ class AppSidebar extends StatelessWidget {
       label: 'Settings',
       iconAsset: 'assets/settings-icon.png',
       route: AppRoutes.doctorSettings,
-    ),
-    _SidebarItem(
-      label: 'Help & Support',
-      iconAsset: 'assets/help-icon.png',
-      route: AppRoutes.doctorSettings, // placeholder
     ),
   ];
 
@@ -110,6 +128,11 @@ class AppSidebar extends StatelessWidget {
       route: AppRoutes.pharmacyPatients,
     ),
     _SidebarItem(
+      label: 'Notifications',
+      iconAsset: 'assets/bell-icon.png',
+      route: AppRoutes.pharmacyNotifications,
+    ),
+    _SidebarItem(
       label: 'Billing & Payments',
       iconAsset: 'assets/billing-icon.png',
       route: AppRoutes.pharmacyBilling,
@@ -126,7 +149,9 @@ class AppSidebar extends StatelessWidget {
     final items =
         role == AppConstants.roleDoctor ? _doctorItems : _pharmacyItems;
     final currentLocation = GoRouterState.of(context).matchedLocation;
-    final width = collapsed ? AppTheme.sidebarRailWidth : AppTheme.sidebarWidth;
+    // In settings mode, always show icons only regardless of responsive state
+    final isIconOnly = settingsMode || collapsed;
+    final width = isIconOnly ? AppTheme.sidebarRailWidth : AppTheme.sidebarWidth;
 
     return Container(
       width: width,
@@ -143,7 +168,7 @@ class AppSidebar extends StatelessWidget {
             child: Column(
               children: [
                 // ── Logo ─────────────────────────────────────────────────────────
-                if (!collapsed) ...[
+                if (!isIconOnly) ...[
                   const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -185,7 +210,7 @@ class AppSidebar extends StatelessWidget {
                 return _SidebarTile(
                   item: item,
                   isActive: isActive,
-                  collapsed: collapsed,
+                  collapsed: isIconOnly,
                 );
               }),
             ),
@@ -196,7 +221,7 @@ class AppSidebar extends StatelessWidget {
           const SizedBox(height: 16),
 
           // ── Activate Membership card ─────────────────────────────────────
-          if (!collapsed) ...[
+          if (!isIconOnly) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
@@ -250,7 +275,7 @@ class AppSidebar extends StatelessWidget {
           ],
 
           // ── Doctor profile ───────────────────────────────────────────────
-          if (!collapsed)
+          if (!isIconOnly)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -332,7 +357,7 @@ class _SidebarTile extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: isActive
+            border: isActive && !collapsed
                 ? const Border(
                     left: BorderSide(
                       color: AppSidebar._activeColor,
@@ -341,39 +366,51 @@ class _SidebarTile extends StatelessWidget {
                   )
                 : null,
           ),
-          padding: EdgeInsets.only(
-            left: isActive ? 12 : 16,
-            right: 16,
-          ),
-          child: Row(
-            children: [
-              Image.asset(
-                item.iconAsset,
-                width: 20,
-                height: 20,
-                color: isActive
-                    ? AppSidebar._activeColor
-                    : AppSidebar._textColor,
-              ),
-              if (!collapsed) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    item.label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight:
-                          isActive ? FontWeight.w600 : FontWeight.w400,
+          // When collapsed: center the icon. When expanded: normal padding.
+          padding: collapsed
+              ? EdgeInsets.zero
+              : EdgeInsets.only(
+                  left: isActive ? 12 : 16,
+                  right: 16,
+                ),
+          child: collapsed
+              ? Center(
+                  child: Image.asset(
+                    item.iconAsset,
+                    width: 20,
+                    height: 20,
+                    color: isActive
+                        ? AppSidebar._activeColor
+                        : AppSidebar._textColor,
+                  ),
+                )
+              : Row(
+                  children: [
+                    Image.asset(
+                      item.iconAsset,
+                      width: 20,
+                      height: 20,
                       color: isActive
                           ? AppSidebar._activeColor
                           : AppSidebar._textColor,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight:
+                              isActive ? FontWeight.w600 : FontWeight.w400,
+                          color: isActive
+                              ? AppSidebar._activeColor
+                              : AppSidebar._textColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ],
-          ),
         ),
       ),
     );

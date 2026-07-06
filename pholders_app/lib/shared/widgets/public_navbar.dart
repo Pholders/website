@@ -112,11 +112,33 @@ class PublicNavbar extends StatelessWidget {
 
   void _handleTap(BuildContext context, GlobalKey key) {
     if (onNavLinkTap != null) {
-      // On landing page — scroll to section
-      onNavLinkTap!(key);
+      // On landing page — navigate to the corresponding page
+      if (key == LandingKeys.features) {
+        context.go(AppRoutes.features);
+      } else if (key == LandingKeys.about) {
+        context.go(AppRoutes.about);
+      } else if (key == LandingKeys.services) {
+        context.go(AppRoutes.services);
+      } else if (key == LandingKeys.howItWorks) {
+        context.go(AppRoutes.howItWorks);
+      } else if (key == LandingKeys.support) {
+        context.go(AppRoutes.support);
+      }
     } else {
-      // On another page — navigate to landing page
-      context.go(AppRoutes.landing);
+      // On another page — navigate to the corresponding page
+      if (key == LandingKeys.features) {
+        context.go(AppRoutes.features);
+      } else if (key == LandingKeys.about) {
+        context.go(AppRoutes.about);
+      } else if (key == LandingKeys.services) {
+        context.go(AppRoutes.services);
+      } else if (key == LandingKeys.howItWorks) {
+        context.go(AppRoutes.howItWorks);
+      } else if (key == LandingKeys.support) {
+        context.go(AppRoutes.support);
+      } else {
+        context.go(AppRoutes.landing);
+      }
     }
   }
 }
