@@ -49,8 +49,14 @@ class SettingsPage extends StatelessWidget {
       case 'fees_setup':
         context.go(AppRoutes.doctorSettingsFees);
         break;
-      case 'notifications':
-        context.go(AppRoutes.doctorSettingsNotifications);
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
         break;
       case 'security_settings':
         context.go(AppRoutes.doctorSettingsSecurity);
@@ -61,11 +67,23 @@ class SettingsPage extends StatelessWidget {
       case 'login_activity':
         context.go(AppRoutes.doctorSettingsLoginActivity);
         break;
-      case 'preferences_notifications':
-        context.go(AppRoutes.doctorSettingsNotifications);
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
         break;
       case 'linked_services':
         context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
         break;
       default:
         break;

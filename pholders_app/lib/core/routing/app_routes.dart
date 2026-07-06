@@ -60,6 +60,9 @@ class AppRoutes {
       '/doctor/settings/login-activity';
   static const String doctorSettingsLinkedServices =
       '/doctor/settings/linked-services';
+  static const String doctorSettingsPreferences = '/doctor/settings/preferences';
+  static const String doctorSettingsPractice = '/doctor/settings/practice';
+  static const String doctorSettingsSupportLegal = '/doctor/settings/support-legal';
   static const String doctorNotifications = '/doctor/notifications';
 
   // ─── Pharmacy routes ─────────────────────────────────────────────────────────

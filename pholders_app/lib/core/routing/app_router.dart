@@ -31,6 +31,13 @@ import '../../features/doctor/prescriptions/presentation/prescription_detail_pag
 import '../../features/doctor/appointments/presentation/appointments_page.dart';
 import '../../features/doctor/billing/presentation/billing_page.dart';
 import '../../features/doctor/settings/presentation/settings_page.dart';
+import '../../features/doctor/settings/presentation/practice_settings.dart';
+import '../../features/doctor/settings/presentation/preferences_settings.dart';
+import '../../features/doctor/settings/presentation/security_settings.dart';
+import '../../features/doctor/settings/presentation/login_activity.dart';
+import '../../features/doctor/settings/presentation/integrations_settings.dart';
+import '../../features/doctor/settings/presentation/account_settings.dart';
+import '../../features/doctor/settings/presentation/support_legal_settings.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
 import '../../features/pharmacy/dashboard/presentation/pharmacy_dashboard_page.dart';
@@ -219,6 +226,50 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.doctorSettings,
             builder: (context, state) => const SettingsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsPractice,
+            builder: (context, state) => const PracticeSettings(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsPreferences,
+            builder: (context, state) => const PreferencesSettings(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsSecurity,
+            builder: (context, state) => const SecuritySettingsPage(initialTab: 0),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsDevices,
+            builder: (context, state) => const SecuritySettingsPage(initialTab: 1),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsLoginActivity,
+            builder: (context, state) => const LoginActivityPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsLinkedServices,
+            builder: (context, state) => const IntegrationsSettings(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsProfile,
+            builder: (context, state) => const AccountSettings(initialTab: 0),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsProfessional,
+            builder: (context, state) => const AccountSettings(initialTab: 1),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsFees,
+            builder: (context, state) => const PracticeSettings(initialTab: 0),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsSupportLegal,
+            builder: (context, state) {
+              final tabParam = state.uri.queryParameters['tab'];
+              final tab = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+              return SupportLegalSettings(initialTab: tab);
+            },
           ),
         ],
       ),

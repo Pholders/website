@@ -76,6 +76,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         icon: IconType.practice,
         subItems: [
           SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
+          SettingsSubMenuItem(id: 'practice_settings', label: 'Practice Settings'),
         ],
       ),
       SettingsMenuItem(
@@ -102,7 +103,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         label: 'Preferences',
         icon: IconType.preferences,
         subItems: [
-          SettingsSubMenuItem(id: 'preferences_notifications', label: 'Notifications'),
+          SettingsSubMenuItem(id: 'preferences_settings', label: 'Preferences Settings'),
         ],
       ),
       SettingsMenuItem(
