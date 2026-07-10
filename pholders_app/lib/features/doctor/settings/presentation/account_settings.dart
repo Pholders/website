@@ -21,14 +21,14 @@ class AccountSettings extends StatelessWidget {
 
   void _navigate(BuildContext context, String id) {
     switch (id) {
-      case 'profile':
-        context.go(AppRoutes.doctorSettingsProfile);
+      case 'personal_information':
+        context.go('${AppRoutes.doctorSettings}account?tab=0');
         break;
       case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
+        context.go('${AppRoutes.doctorSettings}account?tab=1');
         break;
       case 'fees_setup':
-        context.go(AppRoutes.doctorSettingsFees);
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
         break;
       case 'practice_settings':
         context.go(AppRoutes.doctorSettingsPractice);
@@ -176,14 +176,14 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
 
   void _navigate(BuildContext context, String id) {
     switch (id) {
-      case 'profile':
-        context.go(AppRoutes.doctorSettingsProfile);
+      case 'personal_information':
+        context.go('${AppRoutes.doctorSettings}account?tab=0');
         break;
       case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
+        context.go('${AppRoutes.doctorSettings}account?tab=1');
         break;
       case 'fees_setup':
-        context.go(AppRoutes.doctorSettingsFees);
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
         break;
       case 'practice_settings':
         context.go(AppRoutes.doctorSettingsPractice);
@@ -377,10 +377,10 @@ class _ProfessionalDetails extends StatelessWidget {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Settings sidebar ──────────────────────────────────────────────
+                    // ── Settings sidebar ──────────────────────────────────────────────
           SettingsSidebar(
             selectedItemId: 'professional',
-            onMenuItemSelected: (id) => _navigate(context, id),
+            onMenuItemSelected: (id) => AccountSettings()._navigate(context, id),
           ),
           // ── Content area ────────────────────────────────────────────────
           Expanded(
@@ -560,61 +560,9 @@ class _ProfessionalDetails extends StatelessWidget {
               ),
             ),
           ),
-        ],
+                ],
       ),
     );
-  }
-
-  void _navigate(BuildContext context, String id) {
-    switch (id) {
-      case 'profile':
-        context.go(AppRoutes.doctorSettingsProfile);
-        break;
-      case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
-        break;
-      case 'fees_setup':
-        context.go(AppRoutes.doctorSettingsFees);
-        break;
-      case 'practice_settings':
-        context.go(AppRoutes.doctorSettingsPractice);
-        break;
-      case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
-        break;
-      case 'notification_center':
-        context.go(AppRoutes.doctorNotifications);
-        break;
-      case 'security_settings':
-        context.go(AppRoutes.doctorSettingsSecurity);
-        break;
-      case 'device_management':
-        context.go(AppRoutes.doctorSettingsDevices);
-        break;
-      case 'login_activity':
-        context.go(AppRoutes.doctorSettingsLoginActivity);
-        break;
-      case 'preferences_settings':
-        context.go(AppRoutes.doctorSettingsPreferences);
-        break;
-      case 'linked_services':
-        context.go(AppRoutes.doctorSettingsLinkedServices);
-        break;
-      case 'help_center':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
-        break;
-      case 'privacy_policy':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
-        break;
-      case 'terms_of_service':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
-        break;
-      case 'contact_support':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
-        break;
-      default:
-        break;
-    }
   }
 }
 

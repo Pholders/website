@@ -58,36 +58,26 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
     }
   }
 
-    void _initializeMenuItems() {
-    menuItems = [
-      SettingsMenuItem(
-        id: 'account',
-        label: 'Account',
-        icon: IconType.account,
-        subItems: [
-          SettingsSubMenuItem(id: 'personal_information', label: 'Personal Information'),
-          SettingsSubMenuItem(id: 'pharmacy_details', label: 'Pharmacy Details'),
-          SettingsSubMenuItem(id: 'professional', label: 'Professional Details'),
-        ],
-      ),
-      SettingsMenuItem(
-        id: 'practice',
-        label: 'Practice',
-        icon: IconType.practice,
-        subItems: [
-          SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
-          SettingsSubMenuItem(id: 'practice_settings', label: 'Practice Settings'),
-        ],
-      ),
-      SettingsMenuItem(
-        id: 'notifications',
-        label: 'Notifications',
-        icon: IconType.notifications,
-        subItems: [
-          SettingsSubMenuItem(id: 'notification_settings', label: 'Notification Settings'),
-          SettingsSubMenuItem(id: 'notification_center', label: 'Notification Center'),
-        ],
-      ),
+        void _initializeMenuItems() {
+        menuItems = [
+                SettingsMenuItem(
+            id: 'account',
+            label: 'Account',
+            icon: IconType.account,
+            subItems: [
+              SettingsSubMenuItem(id: 'personal_information', label: 'Personal Information'),
+              SettingsSubMenuItem(id: 'professional', label: 'Professional Details'),
+            ],
+          ),
+          SettingsMenuItem(
+            id: 'practice',
+            label: 'Practice',
+            icon: IconType.practice,
+            subItems: [
+              SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
+              SettingsSubMenuItem(id: 'notification_settings', label: 'Notification Settings'),
+            ],
+          ),
       SettingsMenuItem(
         id: 'security',
         label: 'Security',

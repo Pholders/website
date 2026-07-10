@@ -38,22 +38,19 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _navigate(BuildContext context, String id) {
+        void _navigate(BuildContext context, String id) {
     switch (id) {
-      case 'profile':
-        context.go(AppRoutes.doctorSettingsProfile);
+      case 'personal_information':
+        context.go('${AppRoutes.doctorSettings}account?tab=0');
         break;
       case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
+        context.go('${AppRoutes.doctorSettings}account?tab=1');
         break;
       case 'fees_setup':
-        context.go(AppRoutes.doctorSettingsFees);
-        break;
-      case 'practice_settings':
-        context.go(AppRoutes.doctorSettingsPractice);
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);

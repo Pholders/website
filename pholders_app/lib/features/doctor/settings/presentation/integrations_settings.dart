@@ -111,7 +111,7 @@ class IntegrationsSettings extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsProfessional);
         break;
       case 'fees_setup':
-        context.go(AppRoutes.doctorSettingsFees);
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
         break;
       case 'practice_settings':
         context.go(AppRoutes.doctorSettingsPractice);

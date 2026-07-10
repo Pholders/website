@@ -47,8 +47,9 @@ class AppRoutes {
   static const String doctorSickNotes = '/doctor/sick-notes';
   static const String doctorAppointments = '/doctor/appointments';
   static const String doctorBilling = '/doctor/billing';
-  static const String doctorSettings = '/doctor/settings';
+    static const String doctorSettings = '/doctor/settings';
   static const String doctorSettingsProfile = '/doctor/settings/profile';
+  static const String doctorInformation = '/doctor/information';
   static const String doctorSettingsProfessional =
       '/doctor/settings/professional';
   static const String doctorSettingsFees = '/doctor/settings/fees';
@@ -62,6 +63,7 @@ class AppRoutes {
       '/doctor/settings/linked-services';
   static const String doctorSettingsPreferences = '/doctor/settings/preferences';
   static const String doctorSettingsPractice = '/doctor/settings/practice';
+  static const String doctorSettingsPracticePage = '/doctor/settings/practice-page';
   static const String doctorSettingsSupportLegal = '/doctor/settings/support-legal';
   static const String doctorNotifications = '/doctor/notifications';
 

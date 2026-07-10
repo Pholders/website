@@ -18,6 +18,7 @@ import '../../features/auth/presentation/forgot_password_page.dart';
 // ─── Doctor pages ─────────────────────────────────────────────────────────────
 import '../../features/doctor/dashboard/presentation/doctor_dashboard_page.dart';
 import '../../features/doctor/patients/presentation/patients_screen.dart';
+import '../../features/doctor/information/presentation/information_page.dart';
 import '../../features/doctor/patients/presentation/patient_detail_page.dart';
 import '../../features/doctor/patients/presentation/patient_medication_page.dart';
 import '../../features/doctor/patients/presentation/patient_medication_detail_page.dart';
@@ -223,13 +224,30 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.doctorBilling,
             builder: (context, state) => const BillingPage(),
           ),
-          GoRoute(
-            path: AppRoutes.doctorSettings,
-            builder: (context, state) => const SettingsPage(),
+                    GoRoute(
+                      path: AppRoutes.doctorSettings,
+                      builder: (context, state) => const SettingsPage(),
+                    ),
+                    GoRoute(
+                      path: AppRoutes.doctorInformation,
+                      builder: (context, state) => const InformationPage(),
+                    ),
+                    GoRoute(
+                      path: '${AppRoutes.doctorSettings}account',
+                      builder: (context, state) {
+              final tabParam = state.uri.queryParameters['tab'];
+              final tab = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+              return AccountSettings(initialTab: tab);
+            },
           ),
-          GoRoute(
+                    
+                    GoRoute(
             path: AppRoutes.doctorSettingsPractice,
-            builder: (context, state) => const PracticeSettings(),
+            builder: (context, state) {
+              final tabParam = state.uri.queryParameters['tab'];
+              final tab = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+              return PracticeSettings(initialTab: tab);
+            },
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsPreferences,
@@ -259,18 +277,15 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.doctorSettingsProfessional,
             builder: (context, state) => const AccountSettings(initialTab: 1),
           ),
-          GoRoute(
-            path: AppRoutes.doctorSettingsFees,
-            builder: (context, state) => const PracticeSettings(initialTab: 0),
-          ),
-          GoRoute(
-            path: AppRoutes.doctorSettingsSupportLegal,
-            builder: (context, state) {
-              final tabParam = state.uri.queryParameters['tab'];
-              final tab = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
-              return SupportLegalSettings(initialTab: tab);
-            },
-          ),
+          
+                    GoRoute(
+                      path: AppRoutes.doctorSettingsSupportLegal,
+                      builder: (context, state) {
+                        final tabParam = state.uri.queryParameters['tab'];
+                        final tab = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+                        return SupportLegalSettings(initialTab: tab);
+                      },
+                    ),
         ],
       ),
 

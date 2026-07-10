@@ -1,5 +1,4 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -31,73 +30,73 @@ class PreferencesSettings extends StatelessWidget {
               child: SettingsContentCard(
                 title: 'Notifications',
                 children: const [
-        Padding(
-          padding: EdgeInsets.fromLTRB(28, 4, 18, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SettingsSectionTitle('Notification Preferences'),
-              SizedBox(height: 10),
-              _SwitchLine('Push Notifications'),
-              _SwitchLine('Email Notifications'),
-            ],
-          ),
-        ),
-        _CompactDivider(),
-        _CheckSection(
-          title: 'Appointment Preferences',
-          labels: [
-            'New Appointment Booked',
-            'Appointment Reminders',
-            'Appointment Cancellations',
-            'Missed Appointments',
-          ],
-        ),
-        _CompactDivider(),
-        _CheckSection(
-          title: 'Patient Messages',
-          labels: ['New Patient Messages', 'Message Replies'],
-        ),
-        _CompactDivider(),
-        _CheckSection(
-          title: 'General Notifications',
-          labels: [
-            'Lab Result Updates',
-            'Prescription Renewal Alerts',
-            'Announcements & News',
-          ],
-        ),
-        _CompactDivider(),
-        Padding(
-          padding: EdgeInsets.fromLTRB(28, 4, 0, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SettingsSectionTitle('Sound & Vibration'),
-              SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Notification Sound',
-                      style: TextStyle(fontSize: 11),
+                  _Section(
+                    title: 'Channels',
+                    children: [
+                      _SwitchLine('Push Notifications'),
+                      _SwitchLine('Email Notifications'),
+                      _SwitchLine('SMS Notifications'),
+                    ],
+                  ),
+                  _DividerGap(),
+                  _Section(
+                    title: 'Quiet Hours',
+                    children: [
+                      _CheckLine('Enable Quiet Hours', switchAtEnd: true),
+                      SizedBox(height: 10),
+                      Padding(
+                        padding: EdgeInsets.only(left: 26),
+                        child: Row(
+                          children: [
+                            Expanded(
+                                child: Text('Start:10:00 PM',
+                                    style: TextStyle(fontSize: 13))),
+                            Expanded(
+                                child: Text('End: 07:00 AM',
+                                    style: TextStyle(fontSize: 13))),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  _DividerGap(),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(18, 0, 20, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                            child: Text('Frequency', style: TextStyle(fontSize: 13))),
+                        SettingsInput(
+                          text: 'Instant',
+                          width: 92,
+                          height: 22,
+                          trailing: Icon(Icons.keyboard_arrow_down,
+                              size: 16, color: Color(0xFF748486)),
+                        ),
+                      ],
                     ),
                   ),
-                  SettingsInput(
-                    text: 'Select Sound',
-                    width: 150,
-                    height: 14,
-                    trailing: Icon(Icons.keyboard_arrow_down, size: 14),
+                  _DividerGap(),
+                  _Section(
+                    title: 'Advanced',
+                    children: [
+                      _CheckLine('Urgent alert override quiet hours'),
+                      SizedBox(height: 12),
+                      _CheckLine('Hide sensitive content'),
+                    ],
                   ),
+                  SizedBox(height: 18),
+                  _Section(
+                    title: 'Advanced',
+                    children: [
+                      _SwitchLine('Urgent alert override quiet hours'),
+                      _SwitchLine('Hide sensitive content'),
+                    ],
+                  ),
+                  SizedBox(height: 6),
+                  SettingsFullWidthAction('Save Changes'),
                 ],
               ),
-              SizedBox(height: 9),
-              _SwitchLine('Vibrate on Notification'),
-            ],
-          ),
-        ),
-      ],
-      ),
             ),
           ),
         ],
@@ -114,7 +113,7 @@ class PreferencesSettings extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsProfessional);
         break;
       case 'fees_setup':
-        context.go(AppRoutes.doctorSettingsFees);
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
         break;
       case 'practice_settings':
         context.go(AppRoutes.doctorSettingsPractice);
@@ -152,11 +151,82 @@ class PreferencesSettings extends StatelessWidget {
       case 'contact_support':
         context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
         break;
-            default:
+                        default:
         break;
     }
   }
 
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SettingsSectionTitle(title),
+          const SizedBox(height: 9),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _SwitchLine extends StatelessWidget {
+  const _SwitchLine(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
+          const TinySwitch(),
+        ],
+      ),
+    );
+  }
+}
+
+class _CheckLine extends StatelessWidget {
+  const _CheckLine(this.label, {this.switchAtEnd = false});
+
+  final String label;
+  final bool switchAtEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const SmallCheck(),
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
+        if (switchAtEnd) const TinySwitch(),
+      ],
+    );
+  }
+}
+
+class _DividerGap extends StatelessWidget {
+  const _DividerGap();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 12),
+      child: Divider(color: SettingsShell.divider, thickness: 2, height: 2),
+    );
+  }
 }
 
 class _CheckSection extends StatelessWidget {
@@ -206,33 +276,4 @@ class _SmallCheckLabel extends StatelessWidget {
   }
 }
 
-class _SwitchLine extends StatelessWidget {
-  const _SwitchLine(this.label);
 
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 11))),
-          const TinySwitch(),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompactDivider extends StatelessWidget {
-  const _CompactDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Divider(color: SettingsShell.divider, thickness: 2, height: 2),
-    );
-  }
-}

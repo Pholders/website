@@ -53,31 +53,19 @@ class AppSidebar extends StatelessWidget {
       iconAsset: 'assets/patients-icon.png',
       route: AppRoutes.doctorPatients,
     ),
-    _SidebarItem(
-      label: 'New Script',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorNewPrescription,
-    ),
+    
         _SidebarItem(
           label: 'Prescriptions',
           iconAsset: 'assets/prescription-icon.png',
           route: AppRoutes.doctorPrescriptions,
         ),
-    _SidebarItem(
-      label: 'Search Scripts',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorSearchScripts,
-    ),
+    
     _SidebarItem(
       label: 'Appointments',
       iconAsset: 'assets/appointments-icon.png',
       route: AppRoutes.doctorAppointments,
     ),
-    _SidebarItem(
-      label: 'Sick Notes',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorSickNotes,
-    ),
+    
     _SidebarItem(
       label: 'Notifications',
       iconAsset: 'assets/bell-icon.png',
@@ -88,11 +76,16 @@ class AppSidebar extends StatelessWidget {
       iconAsset: 'assets/billing-icon.png',
       route: AppRoutes.doctorBilling,
     ),
-    _SidebarItem(
-      label: 'Settings',
-      iconAsset: 'assets/settings-icon.png',
-      route: AppRoutes.doctorSettings,
-    ),
+                _SidebarItem(
+          label: 'Settings',
+          iconAsset: 'assets/settings-icon.png',
+          route: AppRoutes.doctorSettings,
+        ),
+                                _SidebarItem(
+          label: 'Information',
+          iconAsset: 'assets/information_icon.png',
+          route: AppRoutes.doctorInformation,
+        ),
   ];
 
   // ─── Pharmacy navigation items ───────────────────────────────────────────
