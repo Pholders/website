@@ -4,18 +4,19 @@ import 'package:doctor_app/screens/medication_details_screen.dart';
 
 // ─── Colors (reuse same palette) ─────────────────────────────────────────────
 class MedColors {
-  static const teal = Color(0xFF2EC4C4);
-  static const tealLight = Color(0xFFE6F7F7);
-  static const bg = Color(0xFFF4FAFA);
+  static const teal = Color(0xFF35B0B8);
+  static const tealLight = Color(0xFFDDF4F5);
+  static const bg = Color(0xFFE2F6F7);
   static const textPrimary = Color(0xFF1A2B2B);
   static const textSecondary = Color(0xFF8A9E9E);
-  static const border = Color(0xFFE8F0F0);
-  static const activeBg = Color(0xFFD9F3F3);
-  static const stoppedBg = Color(0xFFEEEEEE);
-  static const stoppedText = Color(0xFF9E9E9E);
+  static const border = Color(0xFFD7EEF0);
+  static const activeBg = Color(0xFFB5E7EB);
+  static const stoppedBg = Color(0xFFD9D9D9);
+  static const stoppedText = Color(0xFFA3A3A3);
   static const cardBg = Color(0xFFFFFFFF);
-  static const darkBadge = Color(0xFF1A2B2B);
-  static const criticalRed = Color(0xFFFF6B6B);
+  static const darkBadge = Color(0xFF141414);
+  static const criticalRed = Color(0xFF7A8C8C);
+  static const criticalBg = Color(0xFFD7EAEA);
 }
 
 // ─── Data models ──────────────────────────────────────────────────────────────
@@ -105,14 +106,14 @@ class _MedicationScreenState extends State<MedicationScreen> {
     ),
   ];
 
-  final _medHistory = const [
+  List<MedHistoryItem> _medHistory = [
     MedHistoryItem(medication: 'Isotretinoin', dosage: '20mg', frequency: 'Once Daily', duration: '30 days', isActive: true, adherence: 85),
     MedHistoryItem(medication: 'Isotretinoin', dosage: '20mg', frequency: 'Once Daily', duration: '30 days', isActive: false, adherence: 85),
     MedHistoryItem(medication: 'Isotretinoin', dosage: '20mg', frequency: 'Once Daily', duration: '30 days', isActive: true, adherence: 85),
     MedHistoryItem(medication: 'Isotretinoin', dosage: '20mg', frequency: 'Once Daily', duration: '30 days', isActive: false, adherence: 85),
   ];
 
-  final _medicalHistory = const [
+  List<MedicalHistoryItem> _medicalHistory = [
     MedicalHistoryItem(icon: Icons.monitor_heart_outlined, category: 'Chronic disease', value: 'IHD, Obesity, Chronic thyroid disorder'),
     MedicalHistoryItem(icon: Icons.medical_services_outlined, category: 'Surgery', value: 'Liposuction'),
     MedicalHistoryItem(icon: Icons.warning_amber_outlined, category: 'Related medicational complications', value: 'Nephropathy, Neuphropathy, Sexual dysfuntion'),
@@ -137,23 +138,26 @@ class _MedicationScreenState extends State<MedicationScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          // Top row: Medications card + Medical history card
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 5, child: _buildMedicationsCard()),
-              const SizedBox(width: 20),
-              Expanded(flex: 5, child: _buildMedicalHistoryCard()),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Bottom: Medication history table
-          _buildMedHistoryTable(),
-        ],
+    return Container(
+      color: MedColors.bg,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            // Top row: Medications card + Medical history card
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 5, child: _buildMedicationsCard()),
+                const SizedBox(width: 20),
+                Expanded(flex: 5, child: _buildMedicalHistoryCard()),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Bottom: Medication history table
+            _buildMedHistoryTable(),
+          ],
+        ),
       ),
     );
   }
@@ -207,7 +211,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: MedColors.criticalRed.withOpacity(0.12),
+                  color: MedColors.criticalBg,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text('Critical',
@@ -262,7 +266,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                       color: MedColors.textPrimary)),
               const Spacer(),
               TextButton(
-                onPressed: () {},
+                onPressed: () => _showEditMedicalHistoryDialog(),
                 child: const Text('Edit',
                     style: TextStyle(color: MedColors.teal, fontSize: 13)),
               ),
@@ -334,7 +338,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
               const SizedBox(width: 12),
               // Prescribe button
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => _showPrescribeMedicationDialog(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: MedColors.teal,
                   shape: RoundedRectangleBorder(
@@ -379,6 +383,419 @@ class _MedicationScreenState extends State<MedicationScreen> {
       ),
     );
   }
+
+  // ── Edit Medical History Dialog ─────────────────────────────────────────────
+  Future<void> _showEditMedicalHistoryDialog() async {
+    // Build a list of controllers pre-filled with current values
+    final controllers = _medicalHistory
+        .map((item) => TextEditingController(text: item.value))
+        .toList();
+
+    await showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: 480,
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: MedColors.tealLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.history_outlined,
+                          color: MedColors.teal, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Edit Medical History',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: MedColors.textPrimary)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        width: 28, height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: MedColors.textPrimary, width: 1.5),
+                        ),
+                        child: const Icon(Icons.close_rounded,
+                            size: 14, color: MedColors.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // One field per history item
+                ...List.generate(_medicalHistory.length, (i) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(_medicalHistory[i].icon,
+                                size: 15, color: MedColors.teal),
+                            const SizedBox(width: 6),
+                            Text(_medicalHistory[i].category,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: MedColors.textSecondary,
+                                    fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: MedColors.bg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: MedColors.border),
+                          ),
+                          child: TextField(
+                            controller: controllers[i],
+                            style: const TextStyle(
+                                fontSize: 13, color: MedColors.textPrimary),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 8),
+                // Action buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel',
+                          style: TextStyle(color: MedColors.textSecondary)),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Apply edits back to state
+                        setState(() {
+                          _medicalHistory = List.generate(
+                            _medicalHistory.length,
+                            (i) => MedicalHistoryItem(
+                              icon:     _medicalHistory[i].icon,
+                              category: _medicalHistory[i].category,
+                              value:    controllers[i].text.trim(),
+                            ),
+                          );
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MedColors.teal,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        elevation: 0,
+                      ),
+                      child: const Text('Save changes',
+                          style: TextStyle(color: Colors.white, fontSize: 13)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Dispose controllers when done
+    for (final c in controllers) {
+      c.dispose();
+    }
+  }
+
+  // ── Prescribe Medication Dialog ───────────────────────────────────────────────
+  Future<void> _showPrescribeMedicationDialog() async {
+    final medicationCtrl  = TextEditingController();
+    final dosageCtrl      = TextEditingController();
+    final frequencyCtrl   = TextEditingController();
+    final durationCtrl    = TextEditingController();
+    bool isActive = true;
+    int adherence = 80;
+
+    await showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: 440,
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: MedColors.tealLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.add_circle_outline_rounded,
+                          color: MedColors.teal, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Prescribe Medication',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: MedColors.textPrimary)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        width: 28, height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: MedColors.textPrimary, width: 1.5),
+                        ),
+                        child: const Icon(Icons.close_rounded,
+                            size: 14, color: MedColors.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Form fields
+                _DialogField(label: 'Medication name', controller: medicationCtrl,
+                    hint: 'e.g. Amoxicillin 500mg'),
+                const SizedBox(height: 14),
+                _DialogField(label: 'Dosage', controller: dosageCtrl,
+                    hint: 'e.g. 20mg'),
+                const SizedBox(height: 14),
+                _DialogField(label: 'Frequency', controller: frequencyCtrl,
+                    hint: 'e.g. Once Daily'),
+                const SizedBox(height: 14),
+                _DialogField(label: 'Duration', controller: durationCtrl,
+                    hint: 'e.g. 30 days'),
+                const SizedBox(height: 14),
+
+                // Status toggle
+                Row(
+                  children: [
+                    const Text('Status',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: MedColors.textSecondary,
+                            fontWeight: FontWeight.w500)),
+                    const SizedBox(width: 16),
+                    GestureDetector(
+                      onTap: () => setDialogState(() => isActive = true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? MedColors.activeBg
+                              : MedColors.bg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isActive
+                                ? MedColors.teal
+                                : MedColors.border,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 7, height: 7,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isActive
+                                    ? MedColors.teal
+                                    : MedColors.border,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text('Active',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isActive
+                                        ? MedColors.teal
+                                        : MedColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => setDialogState(() => isActive = false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: !isActive
+                              ? MedColors.stoppedBg
+                              : MedColors.bg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: !isActive
+                                ? MedColors.stoppedText
+                                : MedColors.border,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 7, height: 7,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: !isActive
+                                    ? MedColors.stoppedText
+                                    : MedColors.border,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text('Stopped',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: !isActive
+                                        ? MedColors.stoppedText
+                                        : MedColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Adherence slider
+                Row(
+                  children: [
+                    const Text('Adherence',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: MedColors.textSecondary,
+                            fontWeight: FontWeight.w500)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(ctx).copyWith(
+                          activeTrackColor: MedColors.teal,
+                          inactiveTrackColor: MedColors.border,
+                          thumbColor: MedColors.teal,
+                          overlayColor: MedColors.teal.withOpacity(0.15),
+                          trackHeight: 4,
+                        ),
+                        child: Slider(
+                          value: adherence.toDouble(),
+                          min: 0,
+                          max: 100,
+                          divisions: 100,
+                          onChanged: (v) =>
+                              setDialogState(() => adherence = v.toInt()),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 36,
+                      child: Text('$adherence%',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: MedColors.textPrimary)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel',
+                          style:
+                              TextStyle(color: MedColors.textSecondary)),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        final name = medicationCtrl.text.trim();
+                        if (name.isEmpty) return;
+                        setState(() {
+                          _medHistory = [
+                            ..._medHistory,
+                            MedHistoryItem(
+                              medication: name,
+                              dosage:     dosageCtrl.text.trim().isEmpty
+                                            ? '—' : dosageCtrl.text.trim(),
+                              frequency:  frequencyCtrl.text.trim().isEmpty
+                                            ? '—' : frequencyCtrl.text.trim(),
+                              duration:   durationCtrl.text.trim().isEmpty
+                                            ? '—' : durationCtrl.text.trim(),
+                              isActive:   isActive,
+                              adherence:  adherence,
+                            ),
+                          ];
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MedColors.teal,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.add,
+                          color: Colors.white, size: 16),
+                      label: const Text('Add Medication',
+                          style: TextStyle(
+                              color: Colors.white, fontSize: 13)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    medicationCtrl.dispose();
+    dosageCtrl.dispose();
+    frequencyCtrl.dispose();
+    durationCtrl.dispose();
+  }
 }
 
 // ─── Medication card widget ───────────────────────────────────────────────────
@@ -391,7 +808,7 @@ class _MedicationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: MedColors.bg,
+        color: MedColors.tealLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: MedColors.border),
       ),
@@ -801,6 +1218,54 @@ class _MedActionItemState extends State<_MedActionItem> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Reusable dialog text field ───────────────────────────────────────────────
+class _DialogField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+
+  const _DialogField({
+    required this.label,
+    required this.controller,
+    required this.hint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12,
+                color: MedColors.textSecondary,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: MedColors.bg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: MedColors.border),
+          ),
+          child: TextField(
+            controller: controller,
+            style: const TextStyle(
+                fontSize: 13, color: MedColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(
+                  color: MedColors.textSecondary, fontSize: 12),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 12),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
