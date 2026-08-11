@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+
+import '../../../../app/app_state.dart';
+import '../../../../shared/utils/greeting.dart';
 
 class DoctorDashboardPage extends StatefulWidget {
   const DoctorDashboardPage({super.key});
@@ -158,15 +162,21 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
           ),
         ),
         const SizedBox(height: 5),
-        Text(
-          'Good Morning Doctor',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF102025),
-          ),
+        StoreConnector<AppState, String?>(
+          converter: (store) => store.state.authState.userName,
+          builder: (context, userName) {
+            final name = userName?.trim() ?? '';
+            return Text(
+              '${timeOfDayGreeting()} ${name.isEmpty ? 'Doctor' : name}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF102025),
+              ),
+            );
+          },
         ),
       ],
     );

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_state.dart';
 import '../../../core/auth/auth_actions.dart';
 import '../../../core/routing/app_routes.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/public_navbar.dart';
 import 'widgets/auth_widgets.dart';
@@ -22,11 +23,19 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  /// Vertical space the floating navbar occupies (top offset 36 + 64 tall),
+  /// plus breathing room. Content must start below this or it overlaps.
+  static const double _navbarReserve = 124;
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePassword = true;
+
+  /// Doctors and pharmacies sign in through separate endpoints and the API
+  /// returns no role field, so the user has to tell us which they are.
+  String _selectedRole = AppConstants.roleDoctor;
 
   @override
   void dispose() {
@@ -38,9 +47,28 @@ class _LoginPageState extends State<LoginPage> {
   void _submit(BuildContext context) {
     if (!_formKey.currentState!.validate()) return;
 
-    // ── DEV ONLY: Show role picker instead of real auth ──────────────────────
-    // TODO: Remove this dialog and use real LoginRequestAction once backend is ready.
-    _showDevRolePicker(context);
+    StoreProvider.of<AppState>(context).dispatch(
+      LoginRequestAction(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        role: _selectedRole,
+      ),
+    );
+  }
+
+  void _handleAuthResult(BuildContext context, AppState state) {
+    if (!state.authState.isAuthenticated) {
+      return;
+    }
+
+    final role = state.authState.role;
+    if (role == 'doctor') {
+      context.go(AppRoutes.doctorDashboard);
+    } else if (role == 'pharmacy') {
+      context.go(AppRoutes.pharmacyDashboard);
+    } else {
+      context.go(AppRoutes.doctorDashboard);
+    }
   }
 
   void _showDevRolePicker(BuildContext context) {
@@ -141,41 +169,58 @@ class _LoginPageState extends State<LoginPage> {
     final size = MediaQuery.sizeOf(context);
     final isMobile = size.width < AppTheme.mobileBreakpoint;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Teal ellipse background
-          Positioned(
-            left: size.width * 0.18,
-            top: size.height * 0.32,
-            child: Container(
-              width: size.width * 0.64,
-              height: size.height * 0.92,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF6DD0D8).withValues(alpha: 0.12),
+    return StoreConnector<AppState, AppState>(
+      converter: (store) => store.state,
+      distinct: true,
+      onDidChange: (prevState, state) {
+        if (prevState?.authState.isAuthenticated ==
+            state.authState.isAuthenticated) {
+          return;
+        }
+        if (state.authState.isAuthenticated) {
+          _handleAuthResult(context, state);
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            children: [
+              // Teal ellipse background
+              Positioned(
+                left: size.width * 0.18,
+                top: size.height * 0.32,
+                child: Container(
+                  width: size.width * 0.64,
+                  height: size.height * 0.92,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF6DD0D8).withValues(alpha: 0.12),
+                  ),
+                ),
               ),
-            ),
-          ),
 
-          // Shared public navbar — Signup button on the right
-          Positioned(
-            top: 36,
-            left: 77,
-            right: 77,
-            child: PublicNavbar(
-              actionLabel: 'Signup',
-              actionRoute: AppRoutes.register,
-            ),
-          ),
+              // Shared public navbar — Signup button on the right
+              Positioned(
+                top: 36,
+                left: 77,
+                right: 77,
+                child: PublicNavbar(
+                  actionLabel: 'Signup',
+                  actionRoute: AppRoutes.register,
+                ),
+              ),
 
-          // Main content
-          isMobile
-              ? _buildMobileLayout(context)
-              : _buildDesktopLayout(context, size),
-        ],
-      ),
+              // Main content
+              Positioned.fill(
+                child: isMobile
+                    ? _buildMobileLayout(context)
+                    : _buildDesktopLayout(context, size),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -243,23 +288,40 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
 
-        // Right: login form
+        // Right: login form.
+        //
+        // Reserves the navbar strip (top: 36 + 64 tall) so the heading cannot
+        // ride up under it, and scrolls once the form outgrows what is left.
         Expanded(
           flex: 6,
-          child: Center(
-            child: _LoginForm(
-              formKey: _formKey,
-              emailController: _emailController,
-              passwordController: _passwordController,
-              rememberMe: _rememberMe,
-              obscurePassword: _obscurePassword,
-              onRememberMeChanged: (v) =>
-                  setState(() => _rememberMe = v ?? false),
-              onTogglePassword: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
-              onSubmit: () => _submit(context),
-              onForgotPassword: () => context.go(AppRoutes.forgotPassword),
-              onSignUp: () => context.go(AppRoutes.register),
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: _navbarReserve, bottom: 32),
+                  child: Center(
+                    child: _LoginForm(
+                      formKey: _formKey,
+                      emailController: _emailController,
+                      passwordController: _passwordController,
+                      rememberMe: _rememberMe,
+                      obscurePassword: _obscurePassword,
+                      selectedRole: _selectedRole,
+                      onRoleChanged: (role) =>
+                          setState(() => _selectedRole = role),
+                      onRememberMeChanged: (v) =>
+                          setState(() => _rememberMe = v ?? false),
+                      onTogglePassword: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                      onSubmit: () => _submit(context),
+                      onForgotPassword: () =>
+                          context.go(AppRoutes.forgotPassword),
+                      onSignUp: () => context.go(AppRoutes.register),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -270,20 +332,132 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildMobileLayout(BuildContext context) {
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
+        padding: const EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: _navbarReserve,
+          bottom: 40,
+        ),
         child: _LoginForm(
           formKey: _formKey,
           emailController: _emailController,
           passwordController: _passwordController,
           rememberMe: _rememberMe,
           obscurePassword: _obscurePassword,
-          onRememberMeChanged: (v) =>
-              setState(() => _rememberMe = v ?? false),
+          selectedRole: _selectedRole,
+          onRoleChanged: (role) => setState(() => _selectedRole = role),
+          onRememberMeChanged: (v) => setState(() => _rememberMe = v ?? false),
           onTogglePassword: () =>
               setState(() => _obscurePassword = !_obscurePassword),
           onSubmit: () => _submit(context),
           onForgotPassword: () => context.go(AppRoutes.forgotPassword),
           onSignUp: () => context.go(AppRoutes.register),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Role toggle ──────────────────────────────────────────────────────────────
+
+/// Doctor / Pharmacy switch shown above the credentials.
+///
+/// The two roles authenticate through different endpoints, so this choice
+/// decides which one the login request goes to.
+class _RoleToggle extends StatelessWidget {
+  const _RoleToggle({required this.selectedRole, required this.onChanged});
+
+  final String selectedRole;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6DD0D8).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _RoleToggleOption(
+              label: 'Doctor',
+              icon: Icons.medical_services_outlined,
+              selected: selectedRole == AppConstants.roleDoctor,
+              onTap: () => onChanged(AppConstants.roleDoctor),
+            ),
+          ),
+          Expanded(
+            child: _RoleToggleOption(
+              label: 'Pharmacy',
+              icon: Icons.local_pharmacy_outlined,
+              selected: selectedRole == AppConstants.rolePharmacy,
+              onTap: () => onChanged(AppConstants.rolePharmacy),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoleToggleOption extends StatelessWidget {
+  const _RoleToggleOption({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Sign in as $label',
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? const Color(0xFF309CA3) : Colors.black38,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  color: selected ? const Color(0xFF309CA3) : Colors.black45,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -298,6 +472,8 @@ class _LoginForm extends StatelessWidget {
   final TextEditingController passwordController;
   final bool rememberMe;
   final bool obscurePassword;
+  final String selectedRole;
+  final ValueChanged<String> onRoleChanged;
   final ValueChanged<bool?> onRememberMeChanged;
   final VoidCallback onTogglePassword;
   final VoidCallback onSubmit;
@@ -310,6 +486,8 @@ class _LoginForm extends StatelessWidget {
     required this.passwordController,
     required this.rememberMe,
     required this.obscurePassword,
+    required this.selectedRole,
+    required this.onRoleChanged,
     required this.onRememberMeChanged,
     required this.onTogglePassword,
     required this.onSubmit,
@@ -323,6 +501,7 @@ class _LoginForm extends StatelessWidget {
       converter: (store) => _LoginViewModel(
         isLoading: store.state.authState.isLoading,
         errorMessage: store.state.authState.errorMessage,
+        successMessage: store.state.authState.successMessage,
       ),
       builder: (context, vm) {
         return ConstrainedBox(
@@ -353,8 +532,6 @@ class _LoginForm extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 36),
-
-                // Error banner
                 if (vm.errorMessage != null) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -375,7 +552,31 @@ class _LoginForm extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-
+                if (vm.successMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF309CA3).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                      border: Border.all(
+                        color: const Color(0xFF309CA3).withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      vm.successMessage!,
+                      style: const TextStyle(
+                        color: Color(0xFF309CA3),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                _RoleToggle(
+                  selectedRole: selectedRole,
+                  onChanged: onRoleChanged,
+                ),
+                const SizedBox(height: 20),
                 AuthTextField(
                   controller: emailController,
                   hint: 'Email address',
@@ -390,7 +591,6 @@ class _LoginForm extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 AuthTextField(
                   controller: passwordController,
                   hint: 'Password',
@@ -412,7 +612,6 @@ class _LoginForm extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   children: [
                     Checkbox(
@@ -438,14 +637,12 @@ class _LoginForm extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-
                 AuthSubmitButton(
                   label: "Let's start",
                   isLoading: vm.isLoading,
                   onPressed: onSubmit,
                 ),
                 const SizedBox(height: 32),
-
                 Row(
                   children: [
                     const Expanded(child: Divider()),
@@ -463,7 +660,6 @@ class _LoginForm extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -496,10 +692,12 @@ class _LoginForm extends StatelessWidget {
 class _LoginViewModel {
   final bool isLoading;
   final String? errorMessage;
+  final String? successMessage;
 
   const _LoginViewModel({
     required this.isLoading,
     this.errorMessage,
+    this.successMessage,
   });
 }
 

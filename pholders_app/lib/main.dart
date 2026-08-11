@@ -5,8 +5,10 @@ import 'package:redux/redux.dart';
 
 import 'app/app_reducer.dart';
 import 'app/app_state.dart';
+import 'core/auth/auth_actions.dart';
 import 'core/di/service_locator.dart';
 import 'core/routing/app_router.dart';
+import 'features/auth/presentation/auth_middleware.dart';
 import 'shared/theme/app_theme.dart';
 
 Future<void> main() async {
@@ -18,11 +20,15 @@ Future<void> main() async {
   // 1. Set up dependency injection
   await setupServiceLocator();
 
-  // 2. Create the Redux store with the root reducer and initial state
+  // 2. Create the Redux store with the root reducer, middleware, and initial state
+  final authMiddleware = AuthMiddleware();
   final store = Store<AppState>(
     appReducer,
     initialState: AppState.initial(),
+    middleware: authMiddleware.middleware,
   );
+
+  store.dispatch(const RestoreSessionAction(token: '', role: '', userName: ''));
 
   runApp(PholdersApp(store: store));
 }

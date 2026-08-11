@@ -22,12 +22,16 @@ class AuthState extends Equatable {
   /// Non-null when the last auth operation failed.
   final String? errorMessage;
 
+  /// Non-null when the last auth operation produced a success message.
+  final String? successMessage;
+
   const AuthState({
     this.token,
     this.role,
     this.userName,
     this.isLoading = false,
     this.errorMessage,
+    this.successMessage,
   });
 
   /// The initial state before any login attempt.
@@ -42,7 +46,9 @@ class AuthState extends Equatable {
     String? userName,
     bool? isLoading,
     String? errorMessage,
+    String? successMessage,
     bool clearError = false,
+    bool clearSuccess = false,
     bool clearToken = false,
   }) {
     return AuthState(
@@ -51,9 +57,12 @@ class AuthState extends Equatable {
       userName: clearToken ? null : (userName ?? this.userName),
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      successMessage:
+          clearSuccess ? null : (successMessage ?? this.successMessage),
     );
   }
 
   @override
-  List<Object?> get props => [token, role, userName, isLoading, errorMessage];
+  List<Object?> get props =>
+      [token, role, userName, isLoading, errorMessage, successMessage];
 }

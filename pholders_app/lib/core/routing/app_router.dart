@@ -14,6 +14,8 @@ import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/role_selection_page.dart';
 import '../../features/auth/presentation/verify_account_page.dart';
 import '../../features/auth/presentation/forgot_password_page.dart';
+import '../../features/auth/presentation/doctor_register_step2_page.dart';
+import '../../features/auth/presentation/pharmacy_register_step2_page.dart';
 
 // ─── Doctor pages ─────────────────────────────────────────────────────────────
 import '../../features/doctor/dashboard/presentation/doctor_dashboard_page.dart';
@@ -74,6 +76,7 @@ GoRouter createRouter(Store<AppState> store) {
         AppRoutes.login,
         AppRoutes.register,
         AppRoutes.registerStep2,
+        AppRoutes.pharmacyRegisterStep2,
         AppRoutes.verifyAccount,
         AppRoutes.forgotPassword,
       ].contains(state.matchedLocation);
@@ -125,6 +128,14 @@ GoRouter createRouter(Store<AppState> store) {
       GoRoute(
         path: AppRoutes.register,
         builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.registerStep2,
+        builder: (context, state) => const DoctorRegisterStep2Page(),
+      ),
+      GoRoute(
+        path: AppRoutes.pharmacyRegisterStep2,
+        builder: (context, state) => const PharmacyRegisterStep2Page(),
       ),
       GoRoute(
         path: AppRoutes.verifyAccount,

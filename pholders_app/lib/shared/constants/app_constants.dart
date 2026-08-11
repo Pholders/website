@@ -9,7 +9,8 @@ class AppConstants {
 
   // ─── API ────────────────────────────────────────────────────────────────────
   /// Base URL for the REST API. Override via environment config in production.
-  static const String apiBaseUrl = 'https://api.pholders.com/v1';
+  static const String apiBaseUrl =
+      'https://backend-system-u8s2.onrender.com/api';
   static const Duration apiTimeout = Duration(seconds: 30);
 
   // ─── Auth ───────────────────────────────────────────────────────────────────

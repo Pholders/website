@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/app_state.dart';
+import '../../core/auth/logout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
@@ -287,30 +290,44 @@ class AppSidebar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Name bar
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9F5F5),
+                  // Name bar — tapping it logs out
+                  Material(
+                    color: const Color(0xFFD9F5F5),
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Dr. Sam Smith',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _textColor,
-                          ),
+                      onTap: () => performLogout(context),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: StoreConnector<AppState, String?>(
+                                converter: (store) =>
+                                    store.state.authState.userName,
+                                builder: (context, userName) {
+                                  final name = userName?.trim() ?? '';
+                                  return Text(
+                                    name.isEmpty ? 'My account' : name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: _textColor,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.logout_outlined,
+                                size: 18, color: _textColor),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.logout_outlined,
-                            size: 18, color: _textColor),
-                      ],
+                      ),
                     ),
                   ),
                 ],
