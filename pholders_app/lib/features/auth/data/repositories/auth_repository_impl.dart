@@ -38,6 +38,20 @@ class AuthRepositoryImpl implements AuthRepository {
     return email.split('@').first;
   }
 
+  /// Each role revokes its session through its own route; there is no shared
+  /// logout. An unrecognised role falls back to the doctor path, which the
+  /// server rejects harmlessly — logout is best-effort either way.
+  static String _logoutPath(String? role) {
+    switch (role) {
+      case AppConstants.rolePharmacy:
+        return '/users/pharmacy/logout';
+      case AppConstants.roleAdmin:
+        return '/users/admin/logout';
+      default:
+        return '/users/doctor/logout';
+    }
+  }
+
   /// Signs in against the endpoint for [role].
   ///
   /// `/users/login` is the patient handler — it queries the patients table only
@@ -49,6 +63,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     required String role,
   }) async {
+    // Guards a silent misroute: admin has no single-call login, and falling
+    // through here would post admin credentials to the doctor endpoint.
+    if (role == AppConstants.roleAdmin) {
+      throw const ValidationFailure(
+        'Admin sign-in is two-step — use adminLogin() then verifyAdminOtp().',
+      );
+    }
+
     try {
       final isPharmacy = role == AppConstants.rolePharmacy;
       final response = await apiClient.dio.post(
@@ -131,6 +153,114 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Requests an admin login code.
+  ///
+  /// Unlike doctor and pharmacy, `/users/admin/login` returns no token at all —
+  /// only `{data: {email, expiresIn}}` confirming a 6-digit code was emailed.
+  /// The session is issued by [verifyAdminOtp].
+  ///
+  /// No Authorization header is sent: the route is behind `preventAuthenticated`
+  /// and answers 403 "Already logged in as …" to any request carrying a valid
+  /// token, which would otherwise make a signed-in admin unable to sign in again.
+  @override
+  Future<void> adminLogin({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await apiClient.dio.post(
+        '/users/admin/login',
+        data: {
+          'email': email,
+          'password': password,
+        },
+      );
+    } on Failure {
+      rethrow;
+    } on Exception catch (e) {
+      // 401 invalid password, 403 unknown/inactive account, 429 rate limit —
+      // all carry a usable server message that must reach the user verbatim.
+      throw ServerFailure(
+        apiErrorMessage(e, fallback: 'Could not sign you in. Please try again.'),
+      );
+    }
+  }
+
+  /// Exchanges an emailed admin code for a session.
+  ///
+  /// Shape differs from both other roles again:
+  ///
+  ///            admin
+  ///   token    data.token           (flat, like doctor)
+  ///   refresh  none                 (admin is never issued a refresh token)
+  ///   profile  data.admin, snake_case
+  ///
+  /// The `admins` table has no role column, so — as with doctor and pharmacy —
+  /// the role is supplied here rather than read from the response.
+  @override
+  Future<AuthSession> verifyAdminOtp({
+    required String email,
+    required String otpCode,
+  }) async {
+    try {
+      final response = await apiClient.dio.post(
+        '/users/admin/verify-otp',
+        // Field is `otp_code`, not `otp`: the handler reads it straight off the
+        // body and answers 400 for anything else.
+        data: {
+          'email': email,
+          'otp_code': otpCode,
+        },
+      );
+
+      if (response.data == null) {
+        throw const ServerFailure('Verification succeeded but returned nothing.');
+      }
+
+      final body = Map<String, dynamic>.from(response.data as Map);
+      final data = body['data'] is Map
+          ? Map<String, dynamic>.from(body['data'] as Map)
+          : <String, dynamic>{};
+      final admin = data['admin'] is Map
+          ? Map<String, dynamic>.from(data['admin'] as Map)
+          : <String, dynamic>{};
+
+      final accessToken = data['token']?.toString() ?? '';
+      if (accessToken.isEmpty) {
+        throw const ServerFailure(
+            'Verification succeeded but no token was returned.');
+      }
+
+      final session = AuthSession(
+        token: accessToken,
+        refreshToken: null,
+        role: AppConstants.roleAdmin,
+        userName: _displayName(
+          [admin['first_name'], admin['last_name']],
+          fallbacks: [admin['email']],
+          email: email,
+        ),
+      );
+
+      await secureStorage.write(key: _tokenKey, value: session.token);
+      await secureStorage.write(key: _refreshTokenKey, value: '');
+      await secureStorage.write(key: _roleKey, value: session.role);
+      await secureStorage.write(key: _userNameKey, value: session.userName);
+
+      return session;
+    } on Failure {
+      // Already carries the server's wording — re-wrapping would replace it
+      // with the generic fallback, since apiErrorMessage only reads
+      // DioExceptions.
+      rethrow;
+    } on Exception catch (e) {
+      throw ServerFailure(
+        apiErrorMessage(e,
+            fallback: 'Could not verify that code. Please try again.'),
+      );
+    }
+  }
+
   @override
   Future<AuthSession?> restoreSession() async {
     try {
@@ -163,9 +293,7 @@ class AuthRepositoryImpl implements AuthRepository {
     if (token != null && token.isNotEmpty) {
       try {
         await apiClient.dio.post(
-          role == AppConstants.rolePharmacy
-              ? '/users/pharmacy/logout'
-              : '/users/doctor/logout',
+          _logoutPath(role),
           options: Options(headers: {'Authorization': 'Bearer $token'}),
         );
       } on Exception {

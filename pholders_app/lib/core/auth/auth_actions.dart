@@ -40,6 +40,36 @@ class LoginFailureAction {
   const LoginFailureAction({required this.errorMessage});
 }
 
+/// Dispatched when an admin submits the login form.
+///
+/// Separate from [LoginRequestAction] because admin sign-in does not produce a
+/// session: the endpoint answers with an emailed code, so this leads to
+/// [AdminOtpSentAction] rather than [LoginSuccessAction].
+class AdminLoginRequestAction {
+  final String email;
+  final String password;
+
+  const AdminLoginRequestAction({required this.email, required this.password});
+}
+
+/// Dispatched by the middleware once the admin login code has been emailed.
+class AdminOtpSentAction {
+  final String email;
+
+  const AdminOtpSentAction({required this.email});
+}
+
+/// Dispatched when an admin submits the emailed code.
+///
+/// On success the middleware dispatches [LoginSuccessAction], so everything
+/// downstream sees an admin session arriving the same way as any other.
+class AdminVerifyOtpAction {
+  final String email;
+  final String otpCode;
+
+  const AdminVerifyOtpAction({required this.email, required this.otpCode});
+}
+
 /// Dispatched when the user submits the signup form.
 class SignupRequestAction {
   final String firstName;

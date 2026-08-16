@@ -21,4 +21,7 @@ class AppConstants {
   // ─── Roles ──────────────────────────────────────────────────────────────────
   static const String roleDoctor = 'doctor';
   static const String rolePharmacy = 'pharmacy';
+
+  /// Admin accounts are seeded server-side — there is no signup route for them.
+  static const String roleAdmin = 'admin';
 }

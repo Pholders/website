@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pholders_app/core/routing/app_router.dart';
 import 'package:pholders_app/core/routing/app_routes.dart';
 import 'package:redux/redux.dart';
-import 'package:pholders_app/app/app_state.dart';
+import 'package:pholders_app/store/app_state.dart';
 
 void main() {
   test('Settings navigation test', () async {
@@ -13,10 +13,10 @@ void main() {
       (state, action) => state,
       initialState: AppState.initial(),
     );
-    
+
     // Create router
     final router = createRouter(store);
-    
+
     // Test that all settings routes are properly configured
     expect(router.canNavigate(AppRoutes.doctorSettings), true);
     expect(router.canNavigate(AppRoutes.doctorSettingsProfile), true);
@@ -30,7 +30,7 @@ void main() {
     expect(router.canNavigate(AppRoutes.doctorSettingsPreferences), true);
     expect(router.canNavigate(AppRoutes.doctorSettingsLinkedServices), true);
     expect(router.canNavigate(AppRoutes.doctorSettingsSupportLegal), true);
-    
+
     print('All settings routes are properly configured!');
   });
 }

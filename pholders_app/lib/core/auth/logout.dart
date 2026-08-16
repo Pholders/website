@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/app_state.dart';
+import '../../store/app_state.dart';
 import '../routing/app_routes.dart';
 import 'auth_actions.dart';
 

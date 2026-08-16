@@ -1,32 +1,92 @@
 import 'package:redux/redux.dart';
 
-import '../../../app/app_state.dart';
-import '../../../core/auth/auth_actions.dart';
-import '../../../core/di/service_locator.dart';
-import '../../../core/error/failures.dart';
-import '../../../core/network/api_client.dart';
-import '../../../core/usecases/usecase.dart';
-import '../domain/repositories/auth_repository.dart';
-import '../domain/usecases/login_usecase.dart';
-import '../domain/usecases/restore_session_usecase.dart';
+import '../../core/auth/auth_actions.dart';
+import '../../core/di/service_locator.dart';
+import '../../core/error/failures.dart';
+import '../../core/network/api_client.dart';
+import '../../core/usecases/usecase.dart';
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/domain/usecases/admin_login_usecase.dart';
+import '../../features/auth/domain/usecases/login_usecase.dart';
+import '../../features/auth/domain/usecases/restore_session_usecase.dart';
+import '../../features/auth/domain/usecases/verify_admin_otp_usecase.dart';
+import '../app_state.dart';
 
 class AuthMiddleware {
   AuthMiddleware() {
     loginUseCase = LoginUseCase(sl());
     restoreSessionUseCase = RestoreSessionUseCase(sl());
+    adminLoginUseCase = AdminLoginUseCase(sl());
+    verifyAdminOtpUseCase = VerifyAdminOtpUseCase(sl());
   }
 
   late final LoginUseCase loginUseCase;
   late final RestoreSessionUseCase restoreSessionUseCase;
+  late final AdminLoginUseCase adminLoginUseCase;
+  late final VerifyAdminOtpUseCase verifyAdminOtpUseCase;
 
   List<Middleware<AppState>> get middleware => [
-        TypedMiddleware<AppState, LoginRequestAction>(_handleLogin),
-        TypedMiddleware<AppState, RestoreSessionAction>(_handleRestoreSession),
-        TypedMiddleware<AppState, LogoutAction>(_handleLogout),
-        TypedMiddleware<AppState, VerifyEmailAction>(_handleVerifyEmail),
+        TypedMiddleware<AppState, LoginRequestAction>(_handleLogin).call,
+        TypedMiddleware<AppState, RestoreSessionAction>(_handleRestoreSession)
+            .call,
+        TypedMiddleware<AppState, LogoutAction>(_handleLogout).call,
+        TypedMiddleware<AppState, VerifyEmailAction>(_handleVerifyEmail).call,
         TypedMiddleware<AppState, ForgotPasswordRequestAction>(
-            _handleForgotPassword),
+          _handleForgotPassword,
+        ).call,
+        TypedMiddleware<AppState, AdminLoginRequestAction>(_handleAdminLogin)
+            .call,
+        TypedMiddleware<AppState, AdminVerifyOtpAction>(_handleAdminVerifyOtp)
+            .call,
       ];
+
+  /// Step one of admin sign-in: password check, then an emailed code.
+  ///
+  /// Failures reuse [LoginFailureAction] so the shared error surface renders
+  /// the server's own wording without the admin pages knowing about Dio.
+  Future<void> _handleAdminLogin(
+    Store<AppState> store,
+    AdminLoginRequestAction action,
+    NextDispatcher next,
+  ) async {
+    next(action);
+
+    try {
+      await adminLoginUseCase.call(
+        AdminLoginParams(email: action.email, password: action.password),
+      );
+      store.dispatch(AdminOtpSentAction(email: action.email));
+    } on Failure catch (failure) {
+      store.dispatch(LoginFailureAction(errorMessage: failure.message));
+    } on Exception catch (e) {
+      store.dispatch(LoginFailureAction(errorMessage: e.toString()));
+    }
+  }
+
+  /// Step two: the code is exchanged for a session, which enters the store as
+  /// an ordinary [LoginSuccessAction].
+  Future<void> _handleAdminVerifyOtp(
+    Store<AppState> store,
+    AdminVerifyOtpAction action,
+    NextDispatcher next,
+  ) async {
+    next(action);
+
+    try {
+      final session = await verifyAdminOtpUseCase.call(
+        VerifyAdminOtpParams(email: action.email, otpCode: action.otpCode),
+      );
+      store.dispatch(LoginSuccessAction(
+        token: session.token,
+        role: session.role,
+        userName: session.userName,
+      ));
+    } on Failure catch (failure) {
+      store.dispatch(LoginFailureAction(errorMessage: failure.message));
+    } on Exception catch (e) {
+      store.dispatch(LoginFailureAction(errorMessage: e.toString()));
+    }
+  }
 
   Future<void> _handleLogin(
     Store<AppState> store,
@@ -63,10 +123,8 @@ class AuthMiddleware {
     next(action);
 
     try {
-      // Only pharmacies verify — doctor signup activates the account and never
-      // issues a code. Must be /verify-otp with `otp_code`: /verify-email
-      // checks a different OTP purpose and leaves `status` unchanged, which
-      // locks the account out of login permanently.
+      // Only pharmacies verify. The endpoint must use `otp_code` because
+      // `/verify-email` checks a different OTP purpose.
       final response = await sl<ApiClient>().dio.post(
         '/users/pharmacy/verify-otp',
         data: {
@@ -132,7 +190,7 @@ class AuthMiddleware {
         ));
       }
     } on Exception {
-      store.dispatch(SessionExpiredAction());
+      store.dispatch(const SessionExpiredAction());
     }
   }
 

@@ -9,9 +9,22 @@ AuthState authReducer(AuthState state, dynamic action) {
   if (action is LoginRequestAction ||
       action is SignupRequestAction ||
       action is ForgotPasswordRequestAction ||
-      action is VerifyEmailAction) {
+      action is VerifyEmailAction ||
+      action is AdminLoginRequestAction ||
+      action is AdminVerifyOtpAction) {
     return state.copyWith(
         isLoading: true, clearError: true, clearSuccess: true);
+  }
+
+  // Step one of admin sign-in succeeded. Deliberately leaves the state
+  // unauthenticated — no token exists yet, so the router keeps every admin
+  // route closed until the code is verified.
+  if (action is AdminOtpSentAction) {
+    return state.copyWith(
+      isLoading: false,
+      clearError: true,
+      successMessage: 'We sent a 6-digit code to ${action.email}.',
+    );
   }
 
   if (action is LoginSuccessAction) {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:redux/redux.dart';
 
-import '../../app/app_state.dart';
+import '../../store/app_state.dart';
 import '../../shared/constants/app_constants.dart';
 import 'app_routes.dart';
 
@@ -16,6 +16,11 @@ import '../../features/auth/presentation/verify_account_page.dart';
 import '../../features/auth/presentation/forgot_password_page.dart';
 import '../../features/auth/presentation/doctor_register_step2_page.dart';
 import '../../features/auth/presentation/pharmacy_register_step2_page.dart';
+import '../../features/auth/presentation/admin_login_page.dart';
+import '../../features/auth/presentation/admin_verify_otp_page.dart';
+
+// ─── Admin pages ──────────────────────────────────────────────────────────────
+import '../../features/admin/dashboard/presentation/admin_dashboard_page.dart';
 
 // ─── Doctor pages ─────────────────────────────────────────────────────────────
 import '../../features/doctor/dashboard/presentation/doctor_dashboard_page.dart';
@@ -61,6 +66,23 @@ import '../../shared/widgets/shell_layout.dart';
 ///
 /// The router reads auth state from the Redux [Store] to handle redirects.
 /// All route strings come from [AppRoutes] — never hardcoded here.
+/// Landing page for a signed-in [role].
+///
+/// An explicit three-way branch on purpose: this used to be
+/// `role == roleDoctor ? doctorDashboard : pharmacyDashboard`, which treated
+/// "not a doctor" as "a pharmacy" and would drop an admin into the pharmacy
+/// panel.
+String _homeFor(String? role) {
+  switch (role) {
+    case AppConstants.roleAdmin:
+      return AppRoutes.adminDashboard;
+    case AppConstants.rolePharmacy:
+      return AppRoutes.pharmacyDashboard;
+    default:
+      return AppRoutes.doctorDashboard;
+  }
+}
+
 GoRouter createRouter(Store<AppState> store) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
@@ -79,11 +101,19 @@ GoRouter createRouter(Store<AppState> store) {
         AppRoutes.pharmacyRegisterStep2,
         AppRoutes.verifyAccount,
         AppRoutes.forgotPassword,
+        // Unauthenticated by necessity: no token exists until the admin code
+        // is verified. Unlisted in the UI, not unreachable.
+        AppRoutes.adminLogin,
+        AppRoutes.adminVerify,
       ].contains(state.matchedLocation);
 
-      // Unauthenticated user trying to access a protected route → login
+      // Unauthenticated user trying to access a protected route → login.
+      // Admin routes send the user back to the admin login rather than the
+      // public one, which cannot sign an admin in.
       if (!isAuthenticated && !isPublicRoute) {
-        return AppRoutes.login;
+        return state.matchedLocation.startsWith('/admin')
+            ? AppRoutes.adminLogin
+            : AppRoutes.login;
       }
 
       // Authenticated user trying to access a public route → home
@@ -91,10 +121,9 @@ GoRouter createRouter(Store<AppState> store) {
           isPublicRoute &&
           state.matchedLocation != AppRoutes.splash &&
           state.matchedLocation != AppRoutes.landing) {
-        return role == AppConstants.roleDoctor
-            ? AppRoutes.doctorDashboard
-            : AppRoutes.pharmacyDashboard;
+        return _homeFor(role);
       }
+
       // Authenticated doctor trying to access pharmacy routes → doctor home
       if (isAuthenticated &&
           role == AppConstants.roleDoctor &&
@@ -107,6 +136,23 @@ GoRouter createRouter(Store<AppState> store) {
           role == AppConstants.rolePharmacy &&
           state.matchedLocation.startsWith('/doctor')) {
         return AppRoutes.pharmacyDashboard;
+      }
+
+      // Anyone who is not an admin trying to access admin routes → own home.
+      // Mirrors the two guards above; without it a doctor or pharmacy token
+      // reaches the admin panel, since being authenticated is not enough.
+      if (isAuthenticated &&
+          role != AppConstants.roleAdmin &&
+          state.matchedLocation.startsWith('/admin')) {
+        return _homeFor(role);
+      }
+
+      // An admin has no pages outside /admin.
+      if (isAuthenticated &&
+          role == AppConstants.roleAdmin &&
+          (state.matchedLocation.startsWith('/doctor') ||
+              state.matchedLocation.startsWith('/pharmacy'))) {
+        return AppRoutes.adminDashboard;
       }
 
       return null; // No redirect needed
@@ -148,6 +194,21 @@ GoRouter createRouter(Store<AppState> store) {
       GoRoute(
         path: '/role-selection',
         builder: (context, state) => const RoleSelectionPage(),
+      ),
+
+      // ─── Admin ───────────────────────────────────────────────────────────────
+      // Reachable only by typing the URL: nothing in the app links here.
+      GoRoute(
+        path: AppRoutes.adminLogin,
+        builder: (context, state) => const AdminLoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminVerify,
+        builder: (context, state) => const AdminVerifyOtpPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminDashboard,
+        builder: (context, state) => const AdminDashboardPage(),
       ),
 
       // ─── Doctor shell (authenticated, role = doctor) ─────────────────────────

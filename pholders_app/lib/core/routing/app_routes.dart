@@ -88,4 +88,14 @@ class AppRoutes {
   static const String pharmacySettingsNotifications = '/pharmacy/settings/notifications';
   static const String pharmacySettingsNotificationCenter = '/pharmacy/settings/notifications/center';
   static const String pharmacySettingsLinkedServices = '/pharmacy/settings/linked-services';
+
+  // ─── Admin routes ────────────────────────────────────────────────────────────
+  /// Deliberately unadvertised: nothing in the public UI links here. Admins are
+  /// given the URL out of band, so the panel is not discoverable from /login.
+  static const String adminLogin = '/admin/login';
+
+  /// Second leg of the admin login. Admin auth is the only flow in the app that
+  /// requires an emailed code before a token is issued.
+  static const String adminVerify = '/admin/verify';
+  static const String adminDashboard = '/admin/dashboard';
 }

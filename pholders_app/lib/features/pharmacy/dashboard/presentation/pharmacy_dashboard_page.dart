@@ -1,7 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 
-import '../../../../app/app_state.dart';
+import '../../../../store/app_state.dart';
 import '../../../../shared/utils/greeting.dart';
 
 /// Pharmacy Dashboard matching the Figma design (node 1610:357).

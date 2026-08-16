@@ -1,10 +1,14 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../features/admin/data/repositories/admin_repository_impl.dart';
+import '../../features/admin/domain/repositories/admin_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/domain/usecases/admin_login_usecase.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/restore_session_usecase.dart';
+import '../../features/auth/domain/usecases/verify_admin_otp_usecase.dart';
 import '../network/api_client.dart';
 import '../../shared/constants/app_constants.dart';
 
@@ -36,5 +40,18 @@ Future<void> setupServiceLocator() async {
       () => LoginUseCase(sl<AuthRepository>()));
   sl.registerLazySingleton<RestoreSessionUseCase>(
     () => RestoreSessionUseCase(sl<AuthRepository>()),
+  );
+  sl.registerLazySingleton<AdminLoginUseCase>(
+    () => AdminLoginUseCase(sl<AuthRepository>()),
+  );
+  sl.registerLazySingleton<VerifyAdminOtpUseCase>(
+    () => VerifyAdminOtpUseCase(sl<AuthRepository>()),
+  );
+
+  sl.registerLazySingleton<AdminRepository>(
+    () => AdminRepositoryImpl(
+      apiClient: sl<ApiClient>(),
+      secureStorage: sl<FlutterSecureStorage>(),
+    ),
   );
 }

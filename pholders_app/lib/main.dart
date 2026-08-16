@@ -3,13 +3,11 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:redux/redux.dart';
 
-import 'app/app_reducer.dart';
-import 'app/app_state.dart';
-import 'core/auth/auth_actions.dart';
 import 'core/di/service_locator.dart';
 import 'core/routing/app_router.dart';
-import 'features/auth/presentation/auth_middleware.dart';
 import 'shared/theme/app_theme.dart';
+import 'store/app_state.dart';
+import 'store/app_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,14 +19,7 @@ Future<void> main() async {
   await setupServiceLocator();
 
   // 2. Create the Redux store with the root reducer, middleware, and initial state
-  final authMiddleware = AuthMiddleware();
-  final store = Store<AppState>(
-    appReducer,
-    initialState: AppState.initial(),
-    middleware: authMiddleware.middleware,
-  );
-
-  store.dispatch(const RestoreSessionAction(token: '', role: '', userName: ''));
+  final store = createAppStore();
 
   runApp(PholdersApp(store: store));
 }
