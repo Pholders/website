@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../shared/theme/app_theme.dart';
 
 /// Notification model to represent a single notification.
@@ -36,7 +37,7 @@ enum NotificationType {
   prescription,
 }
 
-/// Doctor Notifications Page — displays all notifications in an organized list.
+/// Doctor Notifications Page ΓÇö displays all notifications in an organized list.
 ///
 /// Features:
 /// - Notification list with different types (info, success, warning, error)
@@ -175,7 +176,7 @@ class _DoctorNotificationsPageState extends State<DoctorNotificationsPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            // ── Scrollable content ────────────────────────────────────────
+            // ΓöÇΓöÇ Scrollable content ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
             SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -184,7 +185,7 @@ class _DoctorNotificationsPageState extends State<DoctorNotificationsPage> {
                   children: [
                     const SizedBox(height: 220), // Space for fixed header
                     
-                    // ── Notifications List ───────────────────────────────────────
+                    // ΓöÇΓöÇ Notifications List ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
                     if (filteredNotifications.isEmpty)
                       _buildEmptyState()
                     else
@@ -204,7 +205,7 @@ class _DoctorNotificationsPageState extends State<DoctorNotificationsPage> {
               ),
             ),
 
-            // ── Fixed Header ──────────────────────────────────────────────
+            // ΓöÇΓöÇ Fixed Header ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
             Positioned(
               top: 0,
               left: 0,
@@ -296,6 +297,33 @@ class _DoctorNotificationsPageState extends State<DoctorNotificationsPage> {
                               ),
                             ),
                           ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => context.go(AppRoutes.doctorSettingsNotifications),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFD1F5F5)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.settings_rounded, color: Color(0xFF309CA3), size: 16),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Manage Settings',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF309CA3),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -409,7 +437,7 @@ class _DoctorNotificationsPageState extends State<DoctorNotificationsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Title Row ────────────────────────────────────────────────
+            // ΓöÇΓöÇ Title Row ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -515,7 +543,7 @@ class _DoctorNotificationsPageState extends State<DoctorNotificationsPage> {
               ],
             ),
 
-            // ── Timestamp & Actions ──────────────────────────────────────
+            // ΓöÇΓöÇ Timestamp & Actions ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

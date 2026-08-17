@@ -30,6 +30,6 @@
 - [ ] Mark Order Ready (status button on order detail) - Done
 - [ ] Pharmacist Registration screens (Step 1 + Step 2) - Done
 - [ ] Pharmacist Profile screen (full details form) -  Done
-- [ ] Pharmacy Profile Settings page
-- [ ] Stock Management screen (edit stock levels, low stock indicator)
-- [ ] Patient Notification indicator (processed badge/status)
+- [ ] Pharmacy Profile Settings page - Done 
+- [ ] Stock Management screen (edit stock levels, low stock indicator) done
+- [ ] Patient Notification indicator (processed badge/status) done
