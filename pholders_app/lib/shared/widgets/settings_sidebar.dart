@@ -58,26 +58,26 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
     }
   }
 
-  void _initializeMenuItems() {
-    menuItems = [
-      SettingsMenuItem(
-        id: 'account',
-        label: 'Account',
-        icon: IconType.account,
-        subItems: [
-          SettingsSubMenuItem(id: 'profile', label: 'Profile'),
-          SettingsSubMenuItem(id: 'professional', label: 'Professional'),
-        ],
-      ),
-      SettingsMenuItem(
-        id: 'practice',
-        label: 'Practice',
-        icon: IconType.practice,
-        subItems: [
-          SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
-          SettingsSubMenuItem(id: 'notifications', label: 'Notifications'),
-        ],
-      ),
+        void _initializeMenuItems() {
+        menuItems = [
+                SettingsMenuItem(
+            id: 'account',
+            label: 'Account',
+            icon: IconType.account,
+            subItems: [
+              SettingsSubMenuItem(id: 'personal_information', label: 'Personal Information'),
+              SettingsSubMenuItem(id: 'professional', label: 'Professional Details'),
+            ],
+          ),
+          SettingsMenuItem(
+            id: 'practice',
+            label: 'Practice',
+            icon: IconType.practice,
+            subItems: [
+              SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
+              SettingsSubMenuItem(id: 'notification_settings', label: 'Notification Settings'),
+            ],
+          ),
       SettingsMenuItem(
         id: 'security',
         label: 'Security',
@@ -93,7 +93,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         label: 'Preferences',
         icon: IconType.preferences,
         subItems: [
-          SettingsSubMenuItem(id: 'preferences_notifications', label: 'Notifications'),
+          SettingsSubMenuItem(id: 'preferences_settings', label: 'Preferences Settings'),
         ],
       ),
       SettingsMenuItem(
@@ -118,12 +118,14 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
     ];
   }
 
-  IconData _getIconData(IconType iconType) {
+    IconData _getIconData(IconType iconType) {
     switch (iconType) {
       case IconType.account:
         return Icons.person_outline;
       case IconType.practice:
         return Icons.business_outlined;
+      case IconType.notifications:
+        return Icons.notifications_outlined;
       case IconType.security:
         return Icons.security_outlined;
       case IconType.preferences:

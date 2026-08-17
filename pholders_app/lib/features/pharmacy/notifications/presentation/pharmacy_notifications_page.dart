@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+<<<<<<< HEAD
+=======
+import '../../../../core/routing/app_routes.dart';
+>>>>>>> d9c68dc8422bfe38fa24562d873c7daff06489b5
 import '../../../../shared/theme/app_theme.dart';
 
 /// Notification model to represent a single notification.
@@ -37,7 +41,11 @@ enum NotificationType {
   inventory,
 }
 
+<<<<<<< HEAD
 /// Pharmacy Notifications Page — displays all pharmacy notifications in an organized list.
+=======
+/// Pharmacy Notifications Page ΓÇö displays all pharmacy notifications in an organized list.
+>>>>>>> d9c68dc8422bfe38fa24562d873c7daff06489b5
 ///
 /// Features:
 /// - Notification list with different types (info, success, warning, error, order, prescription, inventory)
@@ -188,7 +196,11 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
       body: SafeArea(
         child: Stack(
           children: [
+<<<<<<< HEAD
             // ── Scrollable content ────────────────────────────────────────
+=======
+            // ΓöÇΓöÇ Scrollable content ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+>>>>>>> d9c68dc8422bfe38fa24562d873c7daff06489b5
             SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -197,7 +209,11 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
                   children: [
                     const SizedBox(height: 220), // Space for fixed header
                     
+<<<<<<< HEAD
                     // ── Notifications List ───────────────────────────────────────
+=======
+                    // ΓöÇΓöÇ Notifications List ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+>>>>>>> d9c68dc8422bfe38fa24562d873c7daff06489b5
                     if (filteredNotifications.isEmpty)
                       _buildEmptyState()
                     else
@@ -217,7 +233,11 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
               ),
             ),
 
+<<<<<<< HEAD
             // ── Fixed Header ──────────────────────────────────────────────
+=======
+            // ΓöÇΓöÇ Fixed Header ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+>>>>>>> d9c68dc8422bfe38fa24562d873c7daff06489b5
             Positioned(
               top: 0,
               left: 0,
@@ -309,6 +329,36 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
                               ),
                             ),
                           ),
+<<<<<<< HEAD
+=======
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => context.go(AppRoutes.pharmacySettingsNotifications),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFD1F5F5)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.settings_rounded, color: Color(0xFF309CA3), size: 16),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Manage Settings',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF309CA3),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+>>>>>>> d9c68dc8422bfe38fa24562d873c7daff06489b5
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -422,7 +472,11 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+<<<<<<< HEAD
             // ── Title Row ────────────────────────────────────────────────
+=======
+            // ΓöÇΓöÇ Title Row ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+>>>>>>> d9c68dc8422bfe38fa24562d873c7daff06489b5
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -528,7 +582,11 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
               ],
             ),
 
+<<<<<<< HEAD
             // ── Timestamp & Actions ──────────────────────────────────────
+=======
+            // ΓöÇΓöÇ Timestamp & Actions ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+>>>>>>> d9c68dc8422bfe38fa24562d873c7daff06489b5
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

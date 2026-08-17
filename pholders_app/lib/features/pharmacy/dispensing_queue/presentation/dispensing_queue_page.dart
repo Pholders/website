@@ -149,7 +149,18 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
           Expanded(flex: 3, child: Text(item.medication, style: const TextStyle(fontSize: 13, color: _textDark))),
           Expanded(flex: 3, child: Text(item.doctor, style: const TextStyle(fontSize: 13, color: _textDark))),
           Expanded(flex: 2, child: Text(item.time, style: TextStyle(fontSize: 13, color: _textMuted))),
-          Expanded(flex: 2, child: _StatusDot(status: item.status)),
+          Expanded(flex: 2, child: Row(children: [
+            _StatusDot(status: item.status),
+            const SizedBox(width: 4),
+            Tooltip(
+              message: 'Patient notified',
+              child: Container(
+                width: 16, height: 16,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x3334D399)),
+                child: const Icon(Icons.notifications_active, size: 9, color: Color(0xFF34D399)),
+              ),
+            ),
+          ])),
           Expanded(flex: 2, child: InkWell(
             onTap: () => _advanceStatus(item),
             borderRadius: BorderRadius.circular(25),

@@ -3,11 +3,11 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:redux/redux.dart';
 
-import 'app/app_reducer.dart';
-import 'app/app_state.dart';
 import 'core/di/service_locator.dart';
 import 'core/routing/app_router.dart';
 import 'shared/theme/app_theme.dart';
+import 'store/app_state.dart';
+import 'store/app_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,11 +18,8 @@ Future<void> main() async {
   // 1. Set up dependency injection
   await setupServiceLocator();
 
-  // 2. Create the Redux store with the root reducer and initial state
-  final store = Store<AppState>(
-    appReducer,
-    initialState: AppState.initial(),
-  );
+  // 2. Create the Redux store with the root reducer, middleware, and initial state
+  final store = createAppStore();
 
   runApp(PholdersApp(store: store));
 }

@@ -391,7 +391,25 @@ class _PharmacyPrescriptionsPageState extends State<PharmacyPrescriptionsPage> {
           // Status
           Expanded(
             flex: 2,
-            child: _StatusBadge(status: rx.status),
+            child: Row(
+              children: [
+                _StatusBadge(status: rx.status),
+                if (rx.status != 'New') ...[
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: 'Patient notified',
+                    child: Container(
+                      width: 18, height: 18,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0x3334D399),
+                      ),
+                      child: const Icon(Icons.notifications_active, size: 10, color: Color(0xFF34D399)),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           // Action
           Expanded(

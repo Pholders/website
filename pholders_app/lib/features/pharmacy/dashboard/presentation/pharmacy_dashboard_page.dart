@@ -1,4 +1,8 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+
+import '../../../../store/app_state.dart';
+import '../../../../shared/utils/greeting.dart';
 
 /// Pharmacy Dashboard matching the Figma design (node 1610:357).
 ///
@@ -69,13 +73,23 @@ class PharmacyDashboardPage extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Good Morning Sam',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: _textDark,
-                fontFamily: 'Sora',
+            Flexible(
+              child: StoreConnector<AppState, String?>(
+                converter: (store) => store.state.authState.userName,
+                builder: (context, userName) {
+                  final name = userName?.trim() ?? '';
+                  return Text(
+                    '${timeOfDayGreeting()} ${name.isEmpty ? 'there' : name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: _textDark,
+                      fontFamily: 'Sora',
+                    ),
+                  );
+                },
               ),
             ),
             _buildScanQrButton(),

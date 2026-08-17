@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../store/app_state.dart';
+import '../../core/auth/logout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
@@ -53,41 +56,39 @@ class AppSidebar extends StatelessWidget {
       iconAsset: 'assets/patients-icon.png',
       route: AppRoutes.doctorPatients,
     ),
-    _SidebarItem(
-      label: 'New Script',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorNewPrescription,
-    ),
-    _SidebarItem(
-      label: 'Prescriptions',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorPrescriptions,
-    ),
-    _SidebarItem(
-      label: 'Search Scripts',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorSearchScripts,
-    ),
+    
+        _SidebarItem(
+          label: 'Prescriptions',
+          iconAsset: 'assets/prescription-icon.png',
+          route: AppRoutes.doctorPrescriptions,
+        ),
+    
     _SidebarItem(
       label: 'Appointments',
       iconAsset: 'assets/appointments-icon.png',
       route: AppRoutes.doctorAppointments,
     ),
+    
     _SidebarItem(
-      label: 'Sick Notes',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorSickNotes,
+      label: 'Notifications',
+      iconAsset: 'assets/bell-icon.png',
+      route: AppRoutes.doctorNotifications,
     ),
     _SidebarItem(
       label: 'Billing & Payments',
       iconAsset: 'assets/billing-icon.png',
       route: AppRoutes.doctorBilling,
     ),
-    _SidebarItem(
-      label: 'Settings',
-      iconAsset: 'assets/settings-icon.png',
-      route: AppRoutes.doctorSettings,
-    ),
+                _SidebarItem(
+          label: 'Settings',
+          iconAsset: 'assets/settings-icon.png',
+          route: AppRoutes.doctorSettings,
+        ),
+                                _SidebarItem(
+          label: 'Information',
+          iconAsset: 'assets/information_icon.png',
+          route: AppRoutes.doctorInformation,
+        ),
   ];
 
   // ─── Pharmacy navigation items ───────────────────────────────────────────
@@ -121,6 +122,11 @@ class AppSidebar extends StatelessWidget {
       label: 'Patients',
       iconAsset: 'assets/patients-icon.png',
       route: AppRoutes.pharmacyPatients,
+    ),
+    _SidebarItem(
+      label: 'Notifications',
+      iconAsset: 'assets/bell-icon.png',
+      route: AppRoutes.pharmacyNotifications,
     ),
     _SidebarItem(
       label: 'Billing & Payments',
@@ -284,30 +290,44 @@ class AppSidebar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Name bar
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9F5F5),
+                  // Name bar — tapping it logs out
+                  Material(
+                    color: const Color(0xFFD9F5F5),
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Dr. Sam Smith',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _textColor,
-                          ),
+                      onTap: () => performLogout(context),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: StoreConnector<AppState, String?>(
+                                converter: (store) =>
+                                    store.state.authState.userName,
+                                builder: (context, userName) {
+                                  final name = userName?.trim() ?? '';
+                                  return Text(
+                                    name.isEmpty ? 'My account' : name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: _textColor,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.logout_outlined,
+                                size: 18, color: _textColor),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.logout_outlined,
-                            size: 18, color: _textColor),
-                      ],
+                      ),
                     ),
                   ),
                 ],
