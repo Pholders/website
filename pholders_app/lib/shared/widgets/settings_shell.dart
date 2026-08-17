@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'settings_sidebar.dart';
-
 class SettingsShell extends StatelessWidget {
   const SettingsShell({super.key, required this.child});
 

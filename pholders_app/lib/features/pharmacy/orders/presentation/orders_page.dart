@@ -320,24 +320,20 @@ class _OrdersPageState extends State<OrdersPage> {
               flex: 2,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: InkWell(
-                  onTap: order.status != 'Completed' ? () => _advanceOrder(order) : null,
-                  borderRadius: BorderRadius.circular(25),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: order.status != 'Completed' ? const Color(0xFF6DD0D8) : const Color(0xFFE5E7EB),
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-                    ),
-                    child: Text(
-                      _orderActionLabel(order.status),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: order.status != 'Completed' ? Colors.white : const Color(0xFF6B7280),
-                      ),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6DD0D8),
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+                  ),
+                  child: const Text(
+                    'Mark Ready',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -345,51 +341,6 @@ class _OrdersPageState extends State<OrdersPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  String _orderActionLabel(String status) {
-    switch (status) {
-      case 'Processing': return 'Mark Ready';
-      case 'Ready': return 'Deliver';
-      case 'Out for Delivery': return 'Complete';
-      case 'Completed': return 'Done';
-      default: return 'Mark Ready';
-    }
-  }
-
-  void _advanceOrder(_OrderData order) {
-    String? next;
-    switch (order.status) {
-      case 'Processing': next = 'Ready'; break;
-      case 'Ready': next = 'Out for Delivery'; break;
-      case 'Out for Delivery': next = 'Completed'; break;
-    }
-    if (next == null) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Move to "$next"?', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        content: Text('Order ${order.orderId} — ${order.patient}\nPatient will be notified.', style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280)))),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() => order.status = next!);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('✓ Order ${order.orderId} — $next'),
-                backgroundColor: const Color(0xFF309CA3),
-                behavior: SnackBarBehavior.floating,
-              ));
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF309CA3), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-            child: const Text('Confirm'),
-          ),
-        ],
       ),
     );
   }
@@ -422,9 +373,9 @@ class _OrderData {
   final String items;
   final String total;
   final String payment;
-  String status;
+  final String status;
 
-  _OrderData({
+  const _OrderData({
     required this.orderId,
     required this.patient,
     required this.items,

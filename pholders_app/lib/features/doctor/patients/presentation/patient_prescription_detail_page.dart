@@ -1,7 +1,6 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart';
 
-/// PatientPrescriptionDetailPage — displays the detailed information of a prescription for a patient.
+/// PatientPrescriptionDetailPage — placeholder until Figma design is implemented.
 class PatientPrescriptionDetailPage extends StatelessWidget {
   final String patientId;
   final String prescriptionId;
@@ -10,22 +9,8 @@ class PatientPrescriptionDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock patient data for demonstration
-    final mockPatient = Patient(
-      id: patientId,
-      name: 'Maria Wilson',
-      condition: 'Acne Treatment',
-      lastActivity: '2 hours ago',
-      status: PatientStatus.stable,
-      priority: 'Low',
-      category: PatientCategory.outpatient,
-      avatarInitials: 'MW',
-    );
-
     return Scaffold(
-      body: Center(
-        child: Text('Prescription Detail for ${mockPatient.name}'),
-      ),
+      body: Center(child: Text('PatientPrescriptionDetailPage')),
     );
   }
 }

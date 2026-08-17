@@ -7,16 +7,11 @@ import '../../../../core/routing/app_routes.dart';
 ///
 /// Shows full order information including patient info, items table,
 /// totals, linked prescription, and payment information.
-class OrderDetailPage extends StatefulWidget {
+class OrderDetailPage extends StatelessWidget {
   final String orderId;
 
   const OrderDetailPage({super.key, required this.orderId});
 
-  @override
-  State<OrderDetailPage> createState() => _OrderDetailPageState();
-}
-
-class _OrderDetailPageState extends State<OrderDetailPage> {
   // ─── Colors ──────────────────────────────────────────────────────────────
   static const Color _teal = Color(0xFF309CA3);
   static const Color _tealBorder = Color(0xFF6DD0D8);
@@ -25,8 +20,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   static const Color _fieldBg = Color(0xFFE8F8F8);
   static const Color _tableBg = Color(0xFFE8F8F8);
   static const Color _bgLight = Color(0x33309CA3);
-
-  String _orderStatus = 'Processing';
 
   @override
   Widget build(BuildContext context) {
@@ -171,8 +164,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                       const SizedBox(height: 24),
                       _buildItemsSection(),
                       const SizedBox(height: 24),
-                      _buildDeliveryTracking(),
-                      const SizedBox(height: 24),
                       _buildTotalSection(),
                       const SizedBox(height: 24),
                       _buildLinkedPrescription(),
@@ -258,58 +249,36 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 style: TextStyle(fontSize: 12, color: _textMuted),
               ),
               const SizedBox(height: 10),
-              // Status badge + action button
-              Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF003BFC),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFFF9D358),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _orderStatus,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  if (_orderStatus != 'Completed')
-                    InkWell(
-                      onTap: _handleOrderAction,
-                      borderRadius: BorderRadius.circular(25),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: _tealBorder,
-                          borderRadius: BorderRadius.circular(25),
-                          border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-                        ),
-                        child: Text(
-                          _orderActionLabel,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
-                        ),
+              // Processing badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF003BFC),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFF9D358),
                       ),
                     ),
-                ],
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Processing',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -433,55 +402,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               const Divider(height: 1, color: Color(0xFFD1F5F5)),
               _buildItemRow('1.', 'Isotretinoin', '20mg', '1', 'R300'),
               _buildItemRow('2.', 'Isotretinoin', '20mg', '1', 'R300'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─── Delivery Tracking ─────────────────────────────────────────────────
-  Widget _buildDeliveryTracking() {
-    final progress = _orderStatus == 'Out for Delivery'
-        ? 0.8
-        : _orderStatus == 'Ready'
-            ? 0.5
-            : _orderStatus == 'Completed'
-                ? 1.0
-                : 0.15;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Delivery Tracking'),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: _fieldBg,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Method: In-Store Pickup', style: TextStyle(fontSize: 13, color: _textMuted)),
-              const SizedBox(height: 6),
-              Text('ETA: 25 Mar 2026 • 11:00 AM', style: TextStyle(fontSize: 13, color: _textMuted)),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      valueColor: AlwaysStoppedAnimation<Color>(_teal),
-                      backgroundColor: _tableBg,
-                      minHeight: 8,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(_orderStatus, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                ],
-              ),
             ],
           ),
         ),
@@ -631,59 +551,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ),
         ),
       ],
-    );
-  }
-
-  // ─── Order Status Progression ──────────────────────────────────────────────
-
-  String get _orderActionLabel {
-    switch (_orderStatus) {
-      case 'Processing': return 'Mark Ready';
-      case 'Ready': return 'Out for Delivery';
-      case 'Out for Delivery': return 'Complete';
-      default: return 'View';
-    }
-  }
-
-  void _handleOrderAction() {
-    String? next;
-    switch (_orderStatus) {
-      case 'Processing': next = 'Ready'; break;
-      case 'Ready': next = 'Out for Delivery'; break;
-      case 'Out for Delivery': next = 'Completed'; break;
-    }
-    if (next == null) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Move order to "$next"?', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        content: Text(
-          next == 'Ready'
-              ? 'This will mark the order as ready for collection. The patient will be notified.'
-              : next == 'Out for Delivery'
-                  ? 'Confirm the order is out for delivery.'
-                  : 'Confirm the order has been completed and collected/delivered.',
-          style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280)))),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() => _orderStatus = next!);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('✓ Order #10234 — $next'),
-                backgroundColor: _teal,
-                behavior: SnackBarBehavior.floating,
-              ));
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: _teal, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
     );
   }
 }

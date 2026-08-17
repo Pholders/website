@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/auth/logout.dart';
 import '../../core/routing/app_routes.dart';
 import '../theme/app_theme.dart';
 
@@ -198,7 +197,7 @@ class PharmacySidebar extends StatelessWidget {
                 topLeft: Radius.circular(28),
                 topRight: Radius.circular(28),
               ),
-              onTap: () => performLogout(context),
+              onTap: () => context.go(AppRoutes.login),
               child: Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: collapsed ? 12 : 24,

@@ -1,6 +1,5 @@
-import '../../core/auth/auth_reducer.dart';
-import '../app_state.dart';
-import 'integrations_reducer.dart';
+import 'app_state.dart';
+import '../core/auth/auth_reducer.dart';
 
 /// Root reducer that combines all feature reducers.
 ///
@@ -9,6 +8,7 @@ import 'integrations_reducer.dart';
 AppState appReducer(AppState state, dynamic action) {
   return AppState(
     authState: authReducer(state.authState, action),
-    integrationsState: integrationsReducer(state.integrationsState, action),
+    // Add more reducers here as features are implemented:
+    // dashboardState: dashboardReducer(state.dashboardState, action),
   );
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
@@ -38,22 +38,19 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-        void _navigate(BuildContext context, String id) {
+  void _navigate(BuildContext context, String id) {
     switch (id) {
-      case 'personal_information':
-        context.go('${AppRoutes.doctorSettings}account?tab=0');
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
         break;
       case 'professional':
-        context.go('${AppRoutes.doctorSettings}account?tab=1');
+        context.go(AppRoutes.doctorSettingsProfessional);
         break;
       case 'fees_setup':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
+        context.go(AppRoutes.doctorSettingsFees);
         break;
-      case 'notification_settings':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
-        break;
-      case 'notification_center':
-        context.go(AppRoutes.doctorNotifications);
+      case 'notifications':
+        context.go(AppRoutes.doctorSettingsNotifications);
         break;
       case 'security_settings':
         context.go(AppRoutes.doctorSettingsSecurity);
@@ -64,23 +61,11 @@ class SettingsPage extends StatelessWidget {
       case 'login_activity':
         context.go(AppRoutes.doctorSettingsLoginActivity);
         break;
-      case 'preferences_settings':
-        context.go(AppRoutes.doctorSettingsPreferences);
+      case 'preferences_notifications':
+        context.go(AppRoutes.doctorSettingsNotifications);
         break;
       case 'linked_services':
         context.go(AppRoutes.doctorSettingsLinkedServices);
-        break;
-      case 'help_center':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
-        break;
-      case 'privacy_policy':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
-        break;
-      case 'terms_of_service':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
-        break;
-      case 'contact_support':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
         break;
       default:
         break;
@@ -121,14 +106,6 @@ class SettingsPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 32),
                       // Quick links
-                      _buildQuickLink(
-                        context,
-                        icon: Icons.notifications_active_outlined,
-                        label: 'Notification Centre',
-                        subtitle: 'Review your notifications and alert history',
-                        onTap: () => context.go(AppRoutes.doctorNotifications),
-                      ),
-                      const SizedBox(height: 12),
                       _buildQuickLink(
                         context,
                         icon: Icons.cable_outlined,
