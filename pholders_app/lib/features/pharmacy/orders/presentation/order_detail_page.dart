@@ -171,6 +171,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                       const SizedBox(height: 24),
                       _buildItemsSection(),
                       const SizedBox(height: 24),
+                      _buildDeliveryTracking(),
+                      const SizedBox(height: 24),
                       _buildTotalSection(),
                       const SizedBox(height: 24),
                       _buildLinkedPrescription(),
@@ -431,6 +433,55 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               const Divider(height: 1, color: Color(0xFFD1F5F5)),
               _buildItemRow('1.', 'Isotretinoin', '20mg', '1', 'R300'),
               _buildItemRow('2.', 'Isotretinoin', '20mg', '1', 'R300'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Delivery Tracking ─────────────────────────────────────────────────
+  Widget _buildDeliveryTracking() {
+    final progress = _orderStatus == 'Out for Delivery'
+        ? 0.8
+        : _orderStatus == 'Ready'
+            ? 0.5
+            : _orderStatus == 'Completed'
+                ? 1.0
+                : 0.15;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Delivery Tracking'),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: _fieldBg,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Method: In-Store Pickup', style: TextStyle(fontSize: 13, color: _textMuted)),
+              const SizedBox(height: 6),
+              Text('ETA: 25 Mar 2026 • 11:00 AM', style: TextStyle(fontSize: 13, color: _textMuted)),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      valueColor: AlwaysStoppedAnimation<Color>(_teal),
+                      backgroundColor: _tableBg,
+                      minHeight: 8,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(_orderStatus, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                ],
+              ),
             ],
           ),
         ),

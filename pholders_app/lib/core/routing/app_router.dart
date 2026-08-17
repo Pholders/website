@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:redux/redux.dart';
 
-import '../../app/app_state.dart';
+import '../../store/app_state.dart';
 import '../../shared/constants/app_constants.dart';
 import 'app_routes.dart';
 
@@ -11,19 +11,21 @@ import '../../features/auth/presentation/splash_page.dart';
 import '../../features/auth/presentation/landing_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
-import '../../features/auth/presentation/doctor_register_step2_page.dart';
-import '../../features/auth/presentation/pharmacy_register_step2_page.dart';
+import '../../features/auth/presentation/role_selection_page.dart';
 import '../../features/auth/presentation/verify_account_page.dart';
 import '../../features/auth/presentation/forgot_password_page.dart';
-import '../../features/public/presentation/features_page.dart';
-import '../../features/public/presentation/about_page.dart';
-import '../../features/public/presentation/services_page.dart';
-import '../../features/public/presentation/how_it_works_page.dart';
-import '../../features/public/presentation/support_page.dart';
+import '../../features/auth/presentation/doctor_register_step2_page.dart';
+import '../../features/auth/presentation/pharmacy_register_step2_page.dart';
+import '../../features/auth/presentation/admin_login_page.dart';
+import '../../features/auth/presentation/admin_verify_otp_page.dart';
+
+// ─── Admin pages ──────────────────────────────────────────────────────────────
+import '../../features/admin/dashboard/presentation/admin_dashboard_page.dart';
 
 // ─── Doctor pages ─────────────────────────────────────────────────────────────
 import '../../features/doctor/dashboard/presentation/doctor_dashboard_page.dart';
-import '../../features/doctor/patients/presentation/patient_list_page.dart';
+import '../../features/doctor/patients/presentation/patients_screen.dart';
+import '../../features/doctor/information/presentation/information_page.dart';
 import '../../features/doctor/patients/presentation/patient_detail_page.dart';
 import '../../features/doctor/patients/presentation/patient_medication_page.dart';
 import '../../features/doctor/patients/presentation/patient_medication_detail_page.dart';
@@ -32,23 +34,18 @@ import '../../features/doctor/patients/presentation/patient_prescription_detail_
 import '../../features/doctor/patients/presentation/patient_appointments_page.dart';
 import '../../features/doctor/patients/presentation/patient_documents_page.dart';
 import '../../features/doctor/patients/presentation/patient_history_page.dart';
-import '../../features/doctor/prescriptions/presentation/prescriptions_list_page.dart';
+import '../../features/doctor/prescriptions/presentation/prescriptions_screen.dart';
 import '../../features/doctor/prescriptions/presentation/prescription_detail_page.dart';
-import '../../features/doctor/prescriptions/presentation/new_prescription_page.dart';
-import '../../features/doctor/prescriptions/presentation/preview_prescription_page.dart';
-import '../../features/doctor/prescriptions/presentation/search_scripts_page.dart';
-import '../../features/doctor/sick_notes/presentation/sick_notes_page.dart';
 import '../../features/doctor/appointments/presentation/appointments_page.dart';
 import '../../features/doctor/billing/presentation/billing_page.dart';
 import '../../features/doctor/settings/presentation/settings_page.dart';
-import '../../features/doctor/settings/presentation/account_settings.dart';
 import '../../features/doctor/settings/presentation/practice_settings.dart';
-import '../../features/doctor/settings/presentation/security_settings.dart';
 import '../../features/doctor/settings/presentation/preferences_settings.dart';
-import '../../features/doctor/settings/presentation/integrations_settings.dart';
+import '../../features/doctor/settings/presentation/security_settings.dart';
 import '../../features/doctor/settings/presentation/login_activity.dart';
+import '../../features/doctor/settings/presentation/integrations_settings.dart';
+import '../../features/doctor/settings/presentation/account_settings.dart';
 import '../../features/doctor/settings/presentation/support_legal_settings.dart';
-import '../../shared/pages/linked_services_page.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
 import '../../features/pharmacy/dashboard/presentation/pharmacy_dashboard_page.dart';
@@ -58,11 +55,10 @@ import '../../features/pharmacy/orders/presentation/orders_page.dart';
 import '../../features/pharmacy/orders/presentation/order_detail_page.dart';
 import '../../features/pharmacy/inventory/presentation/inventory_page.dart';
 import '../../features/pharmacy/dispensing_queue/presentation/dispensing_queue_page.dart';
+import '../../features/pharmacy/notifications/presentation/pharmacy_notifications_page.dart';
 import '../../features/pharmacy/patients/presentation/pharmacy_patients_page.dart';
 import '../../features/pharmacy/billing/presentation/pharmacy_billing_page.dart';
-import '../../features/pharmacy/reports/presentation/pharmacy_reports_page.dart';
 import '../../features/pharmacy/settings/presentation/pharmacy_settings_page.dart';
-import '../../features/pharmacy/settings/presentation/pharmacy_profile_page.dart';
 
 // ─── Shell layouts ────────────────────────────────────────────────────────────
 import '../../shared/widgets/shell_layout.dart';
@@ -71,13 +67,97 @@ import '../../shared/widgets/shell_layout.dart';
 ///
 /// The router reads auth state from the Redux [Store] to handle redirects.
 /// All route strings come from [AppRoutes] — never hardcoded here.
+/// Landing page for a signed-in [role].
+///
+/// An explicit three-way branch on purpose: this used to be
+/// `role == roleDoctor ? doctorDashboard : pharmacyDashboard`, which treated
+/// "not a doctor" as "a pharmacy" and would drop an admin into the pharmacy
+/// panel.
+String _homeFor(String? role) {
+  switch (role) {
+    case AppConstants.roleAdmin:
+      return AppRoutes.adminDashboard;
+    case AppConstants.rolePharmacy:
+      return AppRoutes.pharmacyDashboard;
+    default:
+      return AppRoutes.doctorDashboard;
+  }
+}
+
 GoRouter createRouter(Store<AppState> store) {
   return GoRouter(
-    // Let GoRouter use the browser URL instead of forcing splash.
-    // initialLocation: AppRoutes.splash,
+    initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
-    // TODO: Re-enable auth guards once authentication is implemented.
-    // redirect: (BuildContext context, GoRouterState state) { ... },
+    redirect: (BuildContext context, GoRouterState state) {
+      final authState = store.state.authState;
+      final isAuthenticated = authState.isAuthenticated;
+      final role = authState.role;
+
+      final isPublicRoute = [
+        AppRoutes.splash,
+        AppRoutes.landing,
+        AppRoutes.login,
+        AppRoutes.register,
+        AppRoutes.registerStep2,
+        AppRoutes.pharmacyRegisterStep2,
+        AppRoutes.verifyAccount,
+        AppRoutes.forgotPassword,
+        // Unauthenticated by necessity: no token exists until the admin code
+        // is verified. Unlisted in the UI, not unreachable.
+        AppRoutes.adminLogin,
+        AppRoutes.adminVerify,
+      ].contains(state.matchedLocation);
+
+      // Unauthenticated user trying to access a protected route → login.
+      // Admin routes send the user back to the admin login rather than the
+      // public one, which cannot sign an admin in.
+      if (!isAuthenticated && !isPublicRoute) {
+        return state.matchedLocation.startsWith('/admin')
+            ? AppRoutes.adminLogin
+            : AppRoutes.login;
+      }
+
+      // Authenticated user trying to access a public route → home
+      if (isAuthenticated &&
+          isPublicRoute &&
+          state.matchedLocation != AppRoutes.splash &&
+          state.matchedLocation != AppRoutes.landing) {
+        return _homeFor(role);
+      }
+
+      // Authenticated doctor trying to access pharmacy routes → doctor home
+      if (isAuthenticated &&
+          role == AppConstants.roleDoctor &&
+          state.matchedLocation.startsWith('/pharmacy')) {
+        return AppRoutes.doctorDashboard;
+      }
+
+      // Authenticated pharmacy trying to access doctor routes → pharmacy home
+      if (isAuthenticated &&
+          role == AppConstants.rolePharmacy &&
+          state.matchedLocation.startsWith('/doctor')) {
+        return AppRoutes.pharmacyDashboard;
+      }
+
+      // Anyone who is not an admin trying to access admin routes → own home.
+      // Mirrors the two guards above; without it a doctor or pharmacy token
+      // reaches the admin panel, since being authenticated is not enough.
+      if (isAuthenticated &&
+          role != AppConstants.roleAdmin &&
+          state.matchedLocation.startsWith('/admin')) {
+        return _homeFor(role);
+      }
+
+      // An admin has no pages outside /admin.
+      if (isAuthenticated &&
+          role == AppConstants.roleAdmin &&
+          (state.matchedLocation.startsWith('/doctor') ||
+              state.matchedLocation.startsWith('/pharmacy'))) {
+        return AppRoutes.adminDashboard;
+      }
+
+      return null; // No redirect needed
+    },
     routes: [
       // ─── Public routes ──────────────────────────────────────────────────────
       GoRoute(
@@ -108,29 +188,28 @@ GoRouter createRouter(Store<AppState> store) {
         path: AppRoutes.verifyAccount,
         builder: (context, state) => const VerifyAccountPage(),
       ),
-      GoRoute(
+            GoRoute(
         path: AppRoutes.forgotPassword,
         builder: (context, state) => const ForgotPasswordPage(),
       ),
       GoRoute(
-        path: AppRoutes.features,
-        builder: (context, state) => const FeaturesPage(),
+        path: '/role-selection',
+        builder: (context, state) => const RoleSelectionPage(),
+      ),
+
+      // ─── Admin ───────────────────────────────────────────────────────────────
+      // Reachable only by typing the URL: nothing in the app links here.
+      GoRoute(
+        path: AppRoutes.adminLogin,
+        builder: (context, state) => const AdminLoginPage(),
       ),
       GoRoute(
-        path: AppRoutes.about,
-        builder: (context, state) => const AboutPage(),
+        path: AppRoutes.adminVerify,
+        builder: (context, state) => const AdminVerifyOtpPage(),
       ),
       GoRoute(
-        path: AppRoutes.services,
-        builder: (context, state) => const ServicesPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.howItWorks,
-        builder: (context, state) => const HowItWorksPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.support,
-        builder: (context, state) => const SupportPage(),
+        path: AppRoutes.adminDashboard,
+        builder: (context, state) => const AdminDashboardPage(),
       ),
 
       // ─── Doctor shell (authenticated, role = doctor) ─────────────────────────
@@ -144,9 +223,11 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.doctorDashboard,
             builder: (context, state) => const DoctorDashboardPage(),
           ),
-          GoRoute(
+                    GoRoute(
             path: AppRoutes.doctorPatients,
-            builder: (context, state) => const PatientListPage(),
+            builder: (context, state) => PatientsScreen(onPatientTap: (patient) {
+              // Handle patient tap navigation here
+            }),
           ),
           GoRoute(
             path: AppRoutes.doctorPatientDetail,
@@ -198,31 +279,15 @@ GoRouter createRouter(Store<AppState> store) {
               patientId: state.pathParameters['patientId']!,
             ),
           ),
-          GoRoute(
+                    GoRoute(
             path: AppRoutes.doctorPrescriptions,
-            builder: (context, state) => const PrescriptionsListPage(),
+            builder: (context, state) => const PrescriptionsScreen(),
           ),
           GoRoute(
             path: AppRoutes.doctorPrescriptionDetail,
             builder: (context, state) => PrescriptionDetailPage(
               prescriptionId: state.pathParameters['prescriptionId']!,
             ),
-          ),
-          GoRoute(
-            path: AppRoutes.doctorNewPrescription,
-            builder: (context, state) => const NewPrescriptionPage(),
-          ),
-          GoRoute(
-            path: AppRoutes.doctorPreviewPrescription,
-            builder: (context, state) => const PreviewPrescriptionPage(),
-          ),
-          GoRoute(
-            path: AppRoutes.doctorSearchScripts,
-            builder: (context, state) => const SearchScriptsPage(),
-          ),
-          GoRoute(
-            path: AppRoutes.doctorSickNotes,
-            builder: (context, state) => const SickNotesPage(),
           ),
           GoRoute(
             path: AppRoutes.doctorAppointments,
@@ -232,33 +297,42 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.doctorBilling,
             builder: (context, state) => const BillingPage(),
           ),
-          GoRoute(
-            path: AppRoutes.doctorSettings,
-            builder: (context, state) => const SettingsPage(),
+                    GoRoute(
+                      path: AppRoutes.doctorSettings,
+                      builder: (context, state) => const SettingsPage(),
+                    ),
+                    GoRoute(
+                      path: AppRoutes.doctorInformation,
+                      builder: (context, state) => const InformationPage(),
+                    ),
+                    GoRoute(
+                      path: '${AppRoutes.doctorSettings}account',
+                      builder: (context, state) {
+              final tabParam = state.uri.queryParameters['tab'];
+              final tab = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+              return AccountSettings(initialTab: tab);
+            },
+          ),
+                    
+                    GoRoute(
+            path: AppRoutes.doctorSettingsPractice,
+            builder: (context, state) {
+              final tabParam = state.uri.queryParameters['tab'];
+              final tab = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+              return PracticeSettings(initialTab: tab);
+            },
           ),
           GoRoute(
-            path: AppRoutes.doctorSettingsProfile,
-            builder: (context, state) => const AccountSettings(),
-          ),
-          GoRoute(
-            path: AppRoutes.doctorSettingsProfessional,
-            builder: (context, state) => const AccountSettings(),
-          ),
-          GoRoute(
-            path: AppRoutes.doctorSettingsFees,
-            builder: (context, state) => const PracticeSettings(),
-          ),
-          GoRoute(
-            path: AppRoutes.doctorSettingsNotifications,
+            path: AppRoutes.doctorSettingsPreferences,
             builder: (context, state) => const PreferencesSettings(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsSecurity,
-            builder: (context, state) => const SecuritySettingsPage(),
+            builder: (context, state) => const SecuritySettingsPage(initialTab: 0),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsDevices,
-            builder: (context, state) => const SecuritySettingsPage(),
+            builder: (context, state) => const SecuritySettingsPage(initialTab: 1),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsLoginActivity,
@@ -268,6 +342,23 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.doctorSettingsLinkedServices,
             builder: (context, state) => const IntegrationsSettings(),
           ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsProfile,
+            builder: (context, state) => const AccountSettings(initialTab: 0),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsProfessional,
+            builder: (context, state) => const AccountSettings(initialTab: 1),
+          ),
+          
+                    GoRoute(
+                      path: AppRoutes.doctorSettingsSupportLegal,
+                      builder: (context, state) {
+                        final tabParam = state.uri.queryParameters['tab'];
+                        final tab = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+                        return SupportLegalSettings(initialTab: tab);
+                      },
+                    ),
         ],
       ),
 
@@ -319,20 +410,8 @@ GoRouter createRouter(Store<AppState> store) {
             builder: (context, state) => const PharmacyBillingPage(),
           ),
           GoRoute(
-            path: AppRoutes.pharmacyReports,
-            builder: (context, state) => const PharmacyReportsPage(),
-          ),
-          GoRoute(
             path: AppRoutes.pharmacySettings,
             builder: (context, state) => const PharmacySettingsPage(),
-          ),
-          GoRoute(
-            path: AppRoutes.pharmacySettingsProfile,
-            builder: (context, state) => const PharmacyProfilePage(),
-          ),
-          GoRoute(
-            path: AppRoutes.pharmacySettingsLinkedServices,
-            builder: (context, state) => const LinkedServicesPage(),
           ),
         ],
       ),

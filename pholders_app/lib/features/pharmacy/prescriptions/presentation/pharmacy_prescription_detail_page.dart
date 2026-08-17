@@ -1,7 +1,12 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
+import 'dart:html' as html;
+import 'dart:typed_data';
 
 import '../../../../core/routing/app_routes.dart';
+import '../data/prescription_sample_data.dart';
+import 'prescription_document_pdf.dart';
 
 /// Pharmacy Prescription Detail page matching the Figma design.
 ///
@@ -282,7 +287,7 @@ class _PharmacyPrescriptionDetailPageState
         ),
         const SizedBox(width: 12),
         // Action icons
-        _IconBtn(assetPath: 'assets/printer-icon.png'),
+        _IconBtn(assetPath: 'assets/printer-icon.png', onTap: _printPrescriptionPdf),
         const SizedBox(width: 8),
         _IconBtn(assetPath: 'assets/share-icon.png'),
         const SizedBox(width: 8),
@@ -568,26 +573,59 @@ class _PharmacyPrescriptionDetailPageState
       ),
     );
   }
+
+  Future<void> _printPrescriptionPdf() async {
+    final document = samplePrescriptionDocument(
+      prescriptionId: widget.prescriptionId,
+      currentStatus: _currentStatus,
+    );
+    final Uint8List pdfBytes = await PrescriptionDocumentPdf.build(document);
+    final blob = html.Blob([pdfBytes], 'application/pdf');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..target = '_blank'
+      ..click();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Prescription PDF opened'),
+        backgroundColor: Color(0xFF309CA3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 10)).then((_) {
+        html.Url.revokeObjectUrl(url);
+      }),
+    );
+  }
 }
 
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _IconBtn extends StatelessWidget {
   final String assetPath;
-  const _IconBtn({required this.assetPath});
+  final VoidCallback? onTap;
+  const _IconBtn({required this.assetPath, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: const Color(0x33309CA3),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(7),
-        child: Image.asset(assetPath, width: 16, height: 16),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(100),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: const Color(0x33309CA3),
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(7),
+          child: Image.asset(assetPath, width: 16, height: 16),
+        ),
       ),
     );
   }

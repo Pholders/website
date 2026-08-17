@@ -38,7 +38,7 @@ class AppRoutes {
       '/doctor/patients/:patientId/documents';
   static const String doctorPatientHistory =
       '/doctor/patients/:patientId/history';
-  static const String doctorPrescriptions = '/doctor/prescriptions';
+  static const String doctorPrescriptions = '/prescriptions';
   static const String doctorPrescriptionDetail =
       '/doctor/prescriptions/:prescriptionId';
   static const String doctorNewPrescription = '/doctor/prescriptions/new';
@@ -47,8 +47,9 @@ class AppRoutes {
   static const String doctorSickNotes = '/doctor/sick-notes';
   static const String doctorAppointments = '/doctor/appointments';
   static const String doctorBilling = '/doctor/billing';
-  static const String doctorSettings = '/doctor/settings';
+    static const String doctorSettings = '/doctor/settings';
   static const String doctorSettingsProfile = '/doctor/settings/profile';
+  static const String doctorInformation = '/doctor/information';
   static const String doctorSettingsProfessional =
       '/doctor/settings/professional';
   static const String doctorSettingsFees = '/doctor/settings/fees';
@@ -60,6 +61,11 @@ class AppRoutes {
       '/doctor/settings/login-activity';
   static const String doctorSettingsLinkedServices =
       '/doctor/settings/linked-services';
+  static const String doctorSettingsPreferences = '/doctor/settings/preferences';
+  static const String doctorSettingsPractice = '/doctor/settings/practice';
+  static const String doctorSettingsPracticePage = '/doctor/settings/practice-page';
+  static const String doctorSettingsSupportLegal = '/doctor/settings/support-legal';
+  static const String doctorNotifications = '/doctor/notifications';
 
   // ─── Pharmacy routes ─────────────────────────────────────────────────────────
   static const String pharmacyDashboard = '/pharmacy/dashboard';
@@ -71,9 +77,25 @@ class AppRoutes {
   static const String pharmacyInventory = '/pharmacy/inventory';
   static const String pharmacyDispensingQueue = '/pharmacy/dispensing-queue';
   static const String pharmacyPatients = '/pharmacy/patients';
+  static const String pharmacyNotifications = '/pharmacy/notifications';
   static const String pharmacyReports = '/pharmacy/reports';
   static const String pharmacyBilling = '/pharmacy/billing';
   static const String pharmacySettings = '/pharmacy/settings';
   static const String pharmacySettingsProfile = '/pharmacy/settings/profile';
+  static const String pharmacySettingsPersonalInfo = '/pharmacy/settings/personal-info';
+    static const String pharmacySettingsPharmacyDetails = '/pharmacy/settings/pharmacy-details';
+  static const String pharmacySettingsProfessional = '/pharmacy/settings/professional';
+  static const String pharmacySettingsNotifications = '/pharmacy/settings/notifications';
+  static const String pharmacySettingsNotificationCenter = '/pharmacy/settings/notifications/center';
   static const String pharmacySettingsLinkedServices = '/pharmacy/settings/linked-services';
+
+  // ─── Admin routes ────────────────────────────────────────────────────────────
+  /// Deliberately unadvertised: nothing in the public UI links here. Admins are
+  /// given the URL out of band, so the panel is not discoverable from /login.
+  static const String adminLogin = '/admin/login';
+
+  /// Second leg of the admin login. Admin auth is the only flow in the app that
+  /// requires an emailed code before a token is issued.
+  static const String adminVerify = '/admin/verify';
+  static const String adminDashboard = '/admin/dashboard';
 }

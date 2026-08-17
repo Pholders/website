@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/medical_history_screen.dart';
 
-/// PatientHistoryPage — placeholder until Figma design is implemented.
+/// PatientHistoryPage — displays the medical history for a patient.
 class PatientHistoryPage extends StatelessWidget {
   final String patientId;
 
@@ -8,8 +10,20 @@ class PatientHistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Mock patient data for demonstration
+    final mockPatient = Patient(
+      id: patientId,
+      name: 'Maria Wilson',
+      condition: 'Acne Treatment',
+      lastActivity: '2 hours ago',
+      status: PatientStatus.stable,
+      priority: 'Low',
+      category: PatientCategory.outpatient,
+      avatarInitials: 'MW',
+    );
+
     return Scaffold(
-      body: Center(child: Text('PatientHistoryPage')),
+      body: MedicalHistoryScreen(patient: mockPatient),
     );
   }
 }

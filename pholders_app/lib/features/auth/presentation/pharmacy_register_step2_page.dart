@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/di/service_locator.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_error_message.dart';
 import '../../../core/routing/app_routes.dart';
+import '../../../features/auth/data/models/signup_session.dart';
+import '../../../shared/constants/south_african_locations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/public_navbar.dart';
 
@@ -23,6 +28,12 @@ class _PharmacyRegisterStep2PageState extends State<PharmacyRegisterStep2Page> {
   final _streetAddressController = TextEditingController();
   String _selectedCity = '';
   String _selectedProvince = '';
+  bool _isLoading = false;
+
+  List<String> get _availableCities =>
+      _selectedProvince.isEmpty
+          ? <String>[]
+          : SouthAfricanLocations.citiesByProvince[_selectedProvince] ?? <String>[];
 
   @override
   void dispose() {
@@ -31,6 +42,67 @@ class _PharmacyRegisterStep2PageState extends State<PharmacyRegisterStep2Page> {
     _responsiblePharmacistController.dispose();
     _streetAddressController.dispose();
     super.dispose();
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _submit() async {
+    final session = SignupSession();
+
+    // SignupSession lives in memory only, so a browser refresh on this page
+    // wipes step 1 and we would post a payload of nulls.
+    if (session.email == null ||
+        session.password == null ||
+        session.firstName == null ||
+        session.lastName == null ||
+        session.phone == null) {
+      _showMessage('Your details were lost. Please start registration again.');
+      context.go(AppRoutes.register);
+      return;
+    }
+
+    if (_pharmacyNameController.text.trim().isEmpty ||
+        _licenseNumberController.text.trim().isEmpty ||
+        _responsiblePharmacistController.text.trim().isEmpty ||
+        _streetAddressController.text.trim().isEmpty ||
+        _selectedCity.isEmpty ||
+        _selectedProvince.isEmpty) {
+      _showMessage('Please fill in all pharmacy and location fields.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      // The API expects snake_case. It has no column for the responsible
+      // pharmacist or the street address, so those two inputs are collected
+      // but not submitted.
+      final payload = {
+        'pharmacy_name': _pharmacyNameController.text.trim(),
+        'first_name': session.firstName,
+        'last_name': session.lastName,
+        'email': session.email,
+        'phone': session.phone,
+        'password': session.password,
+        'license_number': _licenseNumberController.text.trim(),
+        'city': _selectedCity,
+        'province': _selectedProvince,
+      };
+
+      await sl<ApiClient>().dio.post('/users/pharmacy/signup', data: payload);
+
+      if (!mounted) return;
+      // Pharmacy signup emails an OTP and leaves the record pending.
+      context.go(AppRoutes.verifyAccount);
+    } catch (e) {
+      _showMessage(
+        apiErrorMessage(e, fallback: 'Registration failed. Please try again.'),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -120,7 +192,6 @@ class _PharmacyRegisterStep2PageState extends State<PharmacyRegisterStep2Page> {
                         ),
                       ),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text(
                             'Create Account',
@@ -134,37 +205,64 @@ class _PharmacyRegisterStep2PageState extends State<PharmacyRegisterStep2Page> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Pharmacy Information
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text('Pharmacy Information',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black)),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(children: [
-                            Expanded(child: _Field(controller: _pharmacyNameController, hint: 'Pharmacy Name')),
-                            const SizedBox(width: 10),
-                            Expanded(child: _Field(controller: _licenseNumberController, hint: 'License Number')),
-                          ]),
-                          const SizedBox(height: 6),
-                          _Field(controller: _responsiblePharmacistController, hint: 'Responsible Pharmacist Name'),
-                          const SizedBox(height: 10),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  // Pharmacy Information
+                                  const Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text('Pharmacy Information',
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(children: [
+                                    Expanded(child: _Field(controller: _pharmacyNameController, hint: 'Pharmacy Name')),
+                                    const SizedBox(width: 10),
+                                    Expanded(child: _Field(controller: _licenseNumberController, hint: 'License Number')),
+                                  ]),
+                                  const SizedBox(height: 6),
+                                  _Field(controller: _responsiblePharmacistController, hint: 'Responsible Pharmacist Name'),
+                                  const SizedBox(height: 10),
 
-                          // Location
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text('Location',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black)),
+                                  // Location
+                                  const Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text('Location',
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  _Field(controller: _streetAddressController, hint: 'Street Address'),
+                                  const SizedBox(height: 6),
+                                  Row(children: [
+                                    Expanded(
+                                      child: _DropdownField(
+                                        hint: 'City',
+                                        value: _selectedCity,
+                                        items: _availableCities,
+                                        onChanged: (v) => setState(() => _selectedCity = v ?? ''),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: _DropdownField(
+                                        hint: 'Province',
+                                        value: _selectedProvince,
+                                        items: SouthAfricanLocations.provinces,
+                                        onChanged: (v) {
+                                          setState(() {
+                                            _selectedProvince = v ?? '';
+                                            _selectedCity = '';
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ]),
+                                  const SizedBox(height: 12),
+                                ],
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          _Field(controller: _streetAddressController, hint: 'Street Address'),
-                          const SizedBox(height: 6),
-                          Row(children: [
-                            Expanded(child: _DropdownField(hint: 'City', value: _selectedCity, onChanged: (v) => setState(() => _selectedCity = v))),
-                            const SizedBox(width: 10),
-                            Expanded(child: _DropdownField(hint: 'Province', value: _selectedProvince, onChanged: (v) => setState(() => _selectedProvince = v))),
-                          ]),
-                          const SizedBox(height: 14),
 
                           // Progress dots
                           Row(
@@ -190,11 +288,20 @@ class _PharmacyRegisterStep2PageState extends State<PharmacyRegisterStep2Page> {
                                 ),
                               ),
                               GestureDetector(
-                                onTap: () => context.go(AppRoutes.verifyAccount),
+                                onTap: _isLoading ? null : _submit,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                                   decoration: BoxDecoration(color: const Color(0xFF1A5C5F), borderRadius: BorderRadius.circular(6)),
-                                  child: const Text('Register', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Text('Register', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
                                 ),
                               ),
                             ],
@@ -246,9 +353,15 @@ class _Field extends StatelessWidget {
 class _DropdownField extends StatelessWidget {
   final String hint;
   final String value;
-  final ValueChanged<String> onChanged;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
 
-  const _DropdownField({required this.hint, required this.value, required this.onChanged});
+  const _DropdownField({
+    required this.hint,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -257,16 +370,27 @@ class _DropdownField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value.isEmpty ? hint : value,
-                style: TextStyle(fontSize: 12, color: value.isEmpty ? Colors.black45 : Colors.black87),
-              ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            isExpanded: true,
+            hint: Text(
+              hint,
+              style: const TextStyle(fontSize: 12, color: Colors.black45),
             ),
-            const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.black38),
-          ],
+            value: value.isEmpty ? null : value,
+            items: items
+                .map(
+                  (item) => DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(
+                      item,
+                      style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: onChanged,
+          ),
         ),
       ),
     );
