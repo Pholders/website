@@ -466,7 +466,6 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                               onRevoke: _isLive && rx.status == RxStatus.approved
                                   ? () => _revokePrescription(rx)
                                   : null,
-                              isLive: _isLive,
                             ))
                         .toList(),
                   ),
@@ -504,10 +503,6 @@ class _RxRow extends StatefulWidget {
   final VoidCallback? onSign;
   final VoidCallback? onRevoke;
 
-  /// Live rows come from the API, which has no update or delete endpoint, so
-  /// editing and deleting are not offered against them.
-  final bool isLive;
-
   const _RxRow({
     required this.prescription,
     required this.onEdit,
@@ -515,7 +510,6 @@ class _RxRow extends StatefulWidget {
     required this.onViewDetails,
     this.onSign,
     this.onRevoke,
-    this.isLive = false,
   });
 
   @override
@@ -535,7 +529,6 @@ class _RxRowState extends State<_RxRow> {
         onViewDetails: widget.onViewDetails,
         onSign: widget.onSign,
         onRevoke: widget.onRevoke,
-        isLive: widget.isLive,
       ),
     );
   }
@@ -624,18 +617,14 @@ class _RxRowState extends State<_RxRow> {
               flex: 2,
               child: Row(
                 children: [
-                  // A prescription is a signed legal record; the API has no
-                  // update or delete endpoint, so these are sample-data only.
-                  if (!widget.isLive) ...[
-                    _RxActionBtn(
-                        icon: Icons.edit_outlined,
-                        onTap: widget.onEdit),
-                    const SizedBox(width: 6),
-                    _RxActionBtn(
-                        icon: Icons.delete_outline,
-                        onTap: widget.onDelete),
-                    const SizedBox(width: 6),
-                  ],
+                  _RxActionBtn(
+                      icon: Icons.edit_outlined,
+                      onTap: widget.onEdit),
+                  const SizedBox(width: 6),
+                  _RxActionBtn(
+                      icon: Icons.delete_outline,
+                      onTap: widget.onDelete),
+                  const SizedBox(width: 6),
                   _RxActionBtn(
                     icon: Icons.more_vert,
                     onTap: () => _showMenu(context),
@@ -728,7 +717,6 @@ class _RxActionsMenu extends StatelessWidget {
   final VoidCallback onViewDetails;
   final VoidCallback? onSign;
   final VoidCallback? onRevoke;
-  final bool isLive;
 
   const _RxActionsMenu({
     required this.onEdit,
@@ -736,7 +724,6 @@ class _RxActionsMenu extends StatelessWidget {
     required this.onViewDetails,
     this.onSign,
     this.onRevoke,
-    this.isLive = false,
   });
 
   @override
@@ -752,20 +739,14 @@ class _RxActionsMenu extends StatelessWidget {
       if (onRevoke != null)
         _RxAction(label: 'Revoke Prescription', icon: Icons.block_outlined,
             onTap: () { Navigator.pop(context); onRevoke!(); }),
-      // Sample-data only. Against the API none of these can work: there is no
-      // update or delete endpoint for a prescription, dispensing belongs to
-      // the pharmacy role, and nothing implements sending one on. Revoke is
-      // the only way to withdraw a script, and it keeps an audit trail.
-      if (!isLive) ...[
-        _RxAction(label: 'Edit Prescription', icon: Icons.edit_outlined,
-            onTap: () { Navigator.pop(context); onEdit(); }),
-        _RxAction(label: 'Mark as Dispensed', icon: Icons.check_circle_outline,
-            onTap: () => Navigator.pop(context)),
-        _RxAction(label: 'Send to Pharmacy', icon: Icons.local_pharmacy_outlined,
-            onTap: () => Navigator.pop(context)),
-        _RxAction(label: 'Delete', icon: Icons.delete_outline,
-            onTap: () { Navigator.pop(context); onDelete(); }),
-      ],
+      _RxAction(label: 'Edit Prescription', icon: Icons.edit_outlined,
+          onTap: () { Navigator.pop(context); onEdit(); }),
+      _RxAction(label: 'Mark as Dispensed', icon: Icons.check_circle_outline,
+          onTap: () => Navigator.pop(context)),
+      _RxAction(label: 'Send to Pharmacy', icon: Icons.local_pharmacy_outlined,
+          onTap: () => Navigator.pop(context)),
+      _RxAction(label: 'Delete', icon: Icons.delete_outline,
+          onTap: () { Navigator.pop(context); onDelete(); }),
     ];
 
     return Dialog(
