@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
+import '../../../../shared/widgets/settings_sidebar.dart';
+import '../../../../core/routing/app_routes.dart';
 
 class AccountSettings extends StatelessWidget {
   const AccountSettings({super.key, this.initialTab = 0});
@@ -14,6 +17,58 @@ class AccountSettings extends StatelessWidget {
     return initialTab == 1
         ? const _ProfessionalDetails()
         : const _ProfileDetails();
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'personal_information':
+        context.go('${AppRoutes.doctorSettings}account?tab=0');
+        break;
+      case 'professional':
+        context.go('${AppRoutes.doctorSettings}account?tab=1');
+        break;
+      case 'fees_setup':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -27,9 +82,23 @@ class _ProfileDetails extends StatefulWidget {
 class _ProfileDetailsState extends State<_ProfileDetails> {
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Profile Details',
-      children: [
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'personal_information',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Profile Details',
+                children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -40,7 +109,7 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(110),
                     child: Image.asset(
-                      'assets/icons/DrSam.png',
+                      'assets/doctors.png',
                       width: 190,
                       height: 180,
                       fit: BoxFit.cover,
@@ -89,7 +158,7 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
                 ],
               ),
             ),
-            const SizedBox(width: 26),
+                        const SizedBox(width: 26),
             const Expanded(
               flex: 12,
               child: _ProfileForm(),
@@ -97,7 +166,64 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
           ],
         ),
       ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'personal_information':
+        context.go('${AppRoutes.doctorSettings}account?tab=0');
+        break;
+      case 'professional':
+        context.go('${AppRoutes.doctorSettings}account?tab=1');
+        break;
+      case 'fees_setup':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -246,9 +372,23 @@ class _ProfessionalDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Professional Details',
-      children: [
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+                    // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'professional',
+            onMenuItemSelected: (id) => AccountSettings()._navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Professional Details',
+                children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
@@ -411,12 +551,17 @@ class _ProfessionalDetails extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 44),
+                const SizedBox(height: 44),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: _SignatureArea(),
         ),
       ],
+              ),
+            ),
+          ),
+                ],
+      ),
     );
   }
 }

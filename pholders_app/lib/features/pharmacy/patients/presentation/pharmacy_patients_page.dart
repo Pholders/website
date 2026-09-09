@@ -1,13 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
-/// PharmacyPatientsPage — placeholder until Figma design is implemented.
+/// PharmacyPatientsPage placeholder.
+///
+/// The pharmacy "patients" route is intentionally blank for now.
 class PharmacyPatientsPage extends StatelessWidget {
   const PharmacyPatientsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: Text('PharmacyPatientsPage')),
+      backgroundColor: Color(0xFFE8F8F8),
+      body: SizedBox.expand(),
     );
   }
 }

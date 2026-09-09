@@ -2,6 +2,7 @@
 enum IconType {
   account,
   practice,
+  notifications,
   security,
   preferences,
   integrations,
@@ -11,6 +12,10 @@ enum IconType {
 
 /// A top-level settings menu item that can have sub-items.
 class SettingsMenuItem {
+  final String id;
+  final String label;
+  final IconType icon;
+  final List<SettingsSubMenuItem>? subItems;
 
   const SettingsMenuItem({
     required this.id,
@@ -18,19 +23,15 @@ class SettingsMenuItem {
     required this.icon,
     this.subItems,
   });
-  final String id;
-  final String label;
-  final IconType icon;
-  final List<SettingsSubMenuItem>? subItems;
 }
 
 /// A sub-item nested under a [SettingsMenuItem].
 class SettingsSubMenuItem {
+  final String id;
+  final String label;
 
   const SettingsSubMenuItem({
     required this.id,
     required this.label,
   });
-  final String id;
-  final String label;
 }

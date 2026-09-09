@@ -58,27 +58,27 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
     }
   }
 
-  void _initializeMenuItems() {
-    menuItems = [
-      const SettingsMenuItem(
-        id: 'account',
-        label: 'Account',
-        icon: IconType.account,
-        subItems: [
-          SettingsSubMenuItem(id: 'profile', label: 'Profile'),
-          SettingsSubMenuItem(id: 'professional', label: 'Professional'),
-        ],
-      ),
-      const SettingsMenuItem(
-        id: 'practice',
-        label: 'Practice',
-        icon: IconType.practice,
-        subItems: [
-          SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
-          SettingsSubMenuItem(id: 'notifications', label: 'Notifications'),
-        ],
-      ),
-      const SettingsMenuItem(
+        void _initializeMenuItems() {
+        menuItems = [
+                SettingsMenuItem(
+            id: 'account',
+            label: 'Account',
+            icon: IconType.account,
+            subItems: [
+              SettingsSubMenuItem(id: 'personal_information', label: 'Personal Information'),
+              SettingsSubMenuItem(id: 'professional', label: 'Professional Details'),
+            ],
+          ),
+          SettingsMenuItem(
+            id: 'practice',
+            label: 'Practice',
+            icon: IconType.practice,
+            subItems: [
+              SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
+              SettingsSubMenuItem(id: 'notification_settings', label: 'Notification Settings'),
+            ],
+          ),
+      SettingsMenuItem(
         id: 'security',
         label: 'Security',
         icon: IconType.security,
@@ -88,15 +88,15 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
           SettingsSubMenuItem(id: 'login_activity', label: 'Login Activity'),
         ],
       ),
-      const SettingsMenuItem(
+      SettingsMenuItem(
         id: 'preferences',
         label: 'Preferences',
         icon: IconType.preferences,
         subItems: [
-          SettingsSubMenuItem(id: 'preferences_notifications', label: 'Notifications'),
+          SettingsSubMenuItem(id: 'preferences_settings', label: 'Preferences Settings'),
         ],
       ),
-      const SettingsMenuItem(
+      SettingsMenuItem(
         id: 'integrations',
         label: 'Integrations',
         icon: IconType.integrations,
@@ -104,7 +104,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
           SettingsSubMenuItem(id: 'linked_services', label: 'Linked Services'),
         ],
       ),
-      const SettingsMenuItem(
+      SettingsMenuItem(
         id: 'support_legal',
         label: 'Support & Legal',
         icon: IconType.supportLegal,
@@ -118,12 +118,14 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
     ];
   }
 
-  IconData _getIconData(IconType iconType) {
+    IconData _getIconData(IconType iconType) {
     switch (iconType) {
       case IconType.account:
         return Icons.person_outline;
       case IconType.practice:
         return Icons.business_outlined;
+      case IconType.notifications:
+        return Icons.notifications_outlined;
       case IconType.security:
         return Icons.security_outlined;
       case IconType.preferences:
@@ -149,11 +151,11 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
             child: Text(
               'Settings',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: _textDark,

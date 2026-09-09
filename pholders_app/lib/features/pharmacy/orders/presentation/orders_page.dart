@@ -37,7 +37,7 @@ class _OrdersPageState extends State<OrdersPage> {
   // Mock data
   final List<_OrderData> _orders = List.generate(
     13,
-    (i) => const _OrderData(
+    (i) => _OrderData(
       orderId: '#10234',
       patient: 'Prince Mashumu',
       items: '2 Items',
@@ -160,7 +160,7 @@ class _OrdersPageState extends State<OrdersPage> {
           );
         }),
         const Spacer(),
-        const Text(
+        Text(
           'Total: 140',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted),
         ),
@@ -258,7 +258,7 @@ class _OrdersPageState extends State<OrdersPage> {
               flex: 2,
               child: Text(
                 order.items,
-                style: const TextStyle(fontSize: 13, color: _textMuted),
+                style: TextStyle(fontSize: 13, color: _textMuted),
               ),
             ),
             // Total
@@ -289,7 +289,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   const SizedBox(width: 6),
                   Text(
                     order.payment,
-                    style: const TextStyle(fontSize: 12, color: _textMuted),
+                    style: TextStyle(fontSize: 12, color: _textMuted),
                   ),
                 ],
               ),
@@ -310,7 +310,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   const SizedBox(width: 6),
                   Text(
                     order.status,
-                    style: const TextStyle(fontSize: 12, color: _textMuted),
+                    style: TextStyle(fontSize: 12, color: _textMuted),
                   ),
                 ],
               ),
@@ -320,20 +320,24 @@ class _OrdersPageState extends State<OrdersPage> {
               flex: 2,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6DD0D8),
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-                  ),
-                  child: const Text(
-                    'Mark Ready',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                child: InkWell(
+                  onTap: order.status != 'Completed' ? () => _advanceOrder(order) : null,
+                  borderRadius: BorderRadius.circular(25),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: order.status != 'Completed' ? const Color(0xFF6DD0D8) : const Color(0xFFE5E7EB),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+                    ),
+                    child: Text(
+                      _orderActionLabel(order.status),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: order.status != 'Completed' ? Colors.white : const Color(0xFF6B7280),
+                      ),
                     ),
                   ),
                 ),
@@ -344,13 +348,58 @@ class _OrdersPageState extends State<OrdersPage> {
       ),
     );
   }
+
+  String _orderActionLabel(String status) {
+    switch (status) {
+      case 'Processing': return 'Mark Ready';
+      case 'Ready': return 'Deliver';
+      case 'Out for Delivery': return 'Complete';
+      case 'Completed': return 'Done';
+      default: return 'Mark Ready';
+    }
+  }
+
+  void _advanceOrder(_OrderData order) {
+    String? next;
+    switch (order.status) {
+      case 'Processing': next = 'Ready'; break;
+      case 'Ready': next = 'Out for Delivery'; break;
+      case 'Out for Delivery': next = 'Completed'; break;
+    }
+    if (next == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Move to "$next"?', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        content: Text('Order ${order.orderId} — ${order.patient}\nPatient will be notified.', style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280)))),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() => order.status = next!);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('✓ Order ${order.orderId} — $next'),
+                backgroundColor: const Color(0xFF309CA3),
+                behavior: SnackBarBehavior.floating,
+              ));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF309CA3), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _ColHeader extends StatelessWidget {
-  const _ColHeader(this.text);
   final String text;
+  const _ColHeader(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -368,8 +417,14 @@ class _ColHeader extends StatelessWidget {
 // ─── Data model ──────────────────────────────────────────────────────────────
 
 class _OrderData {
+  final String orderId;
+  final String patient;
+  final String items;
+  final String total;
+  final String payment;
+  String status;
 
-  const _OrderData({
+  _OrderData({
     required this.orderId,
     required this.patient,
     required this.items,
@@ -377,10 +432,4 @@ class _OrderData {
     required this.payment,
     required this.status,
   });
-  final String orderId;
-  final String patient;
-  final String items;
-  final String total;
-  final String payment;
-  final String status;
 }
