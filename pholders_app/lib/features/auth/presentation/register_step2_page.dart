@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_routes.dart';
+import '../../../shared/constants/sa_locations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/public_navbar.dart';
 
@@ -44,8 +45,8 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
         child: Column(
           children: [
             // ── Navbar ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.only(top: 20, left: 60, right: 60),
+            const Padding(
+              padding: EdgeInsets.only(top: 20, left: 60, right: 60),
               child: PublicNavbar(
                 actionLabel: 'Login',
                 actionRoute: AppRoutes.login,
@@ -165,9 +166,30 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                           ),
                           const SizedBox(height: 8),
                           Row(children: [
-                            Expanded(child: _DropdownField(hint: 'City', value: _selectedCity, onChanged: (v) => setState(() => _selectedCity = v))),
+                            Expanded(
+                              child: _DropdownField(
+                                hint: 'Province',
+                                value: _selectedProvince,
+                                items: SaLocations.provinces,
+                                onChanged: (v) => setState(() {
+                                  _selectedProvince = v;
+                                  // The city list depends on the province, so a
+                                  // city picked under the previous one must not
+                                  // survive the change.
+                                  _selectedCity = '';
+                                }),
+                              ),
+                            ),
                             const SizedBox(width: 10),
-                            Expanded(child: _DropdownField(hint: 'Province', value: _selectedProvince, onChanged: (v) => setState(() => _selectedProvince = v))),
+                            Expanded(
+                              child: _DropdownField(
+                                hint: 'City',
+                                disabledHint: 'Select a province first',
+                                value: _selectedCity,
+                                items: SaLocations.citiesFor(_selectedProvince),
+                                onChanged: (v) => setState(() => _selectedCity = v),
+                              ),
+                            ),
                           ]),
                           const Spacer(),
 
@@ -175,7 +197,7 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.4))),
+                              Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.4))),
                               const SizedBox(width: 6),
                               Container(width: 10, height: 10, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF6DD0D8))),
                             ],
@@ -239,10 +261,10 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
 // ─── Form field ───────────────────────────────────────────────────────────────
 
 class _Field extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
 
   const _Field({required this.controller, required this.hint});
+  final TextEditingController controller;
+  final String hint;
 
   @override
   Widget build(BuildContext context) {
@@ -268,28 +290,65 @@ class _Field extends StatelessWidget {
 // ─── Dropdown field ───────────────────────────────────────────────────────────
 
 class _DropdownField extends StatelessWidget {
+
+  const _DropdownField({
+    required this.hint,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.disabledHint,
+  });
+
   final String hint;
+
+  /// The current selection, or '' when nothing is chosen yet.
   final String value;
+
+  /// The options to offer. Empty disables the field.
+  final List<String> items;
   final ValueChanged<String> onChanged;
 
-  const _DropdownField({required this.hint, required this.value, required this.onChanged});
+  /// Shown instead of [hint] when there is nothing to choose from yet.
+  final String? disabledHint;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = items.isNotEmpty;
+    // DropdownButton asserts if `value` is not among its items, which happens
+    // for a moment after the province changes and clears the city.
+    final selected = items.contains(value) ? value : null;
+
     return Container(
       height: 36,
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
       padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              value.isEmpty ? hint : value,
-              style: TextStyle(fontSize: 12, color: value.isEmpty ? Colors.black38 : Colors.black87),
-            ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selected,
+          isExpanded: true,
+          isDense: true,
+          menuMaxHeight: 280,
+          borderRadius: BorderRadius.circular(6),
+          hint: Text(
+            enabled ? hint : (disabledHint ?? hint),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Colors.black38),
           ),
-          const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.black38),
-        ],
+          icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.black38),
+          style: const TextStyle(fontSize: 12, color: Colors.black87),
+          items: [
+            for (final item in items)
+              DropdownMenuItem<String>(
+                value: item,
+                child: Text(item, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: enabled
+              ? (v) {
+                  if (v != null) onChanged(v);
+                }
+              : null,
+        ),
       ),
     );
   }

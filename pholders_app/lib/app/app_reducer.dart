@@ -1,5 +1,6 @@
 import 'app_state.dart';
 import '../core/auth/auth_reducer.dart';
+import '../features/doctor/appointments/redux/appointments_reducer.dart';
 
 /// Root reducer that combines all feature reducers.
 ///
@@ -8,7 +9,9 @@ import '../core/auth/auth_reducer.dart';
 AppState appReducer(AppState state, dynamic action) {
   return AppState(
     authState: authReducer(state.authState, action),
+    appointmentsState:
+        appointmentsReducer(state.appointmentsState, action),
     // Add more reducers here as features are implemented:
-    // dashboardState: dashboardReducer(state.dashboardState, action),
+    // patientsState: patientsReducer(state.patientsState, action),
   );
 }

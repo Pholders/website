@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:redux/redux.dart';
 
@@ -12,6 +12,7 @@ import '../../features/auth/presentation/landing_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/doctor_register_step2_page.dart';
+import '../../features/auth/data/models/doctor_registration_draft.dart';
 import '../../features/auth/presentation/verify_account_page.dart';
 import '../../features/auth/presentation/forgot_password_page.dart';
 import '../../features/public/presentation/features_page.dart';
@@ -46,7 +47,6 @@ import '../../features/doctor/settings/presentation/security_settings.dart';
 import '../../features/doctor/settings/presentation/preferences_settings.dart';
 import '../../features/doctor/settings/presentation/integrations_settings.dart';
 import '../../features/doctor/settings/presentation/login_activity.dart';
-import '../../features/doctor/settings/presentation/support_legal_settings.dart';
 import '../../shared/pages/linked_services_page.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
@@ -74,8 +74,10 @@ GoRouter createRouter(Store<AppState> store) {
     // Let GoRouter use the browser URL instead of forcing splash.
     // initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
-    // TODO: Re-enable auth guards once authentication is implemented.
-    // redirect: (BuildContext context, GoRouterState state) { ... },
+    // Re-run [_guard] whenever the auth slice changes (login, logout, or the
+    // stored session finishing its restore).
+    refreshListenable: _AuthChangeNotifier(store),
+    redirect: (context, state) => _guard(store, state),
     routes: [
       // ─── Public routes ──────────────────────────────────────────────────────
       GoRoute(
@@ -96,7 +98,10 @@ GoRouter createRouter(Store<AppState> store) {
       ),
       GoRoute(
         path: AppRoutes.registerStep2,
-        builder: (context, state) => const DoctorRegisterStep2Page(),
+        // Step 1 hands the personal details across as `extra`.
+        builder: (context, state) => DoctorRegisterStep2Page(
+          draft: state.extra as DoctorRegistrationDraft?,
+        ),
       ),
       GoRoute(
         path: AppRoutes.verifyAccount,
@@ -328,4 +333,76 @@ GoRouter createRouter(Store<AppState> store) {
       ),
     ],
   );
+}
+
+/// Route guard: keeps signed-out users out of the app shells, and signed-in
+/// users out of the login and registration pages.
+///
+/// Returns null to allow the requested location, or a path to redirect to.
+String? _guard(Store<AppState> store, GoRouterState state) {
+  final auth = store.state.authState;
+  final location = state.matchedLocation;
+
+  final isDoctorArea = location.startsWith('/doctor');
+  final isPharmacyArea = location.startsWith('/pharmacy');
+  final isProtected = isDoctorArea || isPharmacyArea;
+
+  // While the stored session is still being read, let the request through.
+  // This listenable fires again once the restore finishes, and the guard runs
+  // a second time with the real answer — so a refresh on /doctor/dashboard
+  // does not bounce a signed-in doctor to the login page.
+  if (auth.isRestoring) return null;
+
+  if (isProtected && !auth.isAuthenticated) return AppRoutes.login;
+
+  if (auth.isAuthenticated) {
+    final home = auth.role == AppConstants.roleDoctor
+        ? AppRoutes.doctorDashboard
+        : AppRoutes.pharmacyDashboard;
+
+    // Already signed in — skip the auth pages.
+    const authPages = {
+      AppRoutes.login,
+      AppRoutes.register,
+      AppRoutes.registerStep2,
+      AppRoutes.splash,
+    };
+    if (authPages.contains(location)) return home;
+
+    // Signed in with the wrong role for this area.
+    if (isDoctorArea && auth.role != AppConstants.roleDoctor) return home;
+    if (isPharmacyArea && auth.role != AppConstants.rolePharmacy) return home;
+  }
+
+  return null;
+}
+
+/// Bridges the Redux [Store] to GoRouter's [Listenable] based refresh.
+///
+/// Notifies only when the fields the guard actually reads change, so routing
+/// is not re-evaluated on every unrelated dispatch.
+class _AuthChangeNotifier extends ChangeNotifier {
+  _AuthChangeNotifier(Store<AppState> store) {
+    var last = _snapshot(store);
+    _unsubscribe = store.onChange.listen((_) {
+      final next = _snapshot(store);
+      if (next != last) {
+        last = next;
+        notifyListeners();
+      }
+    }).cancel;
+  }
+
+  late final Future<void> Function() _unsubscribe;
+
+  static String _snapshot(Store<AppState> store) {
+    final a = store.state.authState;
+    return '${a.isAuthenticated}|${a.role}|${a.isRestoring}';
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe();
+    super.dispose();
+  }
 }

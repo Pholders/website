@@ -1,6 +1,11 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:redux/redux.dart';
 
+import '../../../../app/app_state.dart';
 import '../../../../shared/theme/app_theme.dart';
+import '../data/models/appointment.dart';
+import '../redux/appointments_actions.dart';
 
 /// Doctor Appointments page matching Figma "List of appointments".
 class AppointmentsPage extends StatefulWidget {
@@ -14,34 +19,17 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   int _selectedTab = 0;
   String _viewMode = 'Day';
 
-  final List<_AppointmentData> _appointments = [
-    _AppointmentData(
-      time: '11:00-12:00',
-      date: '26 Apr 2026',
-      service: 'Treatment of diabetes',
-      patient: 'Prince Mashumu',
-      status: 'Scheduled',
-      hour: 9,
-      cardColor: Color(0xFFA382FE),
-      borderColor: Color(0xFF992D9D),
-    ),
-    _AppointmentData(
-      time: '11:00-12:00',
-      date: '26 Apr 2026',
-      service: 'Treatment of diabetes',
-      patient: 'Maria Wilson',
-      status: 'Scheduled',
-      hour: 10,
-    ),
-    _AppointmentData(
-      time: '11:00-12:00',
-      date: '26 Apr 2026',
-      service: 'Treatment of diabetes',
-      patient: 'Maria Wilson',
-      status: 'Scheduled',
-      hour: 12,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Dispatch after the first frame so the store is available via context.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        StoreProvider.of<AppState>(context)
+            .dispatch(const LoadAppointmentsAction());
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +40,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFF6DD0D8).withOpacity(0.15),
+            color: const Color(0xFF6DD0D8).withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.all(24),
@@ -102,8 +90,13 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                       ),
                       const Divider(height: 1, color: AppTheme.divider),
                       Expanded(
-                        child: SingleChildScrollView(
-                          child: _TimeGrid(appointments: _appointments),
+                        child: StoreConnector<AppState, _AppointmentsViewModel>(
+                          converter: _AppointmentsViewModel.fromStore,
+                          builder: (context, vm) => _AppointmentsBody(
+                            vm: vm,
+                            onRetry: () => StoreProvider.of<AppState>(context)
+                                .dispatch(const LoadAppointmentsAction()),
+                          ),
                         ),
                       ),
                     ],
@@ -121,10 +114,10 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
 
 class _TabBar extends StatelessWidget {
-  final int selectedIndex;
-  final ValueChanged<int> onTabChanged;
 
   const _TabBar({required this.selectedIndex, required this.onTabChanged});
+  final int selectedIndex;
+  final ValueChanged<int> onTabChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -179,13 +172,13 @@ class _TabBar extends StatelessWidget {
 // ─── Calendar header ──────────────────────────────────────────────────────────
 
 class _CalendarHeader extends StatelessWidget {
-  final String viewMode;
-  final ValueChanged<String> onViewModeChanged;
 
   const _CalendarHeader({
     required this.viewMode,
     required this.onViewModeChanged,
   });
+  final String viewMode;
+  final ValueChanged<String> onViewModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -193,9 +186,9 @@ class _CalendarHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
-          Icon(Icons.chevron_left, size: 22, color: AppTheme.textSecondary),
+          const Icon(Icons.chevron_left, size: 22, color: AppTheme.textSecondary),
           const SizedBox(width: 4),
-          Icon(Icons.chevron_right, size: 22, color: AppTheme.textSecondary),
+          const Icon(Icons.chevron_right, size: 22, color: AppTheme.textSecondary),
           const SizedBox(width: 12),
           const Text(
             '15 April 2026',
@@ -234,10 +227,10 @@ class _CalendarHeader extends StatelessWidget {
 }
 
 class _ViewToggle extends StatelessWidget {
-  final String selected;
-  final ValueChanged<String> onChanged;
 
   const _ViewToggle({required this.selected, required this.onChanged});
+  final String selected;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -283,19 +276,33 @@ class _ViewToggle extends StatelessWidget {
 // ─── Time grid ────────────────────────────────────────────────────────────────
 
 class _TimeGrid extends StatelessWidget {
-  final List<_AppointmentData> appointments;
 
   const _TimeGrid({required this.appointments});
+  final List<Appointment> appointments;
+
+  /// Rows to draw: every hour that has a booking, widened to the 9am-12pm
+  /// window from the design so the grid never collapses to a single row.
+  List<int> get _hours {
+    final booked = appointments.map((a) => a.hour).toSet();
+    final start = [9, ...booked].reduce((a, b) => a < b ? a : b);
+    final end = [12, ...booked].reduce((a, b) => a > b ? a : b);
+    return [for (var h = start; h <= end; h++) h];
+  }
+
+  static String _hourLabel(int hour) {
+    if (hour == 0) return '12 am';
+    if (hour == 12) return '12 pm';
+    return hour < 12 ? '$hour am' : '${hour - 12} pm';
+  }
 
   @override
   Widget build(BuildContext context) {
-    const hours = [9, 10, 11, 12];
-    const hourLabels = ['9 am', '10 am', '11 am', '12 am'];
+    final hours = _hours;
 
     return Column(
       children: List.generate(hours.length, (i) {
         final hour = hours[i];
-        final label = hourLabels[i];
+        final label = _hourLabel(hour);
         final appts = appointments.where((a) => a.hour == hour).toList();
 
         return Container(
@@ -345,17 +352,17 @@ class _TimeGrid extends StatelessWidget {
 // ─── Appointment card ─────────────────────────────────────────────────────────
 
 class _AppointmentCard extends StatelessWidget {
-  final _AppointmentData data;
 
   const _AppointmentCard({required this.data});
+  final Appointment data;
 
   @override
   Widget build(BuildContext context) {
     const tealLight = Color(0xFFE0F5F5);
     const tealBorder = Color(0xFF309CA3);
 
-    final bgColor = data.cardColor?.withOpacity(0.2) ?? tealLight;
-    final leftBorder = data.borderColor ?? tealBorder;
+    const bgColor = tealLight;
+    const leftBorder = tealBorder;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 580),
@@ -365,7 +372,7 @@ class _AppointmentCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border(
+          border: const Border(
             left: BorderSide(color: leftBorder, width: 3),
           ),
         ),
@@ -378,7 +385,7 @@ class _AppointmentCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  data.time,
+                  data.timeRange,
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -387,7 +394,7 @@ class _AppointmentCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  data.date,
+                  data.formattedDate,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -409,7 +416,7 @@ class _AppointmentCard extends StatelessWidget {
                 const Text('Service',
                     style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                 const SizedBox(height: 2),
-                Text(data.service,
+                Text(data.reason ?? 'Consultation',
                     style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -429,7 +436,7 @@ class _AppointmentCard extends StatelessWidget {
                 const Text('Patient',
                     style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                 const SizedBox(height: 2),
-                Text(data.patient,
+                Text(data.patientName,
                     style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -447,7 +454,7 @@ class _AppointmentCard extends StatelessWidget {
               const Text('Status',
                   style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
               const SizedBox(height: 4),
-              _StatusBadge(status: data.status),
+              _StatusBadge(status: data.statusLabel),
             ],
           ),
 
@@ -467,8 +474,8 @@ class _AppointmentCard extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  final String status;
   const _StatusBadge({required this.status});
+  final String status;
 
   @override
   Widget build(BuildContext context) {
@@ -496,26 +503,126 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-// ─── Data model ───────────────────────────────────────────────────────────────
+// ─── Store bindings ───────────────────────────────────────────────────────────
 
-class _AppointmentData {
-  final String time;
-  final String date;
-  final String service;
-  final String patient;
-  final String status;
-  final int hour;
-  final Color? cardColor;
-  final Color? borderColor;
-
-  const _AppointmentData({
-    required this.time,
-    required this.date,
-    required this.service,
-    required this.patient,
-    required this.status,
-    required this.hour,
-    this.cardColor,
-    this.borderColor,
+class _AppointmentsViewModel {
+  const _AppointmentsViewModel({
+    required this.appointments,
+    required this.isLoading,
+    required this.hasLoadedOnce,
+    this.errorMessage,
   });
+
+  factory _AppointmentsViewModel.fromStore(Store<AppState> store) {
+    final state = store.state.appointmentsState;
+    return _AppointmentsViewModel(
+      appointments: state.appointments,
+      isLoading: state.isLoading,
+      hasLoadedOnce: state.hasLoadedOnce,
+      errorMessage: state.errorMessage,
+    );
+  }
+
+  final List<Appointment> appointments;
+  final bool isLoading;
+  final bool hasLoadedOnce;
+  final String? errorMessage;
+}
+
+/// Switches between the loading, error, empty and populated states of the
+/// calendar area.
+class _AppointmentsBody extends StatelessWidget {
+  const _AppointmentsBody({required this.vm, required this.onRetry});
+
+  final _AppointmentsViewModel vm;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    // Only block the whole area on the very first load; later refreshes keep
+    // the existing appointments on screen.
+    if (vm.isLoading && !vm.hasLoadedOnce) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFF309CA3)),
+              SizedBox(height: 16),
+              // The API sleeps on Render's free tier, so the first request
+              // after a while genuinely can take half a minute.
+              Text(
+                'Loading appointments…',
+                style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (vm.errorMessage != null && vm.appointments.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_outlined,
+                  size: 40, color: AppTheme.textSecondary),
+              const SizedBox(height: 12),
+              Text(
+                vm.errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (vm.appointments.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.event_available_outlined,
+                  size: 40, color: AppTheme.textSecondary),
+              SizedBox(height: 12),
+              Text(
+                'No appointments waiting for you',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              SizedBox(height: 6),
+              // Worth spelling out: the endpoint only returns appointments the
+              // doctor has not accepted yet, so an empty list is not the same
+              // as an empty diary.
+              Text(
+                'Appointments appear here until you accept them.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: _TimeGrid(appointments: vm.appointments),
+    );
+  }
 }

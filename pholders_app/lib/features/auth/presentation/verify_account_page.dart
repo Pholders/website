@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
+import 'package:redux/redux.dart';
 
+import '../../../app/app_state.dart';
+import '../../../core/auth/auth_actions.dart';
 import '../../../core/routing/app_routes.dart';
 import 'widgets/auth_widgets.dart';
 
@@ -19,6 +23,29 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
       List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
+  /// The six boxes joined into one code.
+  String get _code => _controllers.map((c) => c.text.trim()).join();
+
+  void _submit(String? email) {
+    if (email == null) {
+      // Nothing to verify against, so send the user to sign in instead.
+      context.go(AppRoutes.login);
+      return;
+    }
+    if (_code.length != 6) return;
+    StoreProvider.of<AppState>(context)
+        .dispatch(VerifyEmailRequestAction(email: email, otpCode: _code));
+  }
+
+  void _resend(String? email) {
+    if (email == null) return;
+    for (final c in _controllers) {
+      c.clear();
+    }
+    StoreProvider.of<AppState>(context)
+        .dispatch(RequestVerificationOtpAction(email: email));
+  }
+
   @override
   void dispose() {
     for (final c in _controllers) {
@@ -32,6 +59,19 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
 
   @override
   Widget build(BuildContext context) {
+    return StoreConnector<AppState, _VerifyViewModel>(
+      converter: _VerifyViewModel.fromStore,
+      onWillChange: (previous, next) {
+        // Activation succeeded, so hand the user over to sign in.
+        if (previous?.isVerified == false && next.isVerified) {
+          context.go(AppRoutes.login);
+        }
+      },
+      builder: _buildPage,
+    );
+  }
+
+  Widget _buildPage(BuildContext context, _VerifyViewModel vm) {
     final size = MediaQuery.sizeOf(context);
 
     return Scaffold(
@@ -143,19 +183,63 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
                     ),
                     const SizedBox(height: 16),
 
+                    // The deployed API still runs in development mode, where
+                    // it returns the activation code in the response instead
+                    // of only emailing it. Surface it so the code is usable
+                    // while no mailbox receives it.
+                    if (vm.devOtpCode != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF4E5),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFFD9A0)),
+                        ),
+                        child: Text(
+                          'Development mode: your code is ${vm.devOtpCode}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF8A5300),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    if (vm.errorMessage != null) ...[
+                      Text(
+                        vm.errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFB3261E),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
                     // Resend
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Resend 00:26s',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.black45,
+                        Flexible(
+                          child: Text(
+                            vm.email == null
+                                ? 'No pending registration'
+                                : 'Sent to ${vm.email}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.black45,
+                            ),
                           ),
                         ),
                         GestureDetector(
-                          onTap: () {},
+                          onTap: vm.isLoading ? null : () => _resend(vm.email),
                           child: const Text(
                             "Didn't receive it? Send Again",
                             style: TextStyle(
@@ -171,8 +255,8 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
 
                     AuthSubmitButton(
                       label: 'Verify',
-                      isLoading: false,
-                      onPressed: () => context.go(AppRoutes.login),
+                      isLoading: vm.isLoading,
+                      onPressed: () => _submit(vm.email),
                     ),
                   ],
                 ),
@@ -183,4 +267,36 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
       ),
     );
   }
+}
+
+// Store bindings ------------------------------------------------------------
+
+class _VerifyViewModel {
+  const _VerifyViewModel({
+    required this.isLoading,
+    required this.isVerified,
+    this.email,
+    this.devOtpCode,
+    this.errorMessage,
+  });
+
+  factory _VerifyViewModel.fromStore(Store<AppState> store) {
+    final auth = store.state.authState;
+    return _VerifyViewModel(
+      isLoading: auth.isLoading,
+      isVerified: auth.isEmailVerified,
+      email: auth.signupEmail,
+      devOtpCode: auth.devOtpCode,
+      errorMessage: auth.errorMessage,
+    );
+  }
+
+  final bool isLoading;
+  final bool isVerified;
+
+  /// The address registration was started with. Null on a page refresh, since
+  /// the store is rebuilt empty.
+  final String? email;
+  final String? devOtpCode;
+  final String? errorMessage;
 }
