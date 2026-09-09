@@ -14,6 +14,8 @@ import 'core/routing/app_router.dart';
 import 'features/auth/data/doctor_auth_repository.dart';
 import 'features/doctor/appointments/data/appointments_repository.dart';
 import 'features/doctor/appointments/redux/appointments_middleware.dart';
+import 'features/doctor/prescriptions/data/prescriptions_repository.dart';
+import 'features/doctor/prescriptions/redux/prescriptions_middleware.dart';
 import 'shared/theme/app_theme.dart';
 
 Future<void> main() async {
@@ -37,6 +39,9 @@ Future<void> main() async {
       ),
       ...createAppointmentsMiddleware(
         repository: sl<AppointmentsRepository>(),
+      ),
+      ...createPrescriptionsMiddleware(
+        repository: sl<PrescriptionsRepository>(),
       ),
     ],
   );

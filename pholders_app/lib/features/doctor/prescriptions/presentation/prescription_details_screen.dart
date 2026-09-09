@@ -141,6 +141,7 @@ class PrescriptionDetailsScreen extends StatelessWidget {
       case RxStatus.pending: return 'Pending';
       case RxStatus.dispensed: return 'Dispensed';
       case RxStatus.expired: return 'Expired';
+      case RxStatus.revoked: return 'Revoked';
     }
   }
 
@@ -150,6 +151,7 @@ class PrescriptionDetailsScreen extends StatelessWidget {
       case RxStatus.pending: return RxColors.pendingBg;
       case RxStatus.dispensed: return RxColors.dispensedBg;
       case RxStatus.expired: return RxColors.expiredBg;
+      case RxStatus.revoked: return RxColors.expiredBg;
     }
   }
 
@@ -159,6 +161,7 @@ class PrescriptionDetailsScreen extends StatelessWidget {
       case RxStatus.pending: return RxColors.pendingText;
       case RxStatus.dispensed: return RxColors.dispensedText;
       case RxStatus.expired: return RxColors.expiredText;
+      case RxStatus.revoked: return RxColors.expiredText;
     }
   }
 }

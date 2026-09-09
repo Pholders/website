@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:redux/redux.dart';
+
+import 'package:pholders_app/app/app_state.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
+import 'package:pholders_app/features/doctor/prescriptions/data/models/prescription.dart' as api;
+import 'package:pholders_app/features/doctor/prescriptions/redux/prescriptions_actions.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescription_details_screen.dart';
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
@@ -23,7 +29,7 @@ class RxColors {
 }
 
 // ─── Data model ───────────────────────────────────────────────────────────────
-enum RxStatus { approved, pending, dispensed, expired }
+enum RxStatus { approved, pending, dispensed, expired, revoked }
 
 class Prescription {
   final String id;
@@ -70,23 +76,63 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
   late List<Prescription> _allPrescriptions;
   Prescription? _selectedPrescription; // null = list, non-null = details
 
+  /// With no patient supplied this is the doctor's own Prescriptions tab, so
+  /// the rows come from the API. Scoped to a patient it keeps its sample data:
+  /// the backend has no per-patient prescription list for doctors.
+  bool get _isLive => widget.patient == null;
+
+  /// Rows from the API, refreshed by the store.
+  List<Prescription> _livePrescriptions = const [];
+
+  List<Prescription> get _source =>
+      _isLive ? _livePrescriptions : _allPrescriptions;
+
+  /// Maps an API prescription onto the row model this screen renders.
+  ///
+  /// `GET /prescriptions/doctor/all` carries no medicines, so the medication
+  /// and dosage columns hold the diagnosis and the reference number instead —
+  /// the headers change to match when live.
+  static Prescription _fromApi(api.Prescription p) {
+    return Prescription(
+      id: p.id.toString(),
+      patientName: p.patientName,
+      medication: p.diagnosis ?? '-',
+      dosage: p.number,
+      dateIssued: p.formattedDate,
+      status: switch (p.status) {
+        api.PrescriptionStatus.signed => RxStatus.approved,
+        api.PrescriptionStatus.pending => RxStatus.pending,
+        api.PrescriptionStatus.revoked => RxStatus.revoked,
+        api.PrescriptionStatus.unknown => RxStatus.pending,
+      },
+    );
+  }
+
   static const _filters = ['All', 'Pending', 'Approved', 'Dispensed', 'Expired'];
 
     @override
   void initState() {
     super.initState();
     _allPrescriptions = _mockPrescriptions(widget.patient?.name ?? 'Patient Name');
+    if (_isLive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          StoreProvider.of<AppState>(context)
+              .dispatch(const LoadPrescriptionsAction());
+        }
+      });
+    }
   }
 
   List<Prescription> get _filtered {
-    if (_filterIndex == 0) return _allPrescriptions;
+    if (_filterIndex == 0) return _source;
     final map = {
       1: RxStatus.pending,
       2: RxStatus.approved,
       3: RxStatus.dispensed,
       4: RxStatus.expired,
     };
-    return _allPrescriptions.where((p) => p.status == map[_filterIndex]).toList();
+    return _source.where((p) => p.status == map[_filterIndex]).toList();
   }
 
         void _addPrescription() async {
@@ -137,6 +183,64 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Sample-data mode renders straight from local state.
+    if (!_isLive) return _buildContent(context);
+
+    // Live mode feeds the rows from the store, keeping the same layout.
+    return StoreConnector<AppState, _RxViewModel>(
+      converter: _RxViewModel.fromStore,
+      builder: (context, vm) {
+        _livePrescriptions = vm.prescriptions.map(_fromApi).toList();
+
+        if (vm.isLoading && !vm.hasLoadedOnce) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(48),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: RxColors.teal),
+                  SizedBox(height: 16),
+                  // The API sleeps when idle, so a first load can take ~30s.
+                  Text('Loading prescriptions...',
+                      style: TextStyle(color: RxColors.textSecondary)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (vm.errorMessage != null && vm.prescriptions.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(48),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_outlined,
+                      size: 40, color: RxColors.textSecondary),
+                  const SizedBox(height: 12),
+                  Text(vm.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: RxColors.textSecondary)),
+                  const SizedBox(height: 16),
+                  OutlinedButton(
+                    onPressed: () => StoreProvider.of<AppState>(context)
+                        .dispatch(const LoadPrescriptionsAction()),
+                    child: const Text('Try again'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return _buildContent(context);
+      },
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     // Show details screen when a prescription is selected
     if (_selectedPrescription != null) {
       return PrescriptionDetailsScreen(
@@ -252,14 +356,20 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                 border: Border(
                     bottom: BorderSide(color: RxColors.border)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Expanded(flex: 3, child: _RxHeaderCell('Patient')),
-                  Expanded(flex: 3, child: _RxHeaderCell('Medication')),
-                  Expanded(flex: 2, child: _RxHeaderCell('Dosage')),
-                  Expanded(flex: 2, child: _RxHeaderCell('Date Issued')),
-                  Expanded(flex: 2, child: _RxHeaderCell('Status')),
-                  Expanded(flex: 2, child: _RxHeaderCell('Actions')),
+                  const Expanded(flex: 3, child: _RxHeaderCell('Patient')),
+                  Expanded(
+                    flex: 3,
+                    child: _RxHeaderCell(_isLive ? 'Diagnosis' : 'Medication'),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: _RxHeaderCell(_isLive ? 'Reference' : 'Dosage'),
+                  ),
+                  const Expanded(flex: 2, child: _RxHeaderCell('Date Issued')),
+                  const Expanded(flex: 2, child: _RxHeaderCell('Status')),
+                  const Expanded(flex: 2, child: _RxHeaderCell('Actions')),
                 ],
               ),
             ),
@@ -469,6 +579,10 @@ class _RxStatusBadge extends StatelessWidget {
         bg = RxColors.dispensedBg;
         text = RxColors.dispensedText;
         label = 'Dispensed';
+      case RxStatus.revoked:
+        bg = RxColors.expiredBg;
+        text = RxColors.expiredText;
+        label = 'Revoked';
       case RxStatus.expired:
         bg = RxColors.expiredBg;
         text = RxColors.expiredText;
@@ -881,4 +995,30 @@ class _RxFormField extends StatelessWidget {
       ],
     );
   }
+}
+
+// --- Store bindings ---------------------------------------------------------
+
+class _RxViewModel {
+  const _RxViewModel({
+    required this.prescriptions,
+    required this.isLoading,
+    required this.hasLoadedOnce,
+    this.errorMessage,
+  });
+
+  factory _RxViewModel.fromStore(Store<AppState> store) {
+    final state = store.state.prescriptionsState;
+    return _RxViewModel(
+      prescriptions: state.prescriptions,
+      isLoading: state.isLoading,
+      hasLoadedOnce: state.hasLoadedOnce,
+      errorMessage: state.errorMessage,
+    );
+  }
+
+  final List<api.Prescription> prescriptions;
+  final bool isLoading;
+  final bool hasLoadedOnce;
+  final String? errorMessage;
 }
