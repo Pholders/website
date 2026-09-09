@@ -8,9 +8,9 @@ import '../../../../core/routing/app_routes.dart';
 /// Shows full order information including patient info, items table,
 /// totals, linked prescription, and payment information.
 class OrderDetailPage extends StatelessWidget {
-  final String orderId;
 
   const OrderDetailPage({super.key, required this.orderId});
+  final String orderId;
 
   // ─── Colors ──────────────────────────────────────────────────────────────
   static const Color _teal = Color(0xFF309CA3);
@@ -123,7 +123,7 @@ class OrderDetailPage extends StatelessWidget {
           );
         }),
         const Spacer(),
-        Text(
+        const Text(
           'Total: 140',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted),
         ),
@@ -207,16 +207,16 @@ class OrderDetailPage extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        Text(
+        const Text(
           '> #10234',
           style: TextStyle(fontSize: 14, color: _textMuted),
         ),
         const Spacer(),
-        _IconBtn(assetPath: 'assets/share-icon.png'),
+        const _IconBtn(assetPath: 'assets/share-icon.png'),
         const SizedBox(width: 8),
-        _IconBtn(assetPath: 'assets/printer-icon.png'),
+        const _IconBtn(assetPath: 'assets/printer-icon.png'),
         const SizedBox(width: 8),
-        _IconBtn(assetPath: 'assets/call-icon.png'),
+        const _IconBtn(assetPath: 'assets/call-icon.png'),
       ],
     );
   }
@@ -230,7 +230,7 @@ class OrderDetailPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Order No.',
                 style: TextStyle(fontSize: 12, color: _textMuted),
               ),
@@ -244,7 +244,7 @@ class OrderDetailPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              const Text(
                 'Placed on: 25 Mar 2026 • 10:30 AM',
                 style: TextStyle(fontSize: 12, color: _textMuted),
               ),
@@ -283,7 +283,7 @@ class OrderDetailPage extends StatelessWidget {
             ],
           ),
         ),
-        Text(
+        const Text(
           'In-Store Pickup',
           style: TextStyle(fontSize: 13, color: _textMuted),
         ),
@@ -313,7 +313,7 @@ class OrderDetailPage extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(fontSize: 13, color: _textMuted),
+              style: const TextStyle(fontSize: 13, color: _textMuted),
             ),
           ),
           const SizedBox(width: 16),
@@ -345,7 +345,7 @@ class OrderDetailPage extends StatelessWidget {
           children: [
             _buildSectionTitle('Items'),
             const SizedBox(width: 4),
-            Text('(2)', style: TextStyle(fontSize: 14, color: _textMuted)),
+            const Text('(2)', style: TextStyle(fontSize: 14, color: _textMuted)),
           ],
         ),
         const SizedBox(height: 12),
@@ -357,12 +357,12 @@ class OrderDetailPage extends StatelessWidget {
           child: Column(
             children: [
               // Header
-              Padding(
+              const Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
-                    const SizedBox(width: 24),
+                    SizedBox(width: 24),
                     Expanded(
                       flex: 3,
                       child: Text('Order ID',
@@ -418,7 +418,7 @@ class OrderDetailPage extends StatelessWidget {
           SizedBox(
             width: 24,
             child: Text(num,
-                style: TextStyle(fontSize: 12, color: _textMuted)),
+                style: const TextStyle(fontSize: 12, color: _textMuted)),
           ),
           Expanded(
             flex: 3,
@@ -428,7 +428,7 @@ class OrderDetailPage extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Text(dosage,
-                style: TextStyle(fontSize: 13, color: _textMuted)),
+                style: const TextStyle(fontSize: 13, color: _textMuted)),
           ),
           Expanded(
             flex: 1,
@@ -558,8 +558,8 @@ class OrderDetailPage extends StatelessWidget {
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _IconBtn extends StatelessWidget {
-  final String assetPath;
   const _IconBtn({required this.assetPath});
+  final String assetPath;
 
   @override
   Widget build(BuildContext context) {

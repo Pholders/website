@@ -6,8 +6,8 @@ class SearchScriptsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
+    return const Scaffold(
+      backgroundColor: Color(0xFFE8F8F8),
       body: Center(
         child: Text('Search Scripts — To be implemented'),
       ),

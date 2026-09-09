@@ -6,23 +6,23 @@ import '../theme/app_theme.dart';
 
 /// A grouped section in the pharmacy sidebar.
 class _SidebarSection {
-  final String title;
-  final String iconAsset;
-  final List<_SidebarSubItem> items;
 
   const _SidebarSection({
     required this.title,
     required this.iconAsset,
     required this.items,
   });
+  final String title;
+  final String iconAsset;
+  final List<_SidebarSubItem> items;
 }
 
 /// A sub-item within a sidebar section.
 class _SidebarSubItem {
-  final String label;
-  final String route;
 
   const _SidebarSubItem({required this.label, required this.route});
+  final String label;
+  final String route;
 }
 
 /// Pharmacy-specific sidebar matching the Figma design.
@@ -31,12 +31,12 @@ class _SidebarSubItem {
 /// with sub-items under each header inside a light grey rounded container.
 /// Logout button is separate at the bottom with its own rounded container.
 class PharmacySidebar extends StatelessWidget {
-  final bool collapsed;
 
   const PharmacySidebar({
     super.key,
     required this.collapsed,
   });
+  final bool collapsed;
 
   // ─── Colors ──────────────────────────────────────────────────────────────
   static const Color _bgColor = Color(0xFFFFFFFF);
@@ -246,10 +246,10 @@ class PharmacySidebar extends StatelessWidget {
 
 /// Section header with asset icon and title.
 class _SectionHeader extends StatelessWidget {
-  final String title;
-  final String iconAsset;
 
   const _SectionHeader({required this.title, required this.iconAsset});
+  final String title;
+  final String iconAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -280,15 +280,15 @@ class _SectionHeader extends StatelessWidget {
 
 /// A sub-item tile within a section.
 class _SubItemTile extends StatelessWidget {
-  final _SidebarSubItem item;
-  final bool isActive;
-  final bool collapsed;
 
   const _SubItemTile({
     required this.item,
     required this.isActive,
     required this.collapsed,
   });
+  final _SidebarSubItem item;
+  final bool isActive;
+  final bool collapsed;
 
   @override
   Widget build(BuildContext context) {

@@ -37,7 +37,7 @@ class _OrdersPageState extends State<OrdersPage> {
   // Mock data
   final List<_OrderData> _orders = List.generate(
     13,
-    (i) => _OrderData(
+    (i) => const _OrderData(
       orderId: '#10234',
       patient: 'Prince Mashumu',
       items: '2 Items',
@@ -160,7 +160,7 @@ class _OrdersPageState extends State<OrdersPage> {
           );
         }),
         const Spacer(),
-        Text(
+        const Text(
           'Total: 140',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted),
         ),
@@ -258,7 +258,7 @@ class _OrdersPageState extends State<OrdersPage> {
               flex: 2,
               child: Text(
                 order.items,
-                style: TextStyle(fontSize: 13, color: _textMuted),
+                style: const TextStyle(fontSize: 13, color: _textMuted),
               ),
             ),
             // Total
@@ -289,7 +289,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   const SizedBox(width: 6),
                   Text(
                     order.payment,
-                    style: TextStyle(fontSize: 12, color: _textMuted),
+                    style: const TextStyle(fontSize: 12, color: _textMuted),
                   ),
                 ],
               ),
@@ -310,7 +310,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   const SizedBox(width: 6),
                   Text(
                     order.status,
-                    style: TextStyle(fontSize: 12, color: _textMuted),
+                    style: const TextStyle(fontSize: 12, color: _textMuted),
                   ),
                 ],
               ),
@@ -349,8 +349,8 @@ class _OrdersPageState extends State<OrdersPage> {
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _ColHeader extends StatelessWidget {
-  final String text;
   const _ColHeader(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -368,12 +368,6 @@ class _ColHeader extends StatelessWidget {
 // ─── Data model ──────────────────────────────────────────────────────────────
 
 class _OrderData {
-  final String orderId;
-  final String patient;
-  final String items;
-  final String total;
-  final String payment;
-  final String status;
 
   const _OrderData({
     required this.orderId,
@@ -383,4 +377,10 @@ class _OrderData {
     required this.payment,
     required this.status,
   });
+  final String orderId;
+  final String patient;
+  final String items;
+  final String total;
+  final String payment;
+  final String status;
 }

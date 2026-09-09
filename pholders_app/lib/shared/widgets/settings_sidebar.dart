@@ -60,7 +60,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
 
   void _initializeMenuItems() {
     menuItems = [
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'account',
         label: 'Account',
         icon: IconType.account,
@@ -69,7 +69,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
           SettingsSubMenuItem(id: 'professional', label: 'Professional'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'practice',
         label: 'Practice',
         icon: IconType.practice,
@@ -78,7 +78,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
           SettingsSubMenuItem(id: 'notifications', label: 'Notifications'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'security',
         label: 'Security',
         icon: IconType.security,
@@ -88,7 +88,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
           SettingsSubMenuItem(id: 'login_activity', label: 'Login Activity'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'preferences',
         label: 'Preferences',
         icon: IconType.preferences,
@@ -96,7 +96,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
           SettingsSubMenuItem(id: 'preferences_notifications', label: 'Notifications'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'integrations',
         label: 'Integrations',
         icon: IconType.integrations,
@@ -104,7 +104,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
           SettingsSubMenuItem(id: 'linked_services', label: 'Linked Services'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'support_legal',
         label: 'Support & Legal',
         icon: IconType.supportLegal,
@@ -149,11 +149,11 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
             child: Text(
               'Settings',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: _textDark,

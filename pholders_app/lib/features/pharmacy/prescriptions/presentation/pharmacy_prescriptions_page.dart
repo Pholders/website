@@ -159,11 +159,11 @@ class _PharmacyPrescriptionsPageState extends State<PharmacyPrescriptionsPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
+        const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Prescriptions',
                 style: TextStyle(
                   fontSize: 26,
@@ -171,7 +171,7 @@ class _PharmacyPrescriptionsPageState extends State<PharmacyPrescriptionsPage> {
                   color: _textDark,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 'Manage incoming prescriptions and dispensing',
                 style: TextStyle(
@@ -254,7 +254,7 @@ class _PharmacyPrescriptionsPageState extends State<PharmacyPrescriptionsPage> {
           );
         }),
         const Spacer(),
-        Text(
+        const Text(
           'Total: 140',
           style: TextStyle(
             fontSize: 13,
@@ -385,7 +385,7 @@ class _PharmacyPrescriptionsPageState extends State<PharmacyPrescriptionsPage> {
             flex: 2,
             child: Text(
               rx.date,
-              style: TextStyle(fontSize: 13, color: _textMuted),
+              style: const TextStyle(fontSize: 13, color: _textMuted),
             ),
           ),
           // Status
@@ -411,8 +411,8 @@ class _PharmacyPrescriptionsPageState extends State<PharmacyPrescriptionsPage> {
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _ColHeader extends StatelessWidget {
-  final String text;
   const _ColHeader(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -428,8 +428,8 @@ class _ColHeader extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  final String status;
   const _StatusBadge({required this.status});
+  final String status;
 
   Color get _dotColor {
     switch (status) {
@@ -476,8 +476,8 @@ class _StatusBadge extends StatelessWidget {
 
 /// Action button that changes based on prescription status.
 class _ActionButton extends StatelessWidget {
-  final String status;
   const _ActionButton({required this.status});
+  final String status;
 
   String get _label {
     switch (status) {
@@ -549,11 +549,6 @@ class _ActionButton extends StatelessWidget {
 // ─── Data model ──────────────────────────────────────────────────────────────
 
 class _PrescriptionData {
-  final String patient;
-  final String doctor;
-  final String medication;
-  final String date;
-  final String status;
 
   const _PrescriptionData({
     required this.patient,
@@ -562,4 +557,9 @@ class _PrescriptionData {
     required this.date,
     required this.status,
   });
+  final String patient;
+  final String doctor;
+  final String medication;
+  final String date;
+  final String status;
 }

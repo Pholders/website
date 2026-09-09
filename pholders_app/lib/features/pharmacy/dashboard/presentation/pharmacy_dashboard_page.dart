@@ -51,9 +51,9 @@ class PharmacyDashboardPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        const Row(
           children: [
-            const Text(
+            Text(
               'Saturday, 14th March',
               style: TextStyle(
                 fontSize: 11,
@@ -61,7 +61,7 @@ class PharmacyDashboardPage extends StatelessWidget {
                 fontFamily: 'Sora',
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Icon(Icons.refresh, size: 14, color: _textMuted),
           ],
         ),
@@ -395,7 +395,7 @@ class PharmacyDashboardPage extends StatelessWidget {
                                       Container(
                                         width: 8,
                                         height: 8,
-                                        decoration: BoxDecoration(
+                                        decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: _statusDotTeal,
                                         ),
@@ -696,8 +696,8 @@ class PharmacyDashboardPage extends StatelessWidget {
 // ─── Helper Widgets ──────────────────────────────────────────────────────────
 
 class _HeaderText extends StatelessWidget {
-  final String text;
   const _HeaderText(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {

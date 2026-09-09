@@ -2,13 +2,13 @@
 
 /// PatientMedicationPage — placeholder until Figma design is implemented.
 class PatientMedicationPage extends StatelessWidget {
-  final String patientId;
 
   const PatientMedicationPage({super.key, required this.patientId});
+  final String patientId;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       body: Center(child: Text('PatientMedicationPage')),
     );
   }

@@ -159,7 +159,7 @@ class _InventoryPageState extends State<InventoryPage> {
           );
         }),
         const Spacer(),
-        Text(
+        const Text(
           'Total: 140',
           style: TextStyle(
               fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted),
@@ -254,7 +254,7 @@ class _InventoryPageState extends State<InventoryPage> {
             flex: 2,
             child: Text(
               item.items,
-              style: TextStyle(fontSize: 13, color: _textMuted),
+              style: const TextStyle(fontSize: 13, color: _textMuted),
             ),
           ),
           // Total
@@ -285,7 +285,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 const SizedBox(width: 6),
                 Text(
                   item.payment,
-                  style: TextStyle(fontSize: 12, color: _textMuted),
+                  style: const TextStyle(fontSize: 12, color: _textMuted),
                 ),
               ],
             ),
@@ -306,7 +306,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 const SizedBox(width: 6),
                 Text(
                   item.status,
-                  style: TextStyle(fontSize: 12, color: _textMuted),
+                  style: const TextStyle(fontSize: 12, color: _textMuted),
                 ),
               ],
             ),
@@ -344,8 +344,8 @@ class _InventoryPageState extends State<InventoryPage> {
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _ColHeader extends StatelessWidget {
-  final String text;
   const _ColHeader(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -363,12 +363,6 @@ class _ColHeader extends StatelessWidget {
 // ─── Data model ──────────────────────────────────────────────────────────────
 
 class _InventoryItem {
-  final String orderId;
-  final String patient;
-  final String items;
-  final String total;
-  final String payment;
-  final String status;
 
   const _InventoryItem({
     required this.orderId,
@@ -378,4 +372,10 @@ class _InventoryItem {
     required this.payment,
     required this.status,
   });
+  final String orderId;
+  final String patient;
+  final String items;
+  final String total;
+  final String payment;
+  final String status;
 }
