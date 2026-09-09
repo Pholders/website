@@ -87,6 +87,62 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
   List<Prescription> get _source =>
       _isLive ? _livePrescriptions : _allPrescriptions;
 
+  /// Signs a prescription after confirming, since signing is what makes it
+  /// legally valid and dispensable.
+  Future<void> _signPrescription(Prescription rx) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign this prescription?'),
+        content: Text(
+          'Signing ${rx.dosage} for ${rx.patientName} makes it valid and '
+          'dispensable by a pharmacy. It cannot be edited afterwards.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    StoreProvider.of<AppState>(context)
+        .dispatch(SignPrescriptionAction(prescriptionId: int.parse(rx.id)));
+  }
+
+  /// Revokes a signed prescription so it can no longer be dispensed.
+  Future<void> _revokePrescription(Prescription rx) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Revoke this prescription?'),
+        content: Text(
+          '${rx.dosage} for ${rx.patientName} will no longer be dispensable. '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: RxColors.expiredText),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Revoke'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    StoreProvider.of<AppState>(context)
+        .dispatch(RevokePrescriptionAction(prescriptionId: int.parse(rx.id)));
+  }
+
   /// Maps an API prescription onto the row model this screen renders.
   ///
   /// `GET /prescriptions/doctor/all` carries no medicines, so the medication
@@ -392,6 +448,14 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                               onDelete: () => _deletePrescription(rx),
                               onViewDetails: () => setState(
                                   () => _selectedPrescription = rx),
+                              // Signing and revoking hit the API, so they are
+                              // only offered against real prescriptions.
+                              onSign: _isLive && rx.status == RxStatus.pending
+                                  ? () => _signPrescription(rx)
+                                  : null,
+                              onRevoke: _isLive && rx.status == RxStatus.approved
+                                  ? () => _revokePrescription(rx)
+                                  : null,
                             ))
                         .toList(),
                   ),
@@ -425,11 +489,17 @@ class _RxRow extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback onViewDetails;
 
+  /// Null when the action does not apply to this prescription's status.
+  final VoidCallback? onSign;
+  final VoidCallback? onRevoke;
+
   const _RxRow({
     required this.prescription,
     required this.onEdit,
     required this.onDelete,
     required this.onViewDetails,
+    this.onSign,
+    this.onRevoke,
   });
 
   @override
@@ -447,6 +517,8 @@ class _RxRowState extends State<_RxRow> {
         onEdit: widget.onEdit,
         onDelete: widget.onDelete,
         onViewDetails: widget.onViewDetails,
+        onSign: widget.onSign,
+        onRevoke: widget.onRevoke,
       ),
     );
   }
@@ -633,11 +705,15 @@ class _RxActionsMenu extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onViewDetails;
+  final VoidCallback? onSign;
+  final VoidCallback? onRevoke;
 
   const _RxActionsMenu({
     required this.onEdit,
     required this.onDelete,
     required this.onViewDetails,
+    this.onSign,
+    this.onRevoke,
   });
 
   @override
@@ -645,6 +721,14 @@ class _RxActionsMenu extends StatelessWidget {
     final actions = [
       _RxAction(label: 'View Details', icon: Icons.visibility_outlined,
           onTap: () { Navigator.pop(context); onViewDetails(); }),
+      // Only offered while the prescription is still unsigned.
+      if (onSign != null)
+        _RxAction(label: 'Sign Prescription', icon: Icons.draw_outlined,
+            onTap: () { Navigator.pop(context); onSign!(); }),
+      // Only offered once it is signed and therefore dispensable.
+      if (onRevoke != null)
+        _RxAction(label: 'Revoke Prescription', icon: Icons.block_outlined,
+            onTap: () { Navigator.pop(context); onRevoke!(); }),
       _RxAction(label: 'Edit Prescription', icon: Icons.edit_outlined,
           onTap: () { Navigator.pop(context); onEdit(); }),
       _RxAction(label: 'Mark as Dispensed', icon: Icons.check_circle_outline,
