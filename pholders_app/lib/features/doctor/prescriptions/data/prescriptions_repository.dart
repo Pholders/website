@@ -71,24 +71,42 @@ class PrescriptionsRepository {
   ///
   /// Signed prescriptions are immutable — the backend returns 400 rather than
   /// letting a dispensed script change under the pharmacy's feet.
+  ///
+  /// [dosageForm] and [routeOfAdministration] are database enums, not free
+  /// text, and both are required along with dosage, quantity and frequency.
+  /// None of that is in the API docs; it comes from the prescription_items
+  /// table definition, and omitting one fails with a not-null violation.
   Future<void> addMedicine({
     required int prescriptionId,
     required String medicineName,
-    String? dosage,
-    String? frequency,
+    required String dosage,
+    required MedicineDosageForm dosageForm,
+    required int quantity,
+    required String frequency,
+    required MedicineRoute routeOfAdministration,
+    String? genericName,
+    String? quantityUnit,
     String? duration,
-    String? instructions,
-    int? quantity,
+    String? specialInstructions,
+    String? scheduleClassification,
   }) async {
     await _api.post(
       '/prescriptions/$prescriptionId/medicines',
       body: {
         'medicine_name': medicineName,
-        if (dosage != null) 'dosage': dosage,
-        if (frequency != null) 'frequency': frequency,
+        'dosage': dosage,
+        'dosage_form': dosageForm.name,
+        'quantity': quantity,
+        'frequency': frequency,
+        'route_of_administration': routeOfAdministration.name,
+        if (genericName != null) 'generic_name': genericName,
+        if (quantityUnit != null) 'quantity_unit': quantityUnit,
         if (duration != null) 'duration': duration,
-        if (instructions != null) 'instructions': instructions,
-        if (quantity != null) 'quantity': quantity,
+        // The column is special_instructions, not instructions.
+        if (specialInstructions != null)
+          'special_instructions': specialInstructions,
+        if (scheduleClassification != null)
+          'schedule_classification': scheduleClassification,
       },
     );
   }
@@ -128,4 +146,32 @@ class PrescriptionsRepository {
       body: {if (reason != null) 'reason': reason},
     );
   }
+}
+
+/// Dosage forms the backend accepts. Anything else violates the column check.
+enum MedicineDosageForm {
+  tablet,
+  capsule,
+  liquid,
+  injection,
+  cream,
+  ointment,
+  drops,
+  spray,
+  inhaler,
+  patch,
+  other,
+}
+
+/// Routes of administration the backend accepts.
+enum MedicineRoute {
+  oral,
+  topical,
+  intramuscular,
+  intravenous,
+  subcutaneous,
+  inhalation,
+  sublingual,
+  rectal,
+  other,
 }
