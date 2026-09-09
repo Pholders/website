@@ -10,6 +10,8 @@ class PrescriptionsState extends Equatable {
     this.errorMessage,
     this.busyIds = const {},
     this.hasLoadedOnce = false,
+    this.isCreating = false,
+    this.lastCreatedId,
   });
 
   factory PrescriptionsState.initial() => const PrescriptionsState();
@@ -25,13 +27,22 @@ class PrescriptionsState extends Equatable {
   /// apart from "not fetched".
   final bool hasLoadedOnce;
 
+  /// True while the create-then-add-medicines sequence is running.
+  final bool isCreating;
+
+  /// Set when a prescription has just been saved, so the form can close.
+  final int? lastCreatedId;
+
   PrescriptionsState copyWith({
     List<Prescription>? prescriptions,
     bool? isLoading,
     String? errorMessage,
     Set<int>? busyIds,
     bool? hasLoadedOnce,
+    bool? isCreating,
+    int? lastCreatedId,
     bool clearError = false,
+    bool clearCreated = false,
   }) {
     return PrescriptionsState(
       prescriptions: prescriptions ?? this.prescriptions,
@@ -39,10 +50,14 @@ class PrescriptionsState extends Equatable {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       busyIds: busyIds ?? this.busyIds,
       hasLoadedOnce: hasLoadedOnce ?? this.hasLoadedOnce,
+      isCreating: isCreating ?? this.isCreating,
+      lastCreatedId:
+          clearCreated ? null : (lastCreatedId ?? this.lastCreatedId),
     );
   }
 
   @override
   List<Object?> get props =>
-      [prescriptions, isLoading, errorMessage, busyIds, hasLoadedOnce];
+      [prescriptions, isLoading, errorMessage, busyIds, hasLoadedOnce,
+       isCreating, lastCreatedId];
 }

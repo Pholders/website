@@ -18,6 +18,41 @@ List<Middleware<AppState>> createPrescriptionsMiddleware({
     }
   }
 
+  Future<void> create(
+    Store<AppState> store,
+    CreatePrescriptionAction action,
+  ) async {
+    try {
+      final id = await repository.create(
+        appointmentId: action.appointmentId,
+        diagnosis: action.diagnosis,
+        clinicalNotes: action.clinicalNotes,
+      );
+
+      // Medicines are separate rows added after the prescription exists, and
+      // an unsigned prescription with no medicines cannot be signed, so a
+      // failure part-way still leaves a usable draft to finish or revoke.
+      for (final m in action.medicines) {
+        await repository.addMedicine(
+          prescriptionId: id,
+          medicineName: m.name,
+          dosage: m.dosage,
+          dosageForm: m.form,
+          quantity: m.quantity,
+          frequency: m.frequency,
+          routeOfAdministration: m.route,
+          duration: m.duration,
+          specialInstructions: m.instructions,
+        );
+      }
+
+      store.dispatch(PrescriptionCreatedAction(prescriptionId: id));
+      await load(store, 'all');
+    } on ApiException catch (e) {
+      store.dispatch(CreatePrescriptionFailedAction(errorMessage: e.message));
+    }
+  }
+
   Future<void> sign(Store<AppState> store, SignPrescriptionAction action) async {
     try {
       await repository.sign(action.prescriptionId);
@@ -51,6 +86,8 @@ List<Middleware<AppState>> createPrescriptionsMiddleware({
 
     if (action is LoadPrescriptionsAction) {
       load(store, action.filter);
+    } else if (action is CreatePrescriptionAction) {
+      create(store, action);
     } else if (action is SignPrescriptionAction) {
       sign(store, action);
     } else if (action is RevokePrescriptionAction) {

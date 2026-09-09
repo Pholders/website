@@ -29,6 +29,29 @@ PrescriptionsState prescriptionsReducer(
     );
   }
 
+  if (action is CreatePrescriptionAction) {
+    return state.copyWith(
+      isCreating: true,
+      clearError: true,
+      clearCreated: true,
+    );
+  }
+
+  if (action is PrescriptionCreatedAction) {
+    return state.copyWith(
+      isCreating: false,
+      lastCreatedId: action.prescriptionId,
+      clearError: true,
+    );
+  }
+
+  if (action is CreatePrescriptionFailedAction) {
+    return state.copyWith(
+      isCreating: false,
+      errorMessage: action.errorMessage,
+    );
+  }
+
   if (action is SignPrescriptionAction) {
     return state.copyWith(
       busyIds: {...state.busyIds, action.prescriptionId},

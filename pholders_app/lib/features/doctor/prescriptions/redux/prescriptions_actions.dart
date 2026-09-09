@@ -1,3 +1,4 @@
+import '../data/models/medicine_draft.dart';
 import '../data/models/prescription.dart';
 
 /// Dispatched when the prescriptions list is opened or refreshed.
@@ -40,5 +41,35 @@ class PrescriptionActionFailedAction {
     required this.errorMessage,
   });
   final int prescriptionId;
+  final String errorMessage;
+}
+
+/// Dispatched when the doctor submits the new-prescription form.
+///
+/// The backend needs three calls for this — create, then one per medicine —
+/// so the middleware sequences them.
+class CreatePrescriptionAction {
+  const CreatePrescriptionAction({
+    required this.appointmentId,
+    required this.diagnosis,
+    required this.medicines,
+    this.clinicalNotes,
+  });
+
+  final int appointmentId;
+  final String diagnosis;
+  final List<MedicineDraft> medicines;
+  final String? clinicalNotes;
+}
+
+/// Dispatched once a prescription and all its medicines are saved.
+class PrescriptionCreatedAction {
+  const PrescriptionCreatedAction({required this.prescriptionId});
+  final int prescriptionId;
+}
+
+/// Dispatched when creating a prescription fails.
+class CreatePrescriptionFailedAction {
+  const CreatePrescriptionFailedAction({required this.errorMessage});
   final String errorMessage;
 }

@@ -5,6 +5,7 @@ import 'package:redux/redux.dart';
 import 'package:pholders_app/app/app_state.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
 import 'package:pholders_app/features/doctor/prescriptions/data/models/prescription.dart' as api;
+import 'package:pholders_app/features/doctor/prescriptions/presentation/new_prescription_dialog.dart';
 import 'package:pholders_app/features/doctor/prescriptions/redux/prescriptions_actions.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescription_details_screen.dart';
 
@@ -86,6 +87,15 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
 
   List<Prescription> get _source =>
       _isLive ? _livePrescriptions : _allPrescriptions;
+
+  /// Opens the real create form. The list refreshes itself on success, so
+  /// nothing needs adding to local state here.
+  Future<void> _newPrescription() async {
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => const NewPrescriptionDialog(),
+    );
+  }
 
   /// Signs a prescription after confirming, since signing is what makes it
   /// legally valid and dispensable.
@@ -342,7 +352,7 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                 const Spacer(),
                 // New Prescription button
                 ElevatedButton.icon(
-                  onPressed: _addPrescription,
+                  onPressed: _isLive ? _newPrescription : _addPrescription,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: RxColors.teal,
                     shape: RoundedRectangleBorder(
