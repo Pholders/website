@@ -1,13 +1,27 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patient_profile_screen.dart';
 
-/// PatientListPage — placeholder until Figma design is implemented.
+/// PatientListPage — displays the list of patients.
 class PatientListPage extends StatelessWidget {
   const PatientListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('PatientListPage')),
+    return Scaffold(
+      body: PatientsScreen(
+        onPatientTap: (patient) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PatientProfileScreen(
+                patient: patient,
+                onBack: () => Navigator.pop(context),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

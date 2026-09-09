@@ -74,4 +74,22 @@ class AppRoutes {
   static const String pharmacyBilling = '/pharmacy/billing';
   static const String pharmacySettings = '/pharmacy/settings';
   static const String pharmacySettingsLinkedServices = '/pharmacy/settings/linked-services';
+
+  // Routes recovered from 9068f13, dropped by the 2026-08-17 merge.
+  static const String adminDashboard = '/admin/dashboard';
+  static const String adminLogin = '/admin/login';
+  static const String adminVerify = '/admin/verify';
+  static const String doctorInformation = '/doctor/information';
+  static const String doctorNotifications = '/doctor/notifications';
+  static const String doctorSettingsPractice = '/doctor/settings/practice';
+  static const String doctorSettingsPracticePage = '/doctor/settings/practice-page';
+  static const String doctorSettingsPreferences = '/doctor/settings/preferences';
+  static const String doctorSettingsSupportLegal = '/doctor/settings/support-legal';
+  static const String pharmacyNotifications = '/pharmacy/notifications';
+  static const String pharmacySettingsNotificationCenter = '/pharmacy/settings/notifications/center';
+  static const String pharmacySettingsNotifications = '/pharmacy/settings/notifications';
+  static const String pharmacySettingsPersonalInfo = '/pharmacy/settings/personal-info';
+  static const String pharmacySettingsPharmacyDetails = '/pharmacy/settings/pharmacy-details';
+  static const String pharmacySettingsProfessional = '/pharmacy/settings/professional';
+  static const String pharmacySettingsProfile = '/pharmacy/settings/profile';
 }

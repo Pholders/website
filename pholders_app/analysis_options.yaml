@@ -1,5 +1,6 @@
 analyzer:
   exclude:
+    - recovered/**
     - build/**
     - android/**
     - ios/**
