@@ -134,6 +134,50 @@ class DoctorAuthRepository {
     return Doctor.fromJson(data);
   }
 
+  /// Updates the signed-in doctor's profile.
+  ///
+  /// The endpoint is a passthrough that strips `id`, `email`, `hpcsa_number`,
+  /// `password_hash` and `created_at` before writing, so email and HPCSA
+  /// number cannot be changed here however they are sent.
+  ///
+  /// Only non-null values are sent, so a partial edit does not blank the
+  /// fields it left alone.
+  Future<Doctor> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? specialization,
+    int? experience,
+    String? clinicName,
+    String? clinicAddress,
+    String? city,
+    String? province,
+    String? zipCode,
+    String? qualification,
+    String? bio,
+    double? consultationFee,
+  }) async {
+    final data = await _api.put(
+      '/users/doctor/profile',
+      body: {
+        if (firstName != null) 'first_name': firstName,
+        if (lastName != null) 'last_name': lastName,
+        if (phone != null) 'phone': phone,
+        if (specialization != null) 'specialization': specialization,
+        if (experience != null) 'experience': experience,
+        if (clinicName != null) 'clinic_name': clinicName,
+        if (clinicAddress != null) 'clinic_address': clinicAddress,
+        if (city != null) 'city': city,
+        if (province != null) 'province': province,
+        if (zipCode != null) 'zip_code': zipCode,
+        if (qualification != null) 'qualification': qualification,
+        if (bio != null) 'bio': bio,
+        if (consultationFee != null) 'consultation_fee': consultationFee,
+      },
+    );
+    return Doctor.fromJson(data);
+  }
+
   /// Lists the doctor's active sessions.
   Future<List<ActiveSession>> fetchSessions() async {
     final data = await _api.get('/users/doctor/sessions');

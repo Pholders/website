@@ -183,3 +183,40 @@ class VerifyEmailFailureAction {
   const VerifyEmailFailureAction({required this.errorMessage});
   final String errorMessage;
 }
+
+/// Dispatched when the doctor saves changes to their profile.
+///
+/// Only the fields being changed are carried; the repository omits nulls so a
+/// partial edit does not blank anything else.
+class UpdateDoctorProfileAction {
+  const UpdateDoctorProfileAction({
+    this.firstName,
+    this.lastName,
+    this.phone,
+    this.specialization,
+    this.experience,
+    this.clinicName,
+    this.clinicAddress,
+    this.city,
+    this.province,
+    this.zipCode,
+  });
+
+  final String? firstName;
+  final String? lastName;
+  final String? phone;
+  final String? specialization;
+  final int? experience;
+  final String? clinicName;
+  final String? clinicAddress;
+  final String? city;
+  final String? province;
+  final String? zipCode;
+}
+
+/// Dispatched when a profile save fails.
+class UpdateDoctorProfileFailedAction {
+
+  const UpdateDoctorProfileFailedAction({required this.errorMessage});
+  final String errorMessage;
+}

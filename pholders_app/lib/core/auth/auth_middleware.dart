@@ -180,6 +180,38 @@ List<Middleware<AppState>> createAuthMiddleware({
     }
   }
 
+  Future<void> updateProfile(
+    Store<AppState> store,
+    UpdateDoctorProfileAction action,
+  ) async {
+    try {
+      final doctor = await doctorAuth.updateProfile(
+        firstName: action.firstName,
+        lastName: action.lastName,
+        phone: action.phone,
+        specialization: action.specialization,
+        experience: action.experience,
+        clinicName: action.clinicName,
+        clinicAddress: action.clinicAddress,
+        city: action.city,
+        province: action.province,
+        zipCode: action.zipCode,
+      );
+      store.dispatch(DoctorProfileLoadedAction(doctor: doctor));
+      // Keep the stored display name in step with the change.
+      final token = store.state.authState.token;
+      if (token != null) {
+        await tokenStorage.saveSession(
+          token: token,
+          role: AppConstants.roleDoctor,
+          userName: doctor.fullName,
+        );
+      }
+    } on ApiException catch (e) {
+      store.dispatch(UpdateDoctorProfileFailedAction(errorMessage: e.message));
+    }
+  }
+
   Future<void> handleLogout(Store<AppState> store) async {
     final wasDoctor = store.state.authState.isDoctor;
     final wasPharmacy = store.state.authState.role == AppConstants.rolePharmacy;
@@ -210,6 +242,8 @@ List<Middleware<AppState>> createAuthMiddleware({
       handleLogin(store, action);
     } else if (action is DoctorSignupRequestAction) {
       handleSignup(store, action);
+    } else if (action is UpdateDoctorProfileAction) {
+      updateProfile(store, action);
     } else if (action is RequestVerificationOtpAction) {
       requestOtp(store, action);
     } else if (action is VerifyEmailRequestAction) {

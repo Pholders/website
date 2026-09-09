@@ -28,13 +28,19 @@ have been wrong about login, signing, signup fields and the medicine payload.
 - [x] Doctor sessions into the Device Management screen
 - [x] Pharmacy login — real call, replacing the demo session (see blocker 5)
 - [x] Revoke exercised against a real prescription — found two bugs, see below
+- [x] Profile form — Personal and Contact Information now load and save
+      (`PUT /users/doctor/profile`). Email and HPCSA are read-only because the
+      endpoint strips them.
 
 ## To do
 
+- [ ] **Professional Details section** of account settings — specialization,
+      experience, practice name and address, city, province, postal code all
+      map to real columns but are still decorative. Same pattern as the
+      Personal Information section, which is now bound.
+
 - [ ] **Drug interaction check** — `POST /prescriptions/:id/check-interactions`.
       Repository method exists, needs a trigger and somewhere to show results.
-- [ ] **Doctor settings forms** — bind the practice and account settings
-      screens to `PUT /users/doctor/profile`.
 - [ ] **Pharmacy prescription queue** — `GET /prescriptions/pharmacy/claimed`,
       `/pharmacy/dispense-history`, `/pharmacy/dispense-stats`,
       `/pharmacy/medicines/:id`, and `POST /:id/dispense`. Blocked on being

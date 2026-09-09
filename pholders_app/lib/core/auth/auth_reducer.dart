@@ -48,10 +48,19 @@ AuthState authReducer(AuthState state, dynamic action) {
     return state.copyWith(isRestoring: false);
   }
 
+  if (action is UpdateDoctorProfileAction) {
+    return state.copyWith(isLoading: true, clearError: true);
+  }
+
+  if (action is UpdateDoctorProfileFailedAction) {
+    return state.copyWith(isLoading: false, errorMessage: action.errorMessage);
+  }
+
   if (action is DoctorProfileLoadedAction) {
     return state.copyWith(
       doctor: action.doctor,
       userName: action.doctor.fullName,
+      isLoading: false,
     );
   }
 

@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:redux/redux.dart';
+
+import '../../../../app/app_state.dart';
+import '../../../../core/auth/auth_actions.dart';
+import '../../../auth/data/models/doctor.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
@@ -237,18 +243,69 @@ class _ProfileForm extends StatefulWidget {
 class _ProfileFormState extends State<_ProfileForm> {
   bool isEditing = false;
 
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+
+  /// True once the fields hold the loaded profile, so a later store update
+  /// does not overwrite something being typed.
+  bool _prefilled = false;
+
+  @override
+  void dispose() {
+    _firstName.dispose();
+    _lastName.dispose();
+    _email.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  void _prefill(Doctor? doctor) {
+    if (doctor == null || _prefilled) return;
+    _firstName.text = doctor.firstName;
+    _lastName.text = doctor.lastName;
+    _email.text = doctor.email;
+    _phone.text = doctor.phone ?? '';
+    _prefilled = true;
+  }
+
+  void _save() {
+    StoreProvider.of<AppState>(context).dispatch(
+      UpdateDoctorProfileAction(
+        firstName: _firstName.text.trim(),
+        lastName: _lastName.text.trim(),
+        phone: _phone.text.trim(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    return StoreConnector<AppState, _ProfileViewModel>(
+      converter: _ProfileViewModel.fromStore,
+      builder: (context, vm) {
+        _prefill(vm.doctor);
+        return _buildForm(context, vm);
+      },
+    );
+  }
+
+  Widget _buildForm(BuildContext context, _ProfileViewModel vm) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SettingsSectionTitle('Personal Information', muted: true),
         const SizedBox(height: 8),
-        const Row(
+        Row(
           children: [
-            Expanded(child: _Field(label: 'First Name')),
-            SizedBox(width: 22),
-            Expanded(child: _Field(label: 'Last Name')),
+            Expanded(
+              child: _Field(label: 'First Name', controller: _firstName),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: _Field(label: 'Last Name', controller: _lastName),
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -256,9 +313,18 @@ class _ProfileFormState extends State<_ProfileForm> {
         const SizedBox(height: 8),
         Row(
           children: [
-            const Expanded(child: _Field(label: 'Email Address')),
+            // The endpoint strips email before writing, so it is shown but
+            // not editable rather than silently discarded on save.
+            Expanded(
+              child: _Field(
+                label: 'Email Address',
+                controller: _email,
+                readOnly: true,
+              ),
+            ),
             const SizedBox(width: 22),
             Expanded(child: _Field(label: 'Phone Number', hint: '0123456789',
+            controller: _phone,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],)),
           ],
         ),
@@ -346,6 +412,14 @@ class _ProfileFormState extends State<_ProfileForm> {
           ],
         ),
         const SizedBox(height: 26),
+        if (vm.errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              vm.errorMessage!,
+              style: const TextStyle(fontSize: 13, color: Color(0xFFCC1111)),
+            ),
+          ),
         Align(
   alignment: Alignment.centerRight,
   child: SettingsButton(
@@ -355,11 +429,13 @@ class _ProfileFormState extends State<_ProfileForm> {
         : Icons.edit_outlined,
     width: 140,
     height: 34,
-    onTap: () {
-      setState(() {
-        isEditing = !isEditing;
-      });
-    },
+    onTap: vm.isSaving
+        ? null
+        : () {
+            // Leaving edit mode is the save.
+            if (isEditing) _save();
+            setState(() => isEditing = !isEditing);
+          },
   ),
 ),
       ],
@@ -631,6 +707,8 @@ class _Field extends StatelessWidget {
     this.icon,
     this.trailing,
     this.inputFormatters,
+    this.controller,
+    this.readOnly = false,
   });
 
   final String label;
@@ -639,6 +717,14 @@ class _Field extends StatelessWidget {
   final Widget? trailing;
   final List<TextInputFormatter>? inputFormatters;
 
+  /// Supplied for fields that are actually saved. Without one the field stays
+  /// decorative, as it was.
+  final TextEditingController? controller;
+
+  /// True for values the backend refuses to change, so they are shown but
+  /// cannot be edited.
+  final bool readOnly;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -646,7 +732,14 @@ class _Field extends StatelessWidget {
       children: [
         Text(label, style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 5),
-        SettingsInput(hint: hint, icon: icon, trailing: trailing, inputFormatters: inputFormatters),
+        SettingsInput(
+          hint: hint,
+          icon: icon,
+          trailing: trailing,
+          inputFormatters: inputFormatters,
+          controller: controller,
+          readOnly: readOnly,
+        ),
       ],
     );
   }
@@ -693,4 +786,27 @@ class _SignaturePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// Store bindings ------------------------------------------------------------
+
+class _ProfileViewModel {
+  const _ProfileViewModel({
+    required this.isSaving,
+    this.doctor,
+    this.errorMessage,
+  });
+
+  factory _ProfileViewModel.fromStore(Store<AppState> store) {
+    final auth = store.state.authState;
+    return _ProfileViewModel(
+      isSaving: auth.isLoading,
+      doctor: auth.doctor,
+      errorMessage: auth.errorMessage,
+    );
+  }
+
+  final bool isSaving;
+  final Doctor? doctor;
+  final String? errorMessage;
 }
