@@ -2,10 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_sidebar.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/routing/app_routes.dart';
+import '../../../auth/data/doctor_auth_repository.dart';
+import '../../../auth/data/models/doctor_activity.dart';
 
-class LoginActivityPage extends StatelessWidget {
+class LoginActivityPage extends StatefulWidget {
   const LoginActivityPage({super.key});
+
+  @override
+  State<LoginActivityPage> createState() => _LoginActivityPageState();
+}
+
+class _LoginActivityPageState extends State<LoginActivityPage> {
+  // Read-only screen, so it reads the repository directly rather than adding
+  // a store slice nothing else would use.
+  late Future<List<DoctorActivity>> _activity;
+
+  @override
+  void initState() {
+    super.initState();
+    _activity = sl<DoctorAuthRepository>().fetchActivityLog();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +54,54 @@ class LoginActivityPage extends StatelessWidget {
                     Text('Login Activity', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
 
-            _activityEntry('April 13, 10:30', 'Johannesburg', 'Chrome - Windows', 'Successful', Icons.check_circle, Colors.teal),
-            const Divider(),
-            _activityEntry('April 12, 22:10', 'Unknown Location', 'Unknown', 'Failed Login', Icons.error, Colors.red),
+            FutureBuilder<List<DoctorActivity>>(
+              future: _activity,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (snapshot.hasError) {
+                  final e = snapshot.error;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      e is ApiException
+                          ? e.message
+                          : 'Could not load your account activity.',
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
+                  );
+                }
+                final entries = snapshot.data ?? const <DoctorActivity>[];
+                if (entries.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Text('No account activity recorded yet.'),
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < entries.length; i++) ...[
+                      if (i > 0) const Divider(),
+                      _activityEntry(
+                        entries[i].formattedTime,
+                        entries[i].ipAddress ?? 'Unknown location',
+                        entries[i].label,
+                        entries[i].succeeded ? 'Successful' : 'Failed',
+                        entries[i].succeeded
+                            ? Icons.check_circle
+                            : Icons.error,
+                        entries[i].succeeded ? Colors.teal : Colors.red,
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 16),
 
             // Suspicious activity card

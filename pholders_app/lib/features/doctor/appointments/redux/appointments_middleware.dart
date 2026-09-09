@@ -35,6 +35,26 @@ List<Middleware<AppState>> createAppointmentsMiddleware({
     }
   }
 
+  Future<void> complete(
+    Store<AppState> store,
+    CompleteAppointmentAction action,
+  ) async {
+    try {
+      await repository.complete(
+        action.appointmentId,
+        notes: action.notes,
+        diagnosis: action.diagnosis,
+      );
+      // A completed appointment drops out of this endpoint's filter.
+      await load(store);
+    } on ApiException catch (e) {
+      store.dispatch(AcceptAppointmentFailedAction(
+        appointmentId: action.appointmentId,
+        errorMessage: e.message,
+      ));
+    }
+  }
+
   void middleware(Store<AppState> store, dynamic action, NextDispatcher next) {
     next(action);
 
@@ -42,6 +62,8 @@ List<Middleware<AppState>> createAppointmentsMiddleware({
       load(store);
     } else if (action is AcceptAppointmentAction) {
       accept(store, action);
+    } else if (action is CompleteAppointmentAction) {
+      complete(store, action);
     }
   }
 

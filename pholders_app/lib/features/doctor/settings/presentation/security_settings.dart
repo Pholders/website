@@ -1,6 +1,11 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'package:flutter/material.dart';
+
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_exception.dart';
+import '../../../auth/data/doctor_auth_repository.dart';
+import '../../../auth/data/models/doctor_activity.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
@@ -198,8 +203,23 @@ class _SecuritySettings extends StatelessWidget {
   }
 }
 
-class _DeviceManagement extends StatelessWidget {
+class _DeviceManagement extends StatefulWidget {
   const _DeviceManagement();
+
+  @override
+  State<_DeviceManagement> createState() => _DeviceManagementState();
+}
+
+class _DeviceManagementState extends State<_DeviceManagement> {
+  // Read-only, so it reads the repository directly rather than adding a store
+  // slice nothing else would use.
+  late Future<List<ActiveSession>> _sessions;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessions = sl<DoctorAuthRepository>().fetchSessions();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -220,35 +240,88 @@ class _DeviceManagement extends StatelessWidget {
               child: SettingsContentCard(
                 title: 'Device Management',
                 children: [
-        const SettingsSectionTitle('Current Device'),
-        const SizedBox(height: 16),
-        const Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.check_circle_outline, size: 32, color: Colors.black),
-            SizedBox(width: 12),
-            Column(
+        FutureBuilder<List<ActiveSession>>(
+          future: _sessions,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError) {
+              final e = snapshot.error;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  e is ApiException
+                      ? e.message
+                      : 'Could not load your signed-in devices.',
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+              );
+            }
+
+            final sessions = snapshot.data ?? const <ActiveSession>[];
+            if (sessions.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Text('No active sessions.'),
+              );
+            }
+
+            // The backend returns them most recently active first, so the
+            // first row is this device.
+            final current = sessions.first;
+            final others = sessions.skip(1).toList();
+
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Chrome - Windows', style: TextStyle(fontSize: 16)),
-                SizedBox(height: 18),
-                Text('Johannesburg', style: TextStyle(fontSize: 16)),
-                SizedBox(height: 8),
-                Text('Active Now', style: TextStyle(fontSize: 16)),
+                const SettingsSectionTitle('Current Device'),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.check_circle_outline,
+                        size: 32, color: Colors.black),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(current.device,
+                            style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 18),
+                        Text(current.ipAddress ?? 'Unknown location',
+                            style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 8),
+                        const Text('Active Now',
+                            style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                const SettingsDivider(),
+                const SizedBox(height: 12),
+                SettingsSectionTitle('Other Devices (${others.length})'),
+                const SizedBox(height: 10),
+                if (others.isEmpty)
+                  const Text('No other devices are signed in.')
+                else
+                  for (final session in others) ...[
+                    _DeviceRow(
+                      icon: Icons.laptop_mac,
+                      name: '${session.device} - '
+                          '${session.ipAddress ?? 'unknown'}',
+                    ),
+                    const SettingsDivider(),
+                    const SizedBox(height: 10),
+                  ],
               ],
-            ),
-          ],
+            );
+          },
         ),
-        const SizedBox(height: 28),
-        const SettingsDivider(),
-        const SizedBox(height: 12),
-        const SettingsSectionTitle('Other Devices'),
-        const SizedBox(height: 10),
-        const _DeviceRow(icon: Icons.phone_iphone, name: 'iPhone - Safari'),
-        const SettingsDivider(),
-        const SizedBox(height: 10),
-        const _DeviceRow(
-            icon: Icons.laptop_mac, name: 'MacBook - Durban - 3 days ago'),
                 const SizedBox(height: 14),
         const SettingsFullWidthAction('Log out of all devices'),
       ],

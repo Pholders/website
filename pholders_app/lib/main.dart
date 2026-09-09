@@ -12,6 +12,7 @@ import 'core/di/service_locator.dart';
 import 'core/network/api_client.dart';
 import 'core/routing/app_router.dart';
 import 'features/auth/data/doctor_auth_repository.dart';
+import 'features/auth/data/pharmacy_auth_repository.dart';
 import 'features/doctor/appointments/data/appointments_repository.dart';
 import 'features/doctor/appointments/redux/appointments_middleware.dart';
 import 'features/doctor/prescriptions/data/prescriptions_repository.dart';
@@ -35,6 +36,7 @@ Future<void> main() async {
     middleware: [
       ...createAuthMiddleware(
         doctorAuth: sl<DoctorAuthRepository>(),
+        pharmacyAuth: sl<PharmacyAuthRepository>(),
         tokenStorage: sl<TokenStorage>(),
       ),
       ...createAppointmentsMiddleware(

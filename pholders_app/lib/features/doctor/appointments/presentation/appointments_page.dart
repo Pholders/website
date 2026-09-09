@@ -356,6 +356,17 @@ class _AppointmentCard extends StatelessWidget {
   const _AppointmentCard({required this.data});
   final Appointment data;
 
+  /// Opens the actions for this consultation.
+  ///
+  /// Deliberately a tap on the existing card rather than buttons added to it:
+  /// the card layout is unchanged, it just does something now.
+  void _openActions(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => _AppointmentActionsDialog(data: data),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const tealLight = Color(0xFFE0F5F5);
@@ -366,7 +377,10 @@ class _AppointmentCard extends StatelessWidget {
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 580),
-      child: Container(
+      child: GestureDetector(
+        onTap: () => _openActions(context),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
@@ -467,6 +481,7 @@ class _AppointmentCard extends StatelessWidget {
             height: 18,
           ),
         ],
+      ),
       ),
       ),
     );
@@ -625,4 +640,120 @@ class _AppointmentsBody extends StatelessWidget {
       child: _TimeGrid(appointments: vm.appointments),
     );
   }
+}
+
+// ─── Appointment actions ──────────────────────────────────────────────────────
+
+/// What the doctor can do with a consultation, opened by tapping its card.
+///
+/// Only the two things the API supports are offered. Accepting acknowledges
+/// the consultation; completing it finalises payment on the backend and can
+/// trigger the prescription flow, so it confirms first and cannot be undone.
+class _AppointmentActionsDialog extends StatelessWidget {
+  const _AppointmentActionsDialog({required this.data});
+
+  final Appointment data;
+
+  Future<void> _complete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark this consultation complete?'),
+        content: Text(
+          'This finalises payment for ${data.patientName} and cannot be '
+          'undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Complete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    StoreProvider.of<AppState>(context)
+        .dispatch(CompleteAppointmentAction(appointmentId: data.id));
+    if (context.mounted) Navigator.pop(context);
+  }
+
+  void _accept(BuildContext context) {
+    StoreProvider.of<AppState>(context)
+        .dispatch(AcceptAppointmentAction(appointmentId: data.id));
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, bool>(
+      converter: (store) =>
+          store.state.appointmentsState.pendingActionIds.contains(data.id),
+      builder: (context, isBusy) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(data.patientName),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _line('When', '${data.formattedDate} ${data.timeRange}'),
+              if (data.reason != null) _line('Reason', data.reason!),
+              _line('Status', data.statusLabel),
+              if (data.patientPhone != null) _line('Phone', data.patientPhone!),
+              if (data.patientEmail != null) _line('Email', data.patientEmail!),
+            ],
+          ),
+          actions: isBusy
+              ? const [
+                  Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ]
+              : [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Close'),
+                  ),
+                  // Already-accepted consultations do not come back from this
+                  // endpoint, so this is always the un-accepted case.
+                  if (!data.doctorAccepted)
+                    TextButton(
+                      onPressed: () => _accept(context),
+                      child: const Text('Accept'),
+                    ),
+                  FilledButton(
+                    onPressed: () => _complete(context),
+                    child: const Text('Mark complete'),
+                  ),
+                ],
+        );
+      },
+    );
+  }
+
+  Widget _line(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: RichText(
+          text: TextSpan(
+            style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+            children: [
+              TextSpan(
+                text: '$label: ',
+                style: const TextStyle(color: AppTheme.textSecondary),
+              ),
+              TextSpan(text: value),
+            ],
+          ),
+        ),
+      );
 }

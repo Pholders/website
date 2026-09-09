@@ -23,6 +23,21 @@ class AcceptAppointmentAction {
   final int appointmentId;
 }
 
+/// Dispatched when the doctor marks a consultation finished.
+///
+/// This finalises cash payment on the backend and can trigger the prescription
+/// flow, so it cannot be undone from the app.
+class CompleteAppointmentAction {
+  const CompleteAppointmentAction({
+    required this.appointmentId,
+    this.notes,
+    this.diagnosis,
+  });
+  final int appointmentId;
+  final String? notes;
+  final String? diagnosis;
+}
+
 /// Dispatched when accepting an appointment fails.
 class AcceptAppointmentFailedAction {
   const AcceptAppointmentFailedAction({

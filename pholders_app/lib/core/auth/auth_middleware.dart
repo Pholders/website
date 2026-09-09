@@ -2,6 +2,7 @@ import 'package:redux/redux.dart';
 
 import '../../app/app_state.dart';
 import '../../features/auth/data/doctor_auth_repository.dart';
+import '../../features/auth/data/pharmacy_auth_repository.dart';
 import '../../shared/constants/app_constants.dart';
 import '../network/api_exception.dart';
 import 'auth_actions.dart';
@@ -13,6 +14,7 @@ import 'token_storage.dart';
 /// happens here.
 List<Middleware<AppState>> createAuthMiddleware({
   required DoctorAuthRepository doctorAuth,
+  required PharmacyAuthRepository pharmacyAuth,
   required TokenStorage tokenStorage,
 }) {
   Future<void> handleAppStarted(Store<AppState> store) async {
@@ -50,21 +52,25 @@ List<Middleware<AppState>> createAuthMiddleware({
     Store<AppState> store,
     LoginRequestAction action,
   ) async {
-    // Only the doctor flow is wired to the live API so far. Pharmacy keeps its
-    // local demo session so that team can still reach their screens.
-    // TODO: point pharmacy at POST /users/pharmacy/login once it is verified.
     if (action.role != AppConstants.roleDoctor) {
-      final userName = action.email.split('@').first;
-      await tokenStorage.saveSession(
-        token: 'demo-pharmacy-session',
-        role: action.role,
-        userName: userName,
-      );
-      store.dispatch(LoginSuccessAction(
-        token: 'demo-pharmacy-session',
-        role: action.role,
-        userName: userName,
-      ));
+      try {
+        final session = await pharmacyAuth.login(
+          email: action.email,
+          password: action.password,
+        );
+        await tokenStorage.saveSession(
+          token: session.token,
+          role: AppConstants.rolePharmacy,
+          userName: session.pharmacyName,
+        );
+        store.dispatch(LoginSuccessAction(
+          token: session.token,
+          role: AppConstants.rolePharmacy,
+          userName: session.pharmacyName,
+        ));
+      } on ApiException catch (e) {
+        store.dispatch(LoginFailureAction(errorMessage: e.message));
+      }
       return;
     }
 
@@ -176,16 +182,16 @@ List<Middleware<AppState>> createAuthMiddleware({
 
   Future<void> handleLogout(Store<AppState> store) async {
     final wasDoctor = store.state.authState.isDoctor;
+    final wasPharmacy = store.state.authState.role == AppConstants.rolePharmacy;
     // Clear locally first so the UI signs out immediately even if the network
     // call hangs on a cold-started server.
     await tokenStorage.clear();
-    if (wasDoctor) {
-      try {
-        await doctorAuth.logout();
-      } on ApiException {
-        // The local session is already gone; a failed server-side revoke is
-        // not worth blocking the user on.
-      }
+    try {
+      if (wasDoctor) await doctorAuth.logout();
+      if (wasPharmacy) await pharmacyAuth.logout();
+    } on ApiException {
+      // The local session is already gone; a failed server-side revoke is
+      // not worth blocking the user on.
     }
   }
 

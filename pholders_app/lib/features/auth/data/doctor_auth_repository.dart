@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import 'models/doctor.dart';
+import 'models/doctor_activity.dart';
 
 /// The result of a successful doctor login: a JWT plus the signed-in doctor.
 class DoctorSession {
@@ -131,6 +132,28 @@ class DoctorAuthRepository {
   Future<Doctor> fetchProfile() async {
     final data = await _api.get('/users/doctor/profile');
     return Doctor.fromJson(data);
+  }
+
+  /// Lists the doctor's active sessions.
+  Future<List<ActiveSession>> fetchSessions() async {
+    final data = await _api.get('/users/doctor/sessions');
+    final list = data['sessions'];
+    if (list is! List) return const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(ActiveSession.fromJson)
+        .toList();
+  }
+
+  /// Lists recent security events on the doctor's account.
+  Future<List<DoctorActivity>> fetchActivityLog() async {
+    final data = await _api.get('/users/doctor/activity-log');
+    final list = data['activities'];
+    if (list is! List) return const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(DoctorActivity.fromJson)
+        .toList();
   }
 
   /// Revokes the current session server-side. Safe to ignore failures — the

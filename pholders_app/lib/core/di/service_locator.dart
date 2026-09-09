@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../features/auth/data/doctor_auth_repository.dart';
+import '../../features/auth/data/pharmacy_auth_repository.dart';
 import '../../features/doctor/appointments/data/appointments_repository.dart';
 import '../../features/doctor/prescriptions/data/prescriptions_repository.dart';
 import '../auth/token_storage.dart';
@@ -35,6 +36,10 @@ Future<void> setupServiceLocator() async {
   // ─── Repositories ──────────────────────────────────────────────────────────
   sl.registerLazySingleton<DoctorAuthRepository>(
     () => DoctorAuthRepository(sl<ApiClient>()),
+  );
+
+  sl.registerLazySingleton<PharmacyAuthRepository>(
+    () => PharmacyAuthRepository(sl<ApiClient>()),
   );
 
   sl.registerLazySingleton<AppointmentsRepository>(
