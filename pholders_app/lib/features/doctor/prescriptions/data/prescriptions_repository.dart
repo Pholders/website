@@ -140,10 +140,14 @@ class PrescriptionsRepository {
   }
 
   /// Revokes a prescription so it can no longer be dispensed.
-  Future<void> revoke(int prescriptionId, {String? reason}) async {
+  ///
+  /// The reason is mandatory and the field is `revokeReason` — sending
+  /// `reason`, or omitting it, fails with 400. It is recorded against the
+  /// prescription, which is the point of revoking rather than deleting.
+  Future<void> revoke(int prescriptionId, {required String reason}) async {
     await _api.post(
       '/prescriptions/$prescriptionId/revoke',
-      body: {if (reason != null) 'reason': reason},
+      body: {'revokeReason': reason},
     );
   }
 }

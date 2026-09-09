@@ -28,10 +28,16 @@ class SignPrescriptionAction {
 }
 
 /// Dispatched when the doctor revokes a prescription.
+///
+/// [reason] is mandatory: the backend rejects a revoke without one, and it is
+/// what the audit trail records in place of a deletion.
 class RevokePrescriptionAction {
-  const RevokePrescriptionAction({required this.prescriptionId, this.reason});
+  const RevokePrescriptionAction({
+    required this.prescriptionId,
+    required this.reason,
+  });
   final int prescriptionId;
-  final String? reason;
+  final String reason;
 }
 
 /// Dispatched when a sign or revoke call fails.

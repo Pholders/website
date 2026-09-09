@@ -27,10 +27,10 @@ have been wrong about login, signing, signup fields and the medicine payload.
 - [x] Doctor activity log into the Login Activity screen
 - [x] Doctor sessions into the Device Management screen
 - [x] Pharmacy login — real call, replacing the demo session (see blocker 5)
+- [x] Revoke exercised against a real prescription — found two bugs, see below
 
 ## To do
 
-- [ ] **Exercise revoke** once against a real prescription.
 - [ ] **Drug interaction check** — `POST /prescriptions/:id/check-interactions`.
       Repository method exists, needs a trigger and somewhere to show results.
 - [ ] **Doctor settings forms** — bind the practice and account settings
@@ -147,3 +147,33 @@ pharmacy account can be activated without a real mailbox.
 
 *Ask:* have `verify-email` also set `status = 'active'`, or have
 `resend-verification` issue a `signup`-purpose OTP.
+
+### 6. Revoke persists and then returns 500
+
+Exercising revoke against prescription 3 found three separate problems, two of
+them ours and now fixed:
+
+1. *Ours, fixed:* the app sent `reason`; the field is `revokeReason`.
+2. *Ours, fixed:* the app treated it as optional and never collected one, so
+   revoke would have failed every time with "revokeReason is required". The
+   confirm dialog now asks for a reason and will not submit without it.
+3. *Theirs:* `POST /prescriptions/:id/revoke` **applies the revoke and then
+   crashes** with `EmailService.sendEmail is not a function`, returning 500.
+   Prescription 3 is `revoked` in the database despite the error response.
+
+Point 3 is dangerous: the doctor sees a failure for something that worked, and
+may retry or assume the script is still valid. `EmailService` has no
+`sendEmail` method — there are two call sites, `prescriptionController.js:592`
+and `:919`.
+
+Mitigation in the app: after a failed sign or revoke the list is refetched
+anyway, so the UI shows what the server actually holds rather than what the
+error implies. That hides the symptom; the backend still needs fixing.
+
+### 7. Cash appointments auto-cancel quickly
+
+Appointment 5 was booked and, before it could be accepted, moved to
+`cancelled` by `appointmentCleanupService`, which cancels `pending_payment`
+bookings after a timeout. Since `cash_on_arrival` bookings start as
+`pending_payment`, they can vanish from the doctor's list before the doctor
+ever sees them. Worth confirming the timeout is intended for cash bookings.

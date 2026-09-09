@@ -63,6 +63,11 @@ List<Middleware<AppState>> createPrescriptionsMiddleware({
         prescriptionId: action.prescriptionId,
         errorMessage: e.message,
       ));
+      // The backend can apply the change and then fail while sending its
+      // notification email, returning 500 for work it actually did. Refetch
+      // so the list shows what the server really holds, not what the error
+      // implies.
+      await load(store, 'all');
     }
   }
 
@@ -78,6 +83,9 @@ List<Middleware<AppState>> createPrescriptionsMiddleware({
         prescriptionId: action.prescriptionId,
         errorMessage: e.message,
       ));
+      // Same as signing: revoke currently persists and then 500s on its
+      // notification email, so the error alone cannot be trusted.
+      await load(store, 'all');
     }
   }
 

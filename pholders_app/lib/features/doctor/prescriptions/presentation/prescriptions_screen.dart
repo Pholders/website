@@ -126,31 +126,65 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
   }
 
   /// Revokes a signed prescription so it can no longer be dispensed.
+  ///
+  /// A reason is required, not optional politeness: the backend rejects a
+  /// revoke without one, and it is what the record keeps in place of a delete.
   Future<void> _revokePrescription(Prescription rx) async {
-    final confirmed = await showDialog<bool>(
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Revoke this prescription?'),
-        content: Text(
-          '${rx.dosage} for ${rx.patientName} will no longer be dispensable. '
-          'This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: RxColors.expiredText),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Revoke'),
-          ),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final text = controller.text.trim();
+          return AlertDialog(
+            title: const Text('Revoke this prescription?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${rx.dosage} for ${rx.patientName} will no longer be '
+                  'dispensable. This cannot be undone.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  onChanged: (_) => setDialogState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Reason',
+                    hintText: 'e.g. Prescribed in error',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style:
+                    FilledButton.styleFrom(backgroundColor: RxColors.expiredText),
+                onPressed:
+                    text.isEmpty ? null : () => Navigator.pop(ctx, text),
+                child: const Text('Revoke'),
+              ),
+            ],
+          );
+        },
       ),
     );
-    if (confirmed != true || !mounted) return;
-    StoreProvider.of<AppState>(context)
-        .dispatch(RevokePrescriptionAction(prescriptionId: int.parse(rx.id)));
+    controller.dispose();
+    if (reason == null || !mounted) return;
+    StoreProvider.of<AppState>(context).dispatch(
+      RevokePrescriptionAction(
+        prescriptionId: int.parse(rx.id),
+        reason: reason,
+      ),
+    );
   }
 
   /// Maps an API prescription onto the row model this screen renders.
