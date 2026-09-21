@@ -200,6 +200,7 @@ class UpdateDoctorProfileAction {
     this.city,
     this.province,
     this.zipCode,
+    this.consultationFee,
   });
 
   final String? firstName;
@@ -212,6 +213,10 @@ class UpdateDoctorProfileAction {
   final String? city;
   final String? province;
   final String? zipCode;
+
+  /// The doctor's consultation fee. Booking copies this onto the appointment,
+  /// and fails outright when it is null.
+  final double? consultationFee;
 }
 
 /// Dispatched when a profile save fails.

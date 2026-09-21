@@ -2,7 +2,10 @@
 
 > Last updated: 14 June 2026
 > Source: Pholders SRS v1.00 (22 April 2026)
-> Status: ✅ = Done | 🔲 = To Do
+> Status: ✅ = Done | ◐ = Partial | 🔲 = To Do
+>
+> Phases come from SRS 3.2.1.1. Note the PHR / patient-records work
+> is **Phase 3**, not Phase 2.
 
 ---
 
@@ -14,7 +17,7 @@
 |---|------|---------|----------|--------|-------------|
 | D-01 | Doctor Registration (Step 1) | FR-G-001 | Critical | ✅ | Registration form: license number, practice number, doctor type indicator, username, mobile number, password |
 | D-02 | Doctor Registration (Step 2) | FR-G-006 | Critical | ✅ | Full profile: email, first name, surname, qualification, practice names, practice numbers, logo, profile picture, gender, signature, consultation rate, operating hours |
-| D-03 | OTP Verification | FR-G-002 | Critical | 🔲 | Send OTP to verify doctor's account. Backend integration needed |
+| D-03 | OTP Verification | FR-G-002 | Critical | ✅ | OTP verification wired: verify-email + resend-verification |
 | D-04 | Post-verification landing (new) | FR-G-003 | Critical | 🔲 | New doctor → lands on Template screen to set up prescription layout |
 | D-05 | Post-verification landing (existing) | FR-G-004 | Critical | ✅ | Existing doctor → lands on Dashboard |
 | D-06 | Forgot Password | — | High | ✅ | Password reset flow |
@@ -30,7 +33,7 @@
 
 | # | Task | SRS Ref | Priority | Status | Description |
 |---|------|---------|----------|--------|-------------|
-| D-09 | Create New Prescription | FR-G-010 | Critical | 🔲 | Doctor creates prescription for patient — text input or speech-to-text AI transcription. Capture multiple drugs per script. Include: patient details, medicine name/strength/dosage/instructions/quantity, date, schedule, NAPPI codes |
+| D-09 | Create New Prescription | FR-G-010 | Critical | ◐ | Create prescription + medicines + AES sign all live. Speech-to-text and NAPPI codes not done |
 | D-10 | Create Prescription for new patient | FR-G-011 | Critical | 🔲 | Doctor can create script for patient not yet on system |
 | D-11 | SMS invite to new patient | FR-G-012 | High | 🔲 | System sends patient an SMS with app download link |
 | D-12 | Preview Prescription | FR-G-013 | Critical | 🔲 | Doctor views/reviews prescription before publishing to pharmacy network |
@@ -38,7 +41,7 @@
 | D-14 | Link Patient to Doctor | FR-G-019 | Critical | 🔲 | When doctor publishes script, patient is automatically linked to that doctor |
 | D-15 | Search Scripts | FR-G-014 | High | 🔲 | Search by patient, drug, medical aid, reference number, from date, to date |
 | D-16 | View/Email/Print Script | FR-G-015 | High | 🔲 | After search, doctor can view, email, or print a script |
-| D-17 | Create/Update/Delete Scripts | FR-G-020 | Critical | 🔲 | Only doctors authorized to create/update/delete. Patient can only view/print/email |
+| D-17 | Create/Update/Delete Scripts | FR-G-020 | Critical | ◐ | Create works. Update and delete have no endpoint; revoke is the withdrawal path |
 
 ### Appointments & Calendar
 
@@ -64,13 +67,13 @@
 |---|------|---------|----------|--------|-------------|
 | D-21 | Settings Page (shell) | — | Medium | ✅ | Settings sidebar with categories |
 | D-22 | Linked Services | — | Medium | ✅ | Medical Aid, Calendar, Payments, Communication integrations |
-| D-23 | Doctor Profile Settings | FR-G-006 | High | 🔲 | Edit all profile fields |
+| D-23 | Doctor Profile Settings | FR-G-006 | High | ◐ | Personal and Contact Information load and save. Email and HPCSA read-only, the endpoint strips them |
 | D-24 | Professional Details Settings | — | High | 🔲 | Medical credentials, practice info |
-| D-25 | Fees Setup | — | Medium | 🔲 | Consultation fees, time-based pricing, insurance, cancellation policy |
+| D-25 | Fees Setup | — | Medium | ◐ | Consultation fee saves via PUT /users/doctor/profile. Video, phone, time-based and special fees have no column yet |
 | D-26 | Notifications Settings | — | Medium | 🔲 | Push/email/SMS notification preferences |
 | D-27 | Security Settings | — | Medium | 🔲 | Password, biometric, 2FA, auto-logout |
-| D-28 | Device Management | — | Medium | 🔲 | View/manage logged-in devices |
-| D-29 | Login Activity | — | Low | 🔲 | View login history, flag suspicious activity |
+| D-28 | Device Management | — | Medium | ✅ | Device Management reads GET /users/doctor/sessions |
+| D-29 | Login Activity | — | Low | ✅ | Login Activity reads GET /users/doctor/activity-log |
 
 ---
 

@@ -196,6 +196,7 @@ List<Middleware<AppState>> createAuthMiddleware({
         city: action.city,
         province: action.province,
         zipCode: action.zipCode,
+        consultationFee: action.consultationFee,
       );
       store.dispatch(DoctorProfileLoadedAction(doctor: doctor));
       // Keep the stored display name in step with the change.

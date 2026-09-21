@@ -2,6 +2,12 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:redux/redux.dart';
+
+import '../../../../app/app_state.dart';
+import '../../../../core/auth/auth_actions.dart';
+import '../../../auth/data/models/doctor.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
@@ -102,14 +108,7 @@ class _FeesSetup extends StatelessWidget {
                     ),
                   ),
                   const _CompactDivider(),
-                  const _FeeSection(
-                    title: 'Consultation Fees',
-                    rows: [
-                      ('In-person Fee:', 'R', '0.00'),
-                      ('Video Fee:', 'R', '0.00'),
-                      ('Phone Fee:', 'R', '0.00'),
-                    ],
-                  ),
+                  const _ConsultationFees(),
                   const _CompactDivider(),
                   const _FeeSection(
                     title: 'Time-based pricing',
@@ -323,11 +322,18 @@ class _FeeSection extends StatelessWidget {
 
 class _FeeLine extends StatelessWidget {
   const _FeeLine(
-      {required this.label, required this.currency, required this.amount});
+      {required this.label,
+      required this.currency,
+      required this.amount,
+      this.controller});
 
   final String label;
   final String currency;
   final String amount;
+
+  /// Given only for the row the API actually stores. Without one the row is
+  /// the read-only placeholder it has always been.
+  final TextEditingController? controller;
 
   @override
   Widget build(BuildContext context) {
@@ -354,8 +360,23 @@ class _FeeLine extends StatelessWidget {
                   height: 10,
                   alignment: Alignment.center,
                   color: const Color(0xFF9F9F9F),
-                  child: Text(amount,
-                      style: const TextStyle(fontSize: 9, color: Colors.black)),
+                  child: controller == null
+                      ? Text(amount,
+                          style: const TextStyle(
+                              fontSize: 9, color: Colors.black))
+                      : TextField(
+                          controller: controller,
+                          textAlign: TextAlign.center,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          style: const TextStyle(
+                              fontSize: 9, color: Colors.black),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -437,5 +458,135 @@ class _CompactDivider extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Divider(color: SettingsShell.divider, thickness: 2, height: 2),
     );
+  }
+}
+
+/// The Consultation Fees section of the Fees Setup screen.
+///
+/// The doctors table has exactly one fee column, `consultation_fee`, and
+/// booking copies it onto the appointment — a doctor with none set cannot be
+/// booked at all. So the in-person row is that fee and is editable; the video
+/// and phone rows have nothing behind them yet and stay as placeholders.
+class _ConsultationFees extends StatefulWidget {
+  const _ConsultationFees();
+
+  @override
+  State<_ConsultationFees> createState() => _ConsultationFeesState();
+}
+
+class _ConsultationFeesState extends State<_ConsultationFees> {
+  final _inPersonFee = TextEditingController();
+  bool _prefilled = false;
+  String? _problem;
+
+  @override
+  void dispose() {
+    _inPersonFee.dispose();
+    super.dispose();
+  }
+
+  void _prefill(Doctor? doctor) {
+    if (doctor == null || _prefilled) return;
+    final fee = doctor.consultationFee;
+    _inPersonFee.text = fee == null ? '' : fee.toStringAsFixed(2);
+    _prefilled = true;
+  }
+
+  void _save() {
+    final fee = double.tryParse(_inPersonFee.text.trim());
+    if (fee == null || fee < 0) {
+      setState(() => _problem = 'Enter a fee amount, for example 350.00');
+      return;
+    }
+    setState(() => _problem = null);
+    StoreProvider.of<AppState>(context)
+        .dispatch(UpdateDoctorProfileAction(consultationFee: fee));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, _FeesViewModel>(
+      converter: _FeesViewModel.fromStore,
+      builder: (context, vm) {
+        _prefill(vm.doctor);
+        final error = _problem ?? vm.errorMessage;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SettingsSectionTitle('Consultation Fees'),
+              const SizedBox(height: 8),
+              _FeeLine(
+                label: 'In-person Fee:',
+                currency: vm.currencySymbol,
+                amount: '0.00',
+                controller: _inPersonFee,
+              ),
+              _FeeLine(
+                  label: 'Video Fee:', currency: vm.currencySymbol, amount: '0.00'),
+              _FeeLine(
+                  label: 'Phone Fee:', currency: vm.currencySymbol, amount: '0.00'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  SettingsButton(
+                    'Save Fee',
+                    width: 110,
+                    height: 28,
+                    onTap: vm.isSaving ? null : _save,
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        error,
+                        style: const TextStyle(
+                            fontSize: 10, color: Color(0xFFCC1111)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FeesViewModel {
+  const _FeesViewModel({
+    required this.isSaving,
+    this.doctor,
+    this.errorMessage,
+  });
+
+  factory _FeesViewModel.fromStore(Store<AppState> store) {
+    final auth = store.state.authState;
+    return _FeesViewModel(
+      isSaving: auth.isLoading,
+      doctor: auth.doctor,
+      errorMessage: auth.errorMessage,
+    );
+  }
+
+  final bool isSaving;
+  final Doctor? doctor;
+  final String? errorMessage;
+
+  /// The record stores an ISO code; the screen shows a symbol.
+  String get currencySymbol {
+    switch (doctor?.currency) {
+      case 'USD':
+        return r'$';
+      case 'GBP':
+        return '\u00A3';
+      case 'EUR':
+        return '\u20AC';
+      default:
+        return 'R';
+    }
   }
 }
