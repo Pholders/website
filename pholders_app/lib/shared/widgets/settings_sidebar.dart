@@ -60,59 +60,59 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
 
         void _initializeMenuItems() {
         menuItems = [
-                SettingsMenuItem(
+                const SettingsMenuItem(
             id: 'account',
             label: 'Account',
             icon: IconType.account,
             subItems: [
-              SettingsSubMenuItem(id: 'personal_information', label: 'Personal Information'),
-              SettingsSubMenuItem(id: 'professional', label: 'Professional Details'),
+              const SettingsSubMenuItem(id: 'personal_information', label: 'Personal Information'),
+              const SettingsSubMenuItem(id: 'professional', label: 'Professional Details'),
             ],
           ),
-          SettingsMenuItem(
+          const SettingsMenuItem(
             id: 'practice',
             label: 'Practice',
             icon: IconType.practice,
             subItems: [
-              SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
-              SettingsSubMenuItem(id: 'notification_settings', label: 'Notification Settings'),
+              const SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
+              const SettingsSubMenuItem(id: 'notification_settings', label: 'Notification Settings'),
             ],
           ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'security',
         label: 'Security',
         icon: IconType.security,
         subItems: [
-          SettingsSubMenuItem(id: 'security_settings', label: 'Security Settings'),
-          SettingsSubMenuItem(id: 'device_management', label: 'Device Management'),
-          SettingsSubMenuItem(id: 'login_activity', label: 'Login Activity'),
+          const SettingsSubMenuItem(id: 'security_settings', label: 'Security Settings'),
+          const SettingsSubMenuItem(id: 'device_management', label: 'Device Management'),
+          const SettingsSubMenuItem(id: 'login_activity', label: 'Login Activity'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'preferences',
         label: 'Preferences',
         icon: IconType.preferences,
         subItems: [
-          SettingsSubMenuItem(id: 'preferences_settings', label: 'Preferences Settings'),
+          const SettingsSubMenuItem(id: 'preferences_settings', label: 'Preferences Settings'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'integrations',
         label: 'Integrations',
         icon: IconType.integrations,
         subItems: [
-          SettingsSubMenuItem(id: 'linked_services', label: 'Linked Services'),
+          const SettingsSubMenuItem(id: 'linked_services', label: 'Linked Services'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'support_legal',
         label: 'Support & Legal',
         icon: IconType.supportLegal,
         subItems: [
-          SettingsSubMenuItem(id: 'help_center', label: 'Help Center'),
-          SettingsSubMenuItem(id: 'privacy_policy', label: 'Privacy Policy'),
-          SettingsSubMenuItem(id: 'terms_of_service', label: 'Terms of Service'),
-          SettingsSubMenuItem(id: 'contact_support', label: 'Contact Support'),
+          const SettingsSubMenuItem(id: 'help_center', label: 'Help Center'),
+          const SettingsSubMenuItem(id: 'privacy_policy', label: 'Privacy Policy'),
+          const SettingsSubMenuItem(id: 'terms_of_service', label: 'Terms of Service'),
+          const SettingsSubMenuItem(id: 'contact_support', label: 'Contact Support'),
         ],
       ),
     ];
@@ -151,11 +151,11 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
             child: Text(
               'Settings',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: _textDark,

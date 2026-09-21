@@ -4,9 +4,9 @@ import 'package:pholders_app/features/doctor/patients/presentation/patient_profi
 
 /// PatientDetailPage — displays the detailed profile of a patient.
 class PatientDetailPage extends StatelessWidget {
-  final String patientId;
 
   const PatientDetailPage({super.key, required this.patientId});
+  final String patientId;
 
   @override
   Widget build(BuildContext context) {

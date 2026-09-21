@@ -28,6 +28,10 @@ have been wrong about login, signing, signup fields and the medicine payload.
 - [x] Doctor sessions into the Device Management screen
 - [x] Pharmacy login — real call, replacing the demo session
 - [x] Revoke exercised against a real prescription
+- [x] Drug interaction check — "Check Interactions" on the prescription row
+      menu, with a safety report dialog
+- [x] Consultation fee (D-25) — the in-person fee loads and saves. Booking
+      copies it onto the appointment, so a doctor without one cannot be booked
 - [x] Profile form — Personal and Contact Information now load and save
       (`PUT /users/doctor/profile`). Email and HPCSA are read-only because the
       endpoint strips them.
@@ -39,8 +43,6 @@ have been wrong about login, signing, signup fields and the medicine payload.
       map to real columns but are still decorative. Same pattern as the
       Personal Information section, which is now bound.
 
-- [ ] **Drug interaction check** — `POST /prescriptions/:id/check-interactions`.
-      Repository method exists, needs a trigger and somewhere to show results.
 - [ ] **Pharmacy prescription queue** — `GET /prescriptions/pharmacy/claimed`,
       `/pharmacy/dispense-history`, `/pharmacy/dispense-stats`,
       `/pharmacy/medicines/:id`, and `POST /:id/dispense`. Waiting on being

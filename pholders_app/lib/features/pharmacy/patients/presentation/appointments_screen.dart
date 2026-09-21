@@ -17,15 +17,7 @@ class ApptColors {
 }
 
 // ─── Data model ───────────────────────────────────────────────────────────────
-class Appointment {
-  final String id;
-  final String time;
-  final String date;
-  final String service;
-  final String doctor;
-  final String status;
-  final int hour; // for timeline placement
-  final bool isPurple; // alternates colours
+class Appointment { // alternates colours
 
   const Appointment({
     required this.id,
@@ -37,6 +29,14 @@ class Appointment {
     required this.hour,
     this.isPurple = false,
   });
+  final String id;
+  final String time;
+  final String date;
+  final String service;
+  final String doctor;
+  final String status;
+  final int hour; // for timeline placement
+  final bool isPurple;
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -48,9 +48,9 @@ final _mockAppointments = [
 
 // ─── Appointments Screen ──────────────────────────────────────────────────────
 class AppointmentsScreen extends StatefulWidget {
-  final Patient patient;
 
   const AppointmentsScreen({super.key, required this.patient});
+  final Patient patient;
 
   @override
   State<AppointmentsScreen> createState() => _AppointmentsScreenState();
@@ -298,10 +298,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
 // ─── Timeline row ─────────────────────────────────────────────────────────────
 class _TimelineRow extends StatelessWidget {
-  final int hour;
-  final List<Appointment> appointments;
 
   const _TimelineRow({required this.hour, required this.appointments});
+  final int hour;
+  final List<Appointment> appointments;
 
   String get _hourLabel {
     if (hour == 12) return '12 pm';
@@ -361,8 +361,8 @@ class _TimelineRow extends StatelessWidget {
 
 // ─── Appointment card ─────────────────────────────────────────────────────────
 class _AppointmentCard extends StatefulWidget {
-  final Appointment appt;
   const _AppointmentCard({required this.appt});
+  final Appointment appt;
 
   @override
   State<_AppointmentCard> createState() => _AppointmentCardState();
@@ -387,7 +387,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: _hovered ? bgColor.withOpacity(0.8) : bgColor,
+          color: _hovered ? bgColor.withValues(alpha: 0.8) : bgColor,
           borderRadius: BorderRadius.circular(12),
           border: Border(
             left: BorderSide(color: accentColor, width: 3),

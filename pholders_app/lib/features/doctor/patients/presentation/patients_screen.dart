@@ -29,14 +29,6 @@ enum PatientStatus { stable, monitored, critical }
 enum PatientCategory { outpatient, remoteCare, followUp }
 
 class Patient {
-  final String id;
-  String name;
-  String condition;
-  String lastActivity;
-  PatientStatus status;
-  String priority;
-  PatientCategory category;
-  String? avatarInitials;
 
   Patient({
     required this.id,
@@ -48,6 +40,14 @@ class Patient {
     required this.category,
     this.avatarInitials,
   });
+  final String id;
+  String name;
+  String condition;
+  String lastActivity;
+  PatientStatus status;
+  String priority;
+  PatientCategory category;
+  String? avatarInitials;
 
   Patient copyWith({
     String? name,
@@ -81,8 +81,8 @@ List<Patient> _generateMockPatients() {
     'Migraine', 'Eczema', 'Anxiety Disorder', 'Back Pain',
   ];
   final activities = ['2 hours ago', '30 min ago', '1 day ago', '3 hours ago', 'Just now'];
-  final categories = PatientCategory.values;
-  final statuses = PatientStatus.values;
+  const categories = PatientCategory.values;
+  const statuses = PatientStatus.values;
   final priorities = ['Low', 'Medium', 'High'];
 
   return List.generate(names.length, (i) {
@@ -101,8 +101,8 @@ List<Patient> _generateMockPatients() {
 
 // ─── Patients screen ─────────────────────────────────────────────────────────
 class PatientsScreen extends StatefulWidget {
-  final ValueChanged<Patient> onPatientTap;
   const PatientsScreen({super.key, required this.onPatientTap});
+  final ValueChanged<Patient> onPatientTap;
   @override
   State<PatientsScreen> createState() => _PatientsScreenState();
 }
@@ -111,7 +111,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
   final List<Patient> _allPatients = _generateMockPatients();
   int _tabIndex = 0; // 0=All, 1=Outpatients, 2=Remote care, 3=Follow-up
   final _searchController = TextEditingController();
-  String _searchQuery = '';
+  final String _searchQuery = '';
 
   List<Patient> get _filtered {
     var list = _allPatients;
@@ -207,9 +207,9 @@ class _PatientsScreenState extends State<PatientsScreen> {
 
 // ─── Top bar ─────────────────────────────────────────────────────────────────
 class _TopBar extends StatelessWidget {
+  const _TopBar({required this.searchController, required this.onSearch});
   final TextEditingController searchController;
   final ValueChanged<String> onSearch;
-  const _TopBar({required this.searchController, required this.onSearch});
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +218,7 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       child: Row(
         children: [
-          Text('Pholders ', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          const Text('Pholders ', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           const Icon(Icons.chevron_right, size: 14, color: AppColors.textSecondary),
           const SizedBox(width: 4),
           const Text('Patients', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
@@ -268,9 +268,9 @@ class _TopBar extends StatelessWidget {
 
 // ─── Header row ──────────────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
+  const _Header({required this.total, required this.onAdd});
   final int total;
   final VoidCallback onAdd;
-  const _Header({required this.total, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -319,7 +319,7 @@ class _AlertBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.alertBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.alertBorder.withOpacity(0.4)),
+        border: Border.all(color: AppColors.alertBorder.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
@@ -345,9 +345,9 @@ class _AlertBanner extends StatelessWidget {
 
 // ─── Tab bar ─────────────────────────────────────────────────────────────────
 class _TabBar extends StatelessWidget {
+  const _TabBar({required this.selected, required this.onSelect});
   final int selected;
   final ValueChanged<int> onSelect;
-  const _TabBar({required this.selected, required this.onSelect});
 
   static const _labels = ['All', 'Outpatients', 'Remote care', 'Follow-up'];
 
@@ -384,10 +384,6 @@ class _TabBar extends StatelessWidget {
 
 // ─── Patient table ────────────────────────────────────────────────────────────
 class _PatientTable extends StatelessWidget {
-  final List<Patient> patients;
-  final ValueChanged<Patient> onEdit;
-  final ValueChanged<Patient> onDelete;
-  final ValueChanged<Patient> onRowTap;
 
   const _PatientTable({
     required this.patients,
@@ -395,6 +391,10 @@ class _PatientTable extends StatelessWidget {
     required this.onDelete,
     required this.onRowTap,
   });
+  final List<Patient> patients;
+  final ValueChanged<Patient> onEdit;
+  final ValueChanged<Patient> onDelete;
+  final ValueChanged<Patient> onRowTap;
 
   @override
   Widget build(BuildContext context) {
@@ -449,8 +449,8 @@ class _PatientTable extends StatelessWidget {
 }
 
 class _HeaderCell extends StatelessWidget {
-  final String label;
   const _HeaderCell(this.label);
+  final String label;
   @override
   Widget build(BuildContext context) => Text(label,
       style: const TextStyle(
@@ -459,10 +459,6 @@ class _HeaderCell extends StatelessWidget {
 
 // ─── Patient row ──────────────────────────────────────────────────────────────
 class _PatientRow extends StatefulWidget {
-  final Patient patient;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onTap;
 
   const _PatientRow({
     required this.patient,
@@ -470,6 +466,10 @@ class _PatientRow extends StatefulWidget {
     required this.onDelete,
     required this.onTap,
   });
+  final Patient patient;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onTap;
 
   @override
   State<_PatientRow> createState() => _PatientRowState();
@@ -489,7 +489,7 @@ class _PatientRowState extends State<_PatientRow> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          color: _hovered ? AppColors.tealLight.withOpacity(0.4) : Colors.transparent,
+          color: _hovered ? AppColors.tealLight.withValues(alpha: 0.4) : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(
             children: [
@@ -575,14 +575,14 @@ class _PatientRowState extends State<_PatientRow> {
 void _showPatientActionsMenu(BuildContext context, Patient patient) {
   showDialog(
     context: context,
-    barrierColor: Colors.black.withOpacity(0.18),
+    barrierColor: Colors.black.withValues(alpha: 0.18),
     builder: (_) => _PatientActionsMenu(patient: patient),
   );
 }
 
 class _PatientActionsMenu extends StatelessWidget {
-  final Patient patient;
   const _PatientActionsMenu({required this.patient});
+  final Patient patient;
 
   static const _actions = [
     _PatientAction(label: 'View Patient Profile', icon: Icons.person_outline_rounded),
@@ -606,7 +606,7 @@ class _PatientActionsMenu extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -677,16 +677,16 @@ class _PatientActionsMenu extends StatelessWidget {
 }
 
 class _PatientAction {
+  const _PatientAction({required this.label, required this.icon});
   final String label;
   final IconData icon;
-  const _PatientAction({required this.label, required this.icon});
 }
 
 class _ActionMenuItem extends StatefulWidget {
+  const _ActionMenuItem({required this.label, required this.icon, required this.onTap});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  const _ActionMenuItem({required this.label, required this.icon, required this.onTap});
 
   @override
   State<_ActionMenuItem> createState() => _ActionMenuItemState();
@@ -728,8 +728,8 @@ class _ActionMenuItemState extends State<_ActionMenuItem> {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 class _StatusBadge extends StatelessWidget {
-  final PatientStatus status;
   const _StatusBadge({required this.status});
+  final PatientStatus status;
 
   @override
   Widget build(BuildContext context) {
@@ -762,9 +762,9 @@ class _StatusBadge extends StatelessWidget {
 }
 
 class _ActionBtn extends StatelessWidget {
+  const _ActionBtn({required this.icon, required this.onTap});
   final IconData icon;
   final VoidCallback onTap;
-  const _ActionBtn({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -785,8 +785,8 @@ class _ActionBtn extends StatelessWidget {
 
 // ─── Add / Edit patient dialog ────────────────────────────────────────────────
 class _PatientFormDialog extends StatefulWidget {
-  final Patient? existing;
   const _PatientFormDialog({this.existing});
+  final Patient? existing;
 
   @override
   State<_PatientFormDialog> createState() => _PatientFormDialogState();
@@ -936,11 +936,11 @@ class _PatientFormDialogState extends State<_PatientFormDialog> {
 }
 
 class _FormField extends StatelessWidget {
+
+  const _FormField({required this.label, required this.controller, required this.hint});
   final String label;
   final TextEditingController controller;
   final String hint;
-
-  const _FormField({required this.label, required this.controller, required this.hint});
 
   @override
   Widget build(BuildContext context) {

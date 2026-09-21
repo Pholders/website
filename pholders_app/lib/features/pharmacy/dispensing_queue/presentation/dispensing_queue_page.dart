@@ -53,9 +53,9 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
   }
 
   Widget _buildHeader() {
-    return Row(
+    return const Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -65,7 +65,7 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
             ],
           ),
         ),
-        Text('${6} in queue', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted)),
+        Text('${6} in queue', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted)),
       ],
     );
   }
@@ -148,7 +148,7 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
           ])),
           Expanded(flex: 3, child: Text(item.medication, style: const TextStyle(fontSize: 13, color: _textDark))),
           Expanded(flex: 3, child: Text(item.doctor, style: const TextStyle(fontSize: 13, color: _textDark))),
-          Expanded(flex: 2, child: Text(item.time, style: TextStyle(fontSize: 13, color: _textMuted))),
+          Expanded(flex: 2, child: Text(item.time, style: const TextStyle(fontSize: 13, color: _textMuted))),
           Expanded(flex: 2, child: Row(children: [
             _StatusDot(status: item.status),
             const SizedBox(width: 4),
@@ -227,8 +227,8 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
 }
 
 class _StatusDot extends StatelessWidget {
-  final String status;
   const _StatusDot({required this.status});
+  final String status;
 
   Color get _color {
     switch (status) {
@@ -250,11 +250,11 @@ class _StatusDot extends StatelessWidget {
 }
 
 class _QueueItem {
+
+  _QueueItem({required this.patient, required this.medication, required this.doctor, required this.time, required this.status});
   final String patient;
   final String medication;
   final String doctor;
   final String time;
   String status;
-
-  _QueueItem({required this.patient, required this.medication, required this.doctor, required this.time, required this.status});
 }

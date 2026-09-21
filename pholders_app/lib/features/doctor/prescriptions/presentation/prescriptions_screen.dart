@@ -5,6 +5,7 @@ import 'package:redux/redux.dart';
 import 'package:pholders_app/app/app_state.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
 import 'package:pholders_app/features/doctor/prescriptions/data/models/prescription.dart' as api;
+import 'package:pholders_app/features/doctor/prescriptions/presentation/interaction_check_dialog.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/new_prescription_dialog.dart';
 import 'package:pholders_app/features/doctor/prescriptions/redux/prescriptions_actions.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescription_details_screen.dart';
@@ -94,6 +95,20 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
     await showDialog<bool>(
       context: context,
       builder: (_) => const NewPrescriptionDialog(),
+    );
+  }
+
+  /// Runs the drug interaction check and shows the report.
+  ///
+  /// Most useful before signing: a signed prescription cannot be edited, so
+  /// anything flagged afterwards can only be revoked.
+  void _checkInteractions(Prescription rx) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => InteractionCheckDialog(
+        prescriptionId: int.parse(rx.id),
+        patientName: rx.patientName,
+      ),
     );
   }
 
@@ -500,6 +515,11 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                               onRevoke: _isLive && rx.status == RxStatus.approved
                                   ? () => _revokePrescription(rx)
                                   : null,
+                              // Sample rows have no prescription on the server
+                              // to check, so the action is not offered there.
+                              onCheckInteractions: _isLive
+                                  ? () => _checkInteractions(rx)
+                                  : null,
                             ))
                         .toList(),
                   ),
@@ -536,6 +556,7 @@ class _RxRow extends StatefulWidget {
     required this.onViewDetails,
     this.onSign,
     this.onRevoke,
+    this.onCheckInteractions,
   });
   final Prescription prescription;
   final VoidCallback onEdit;
@@ -545,6 +566,9 @@ class _RxRow extends StatefulWidget {
   /// Null when the action does not apply to this prescription's status.
   final VoidCallback? onSign;
   final VoidCallback? onRevoke;
+
+  /// Null for sample rows, which have no prescription on the server to check.
+  final VoidCallback? onCheckInteractions;
 
   @override
   State<_RxRow> createState() => _RxRowState();
@@ -563,6 +587,7 @@ class _RxRowState extends State<_RxRow> {
         onViewDetails: widget.onViewDetails,
         onSign: widget.onSign,
         onRevoke: widget.onRevoke,
+        onCheckInteractions: widget.onCheckInteractions,
       ),
     );
   }
@@ -753,18 +778,23 @@ class _RxActionsMenu extends StatelessWidget {
     required this.onViewDetails,
     this.onSign,
     this.onRevoke,
+    this.onCheckInteractions,
   });
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onViewDetails;
   final VoidCallback? onSign;
   final VoidCallback? onRevoke;
+  final VoidCallback? onCheckInteractions;
 
   @override
   Widget build(BuildContext context) {
     final actions = [
       _RxAction(label: 'View Details', icon: Icons.visibility_outlined,
           onTap: () { Navigator.pop(context); onViewDetails(); }),
+      if (onCheckInteractions != null)
+        _RxAction(label: 'Check Interactions', icon: Icons.science_outlined,
+            onTap: () { Navigator.pop(context); onCheckInteractions!(); }),
       // Only offered while the prescription is still unsigned.
       if (onSign != null)
         _RxAction(label: 'Sign Prescription', icon: Icons.draw_outlined,

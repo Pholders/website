@@ -53,6 +53,21 @@ List<Middleware<AppState>> createPrescriptionsMiddleware({
     }
   }
 
+  Future<void> checkInteractions(
+    Store<AppState> store,
+    CheckInteractionsAction action,
+  ) async {
+    try {
+      final report = await repository.checkInteractions(action.prescriptionId);
+      store.dispatch(InteractionsCheckedAction(
+        prescriptionId: action.prescriptionId,
+        report: report,
+      ));
+    } on ApiException catch (e) {
+      store.dispatch(InteractionsCheckFailedAction(errorMessage: e.message));
+    }
+  }
+
   Future<void> sign(Store<AppState> store, SignPrescriptionAction action) async {
     try {
       await repository.sign(action.prescriptionId);
@@ -96,6 +111,8 @@ List<Middleware<AppState>> createPrescriptionsMiddleware({
       load(store, action.filter);
     } else if (action is CreatePrescriptionAction) {
       create(store, action);
+    } else if (action is CheckInteractionsAction) {
+      checkInteractions(store, action);
     } else if (action is SignPrescriptionAction) {
       sign(store, action);
     } else if (action is RevokePrescriptionAction) {

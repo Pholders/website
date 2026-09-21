@@ -4,9 +4,9 @@ import 'package:pholders_app/features/doctor/prescriptions/presentation/prescrip
 
 /// PatientPrescriptionsPage — displays the prescriptions for a patient.
 class PatientPrescriptionsPage extends StatelessWidget {
-  final String patientId;
 
   const PatientPrescriptionsPage({super.key, required this.patientId});
+  final String patientId;
 
   @override
   Widget build(BuildContext context) {

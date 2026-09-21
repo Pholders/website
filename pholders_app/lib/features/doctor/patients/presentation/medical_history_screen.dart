@@ -73,14 +73,6 @@ extension HistoryTypeExt on HistoryType {
 
 // ─── History entry model ──────────────────────────────────────────────────────
 class HistoryEntry {
-  final String id;
-  final HistoryType type;
-  final String title;
-  final String subtitle;
-  final DateTime date;
-  final String? doctor;
-  final String? detail;
-  final String? status;
 
   const HistoryEntry({
     required this.id,
@@ -92,13 +84,21 @@ class HistoryEntry {
     this.detail,
     this.status,
   });
+  final String id;
+  final HistoryType type;
+  final String title;
+  final String subtitle;
+  final DateTime date;
+  final String? doctor;
+  final String? detail;
+  final String? status;
 }
 
 // ─── Medical History Screen ───────────────────────────────────────────────────
 class MedicalHistoryScreen extends StatefulWidget {
-  final Patient patient;
 
   const MedicalHistoryScreen({super.key, required this.patient});
+  final Patient patient;
 
   @override
   State<MedicalHistoryScreen> createState() => _MedicalHistoryScreenState();
@@ -553,7 +553,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
                                 horizontal: 6, vertical: 1),
                             decoration: BoxDecoration(
                               color: active
-                                  ? Colors.white.withOpacity(0.2)
+                                  ? Colors.white.withValues(alpha: 0.2)
                                   : type.bgColor,
                               borderRadius:
                                   BorderRadius.circular(10),
@@ -590,7 +590,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
                           Icon(Icons.history_rounded,
                               size: 48,
                               color: HistColors.textSecondary
-                                  .withOpacity(0.3)),
+                                  .withValues(alpha: 0.3)),
                           const SizedBox(height: 12),
                           Text(
                             _searchQuery.isNotEmpty
@@ -626,10 +626,6 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
 
 // ─── History group (month section) ───────────────────────────────────────────
 class _HistoryGroup extends StatelessWidget {
-  final String groupLabel;
-  final List<HistoryEntry> entries;
-  final String Function(DateTime) formatDate;
-  final void Function(HistoryEntry) onView;
 
   const _HistoryGroup({
     required this.groupLabel,
@@ -637,6 +633,10 @@ class _HistoryGroup extends StatelessWidget {
     required this.formatDate,
     required this.onView,
   });
+  final String groupLabel;
+  final List<HistoryEntry> entries;
+  final String Function(DateTime) formatDate;
+  final void Function(HistoryEntry) onView;
 
   @override
   Widget build(BuildContext context) {
@@ -682,10 +682,6 @@ class _HistoryGroup extends StatelessWidget {
 
 // ─── Single timeline item ─────────────────────────────────────────────────────
 class _HistoryTimelineItem extends StatefulWidget {
-  final HistoryEntry entry;
-  final bool isLast;
-  final String Function(DateTime) formatDate;
-  final VoidCallback onView;
 
   const _HistoryTimelineItem({
     required this.entry,
@@ -693,6 +689,10 @@ class _HistoryTimelineItem extends StatefulWidget {
     required this.formatDate,
     required this.onView,
   });
+  final HistoryEntry entry;
+  final bool isLast;
+  final String Function(DateTime) formatDate;
+  final VoidCallback onView;
 
   @override
   State<_HistoryTimelineItem> createState() =>
@@ -727,7 +727,7 @@ class _HistoryTimelineItemState
                         color: Colors.white, width: 2),
                     boxShadow: [
                       BoxShadow(
-                        color: e.type.color.withOpacity(0.3),
+                        color: e.type.color.withValues(alpha: 0.3),
                         blurRadius: 4,
                         spreadRadius: 1,
                       ),
@@ -767,7 +767,7 @@ class _HistoryTimelineItemState
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: _hovered
-                          ? e.type.color.withOpacity(0.3)
+                          ? e.type.color.withValues(alpha: 0.3)
                           : HistColors.border,
                     ),
                   ),
@@ -892,9 +892,9 @@ class _HistoryTimelineItemState
 
 // ─── Status pill ──────────────────────────────────────────────────────────────
 class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status, required this.type});
   final String status;
   final HistoryType type;
-  const _StatusPill({required this.status, required this.type});
 
   @override
   Widget build(BuildContext context) {
@@ -919,13 +919,13 @@ class _StatusPill extends StatelessWidget {
 
 // ─── History entry detail dialog ──────────────────────────────────────────────
 class _HistoryEntryDialog extends StatelessWidget {
-  final HistoryEntry entry;
-  final String Function(DateTime) formatDate;
 
   const _HistoryEntryDialog({
     required this.entry,
     required this.formatDate,
   });
+  final HistoryEntry entry;
+  final String Function(DateTime) formatDate;
 
   @override
   Widget build(BuildContext context) {
@@ -1026,9 +1026,9 @@ class _HistoryEntryDialog extends StatelessWidget {
 }
 
 class _HistDetail extends StatelessWidget {
+  const _HistDetail({required this.label, required this.value});
   final String label;
   final String value;
-  const _HistDetail({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

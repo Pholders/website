@@ -8,9 +8,9 @@ import '../../../../core/routing/app_routes.dart';
 /// Shows full order information including patient info, items table,
 /// totals, linked prescription, and payment information.
 class OrderDetailPage extends StatefulWidget {
-  final String orderId;
 
   const OrderDetailPage({super.key, required this.orderId});
+  final String orderId;
 
   @override
   State<OrderDetailPage> createState() => _OrderDetailPageState();
@@ -130,9 +130,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           );
         }),
         const Spacer(),
-        Text(
+        const Text(
           'Total: 140',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted),
         ),
       ],
     );
@@ -216,16 +216,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ),
         ),
         const SizedBox(width: 4),
-        Text(
+        const Text(
           '> #10234',
-          style: TextStyle(fontSize: 14, color: _textMuted),
+          style: const TextStyle(fontSize: 14, color: _textMuted),
         ),
         const Spacer(),
-        _IconBtn(assetPath: 'assets/share-icon.png'),
+        const _IconBtn(assetPath: 'assets/share-icon.png'),
         const SizedBox(width: 8),
-        _IconBtn(assetPath: 'assets/printer-icon.png'),
+        const _IconBtn(assetPath: 'assets/printer-icon.png'),
         const SizedBox(width: 8),
-        _IconBtn(assetPath: 'assets/call-icon.png'),
+        const _IconBtn(assetPath: 'assets/call-icon.png'),
       ],
     );
   }
@@ -239,9 +239,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Order No.',
-                style: TextStyle(fontSize: 12, color: _textMuted),
+                style: const TextStyle(fontSize: 12, color: _textMuted),
               ),
               const SizedBox(height: 2),
               const Text(
@@ -253,9 +253,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              const Text(
                 'Placed on: 25 Mar 2026 • 10:30 AM',
-                style: TextStyle(fontSize: 12, color: _textMuted),
+                style: const TextStyle(fontSize: 12, color: _textMuted),
               ),
               const SizedBox(height: 10),
               // Status badge + action button
@@ -314,9 +314,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             ],
           ),
         ),
-        Text(
+        const Text(
           'In-Store Pickup',
-          style: TextStyle(fontSize: 13, color: _textMuted),
+          style: const TextStyle(fontSize: 13, color: _textMuted),
         ),
       ],
     );
@@ -344,7 +344,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(fontSize: 13, color: _textMuted),
+              style: const TextStyle(fontSize: 13, color: _textMuted),
             ),
           ),
           const SizedBox(width: 16),
@@ -376,7 +376,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           children: [
             _buildSectionTitle('Items'),
             const SizedBox(width: 4),
-            Text('(2)', style: TextStyle(fontSize: 14, color: _textMuted)),
+            const Text('(2)', style: const TextStyle(fontSize: 14, color: _textMuted)),
           ],
         ),
         const SizedBox(height: 12),
@@ -388,41 +388,41 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           child: Column(
             children: [
               // Header
-              Padding(
+              const Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
-                    const SizedBox(width: 24),
-                    Expanded(
+                    SizedBox(width: 24),
+                    const Expanded(
                       flex: 3,
-                      child: Text('Order ID',
-                          style: TextStyle(
+                      child: const Text('Order ID',
+                          style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: _textMuted)),
                     ),
-                    Expanded(
+                    const Expanded(
                       flex: 2,
-                      child: Text('Dosage',
-                          style: TextStyle(
+                      child: const Text('Dosage',
+                          style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: _textMuted)),
                     ),
-                    Expanded(
+                    const Expanded(
                       flex: 1,
-                      child: Text('Qty',
-                          style: TextStyle(
+                      child: const Text('Qty',
+                          style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: _textMuted)),
                     ),
-                    Expanded(
+                    const Expanded(
                       flex: 2,
-                      child: Text('Price',
+                      child: const Text('Price',
                           textAlign: TextAlign.right,
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: _textMuted)),
@@ -464,16 +464,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Method: In-Store Pickup', style: TextStyle(fontSize: 13, color: _textMuted)),
+              const Text('Method: In-Store Pickup', style: const TextStyle(fontSize: 13, color: _textMuted)),
               const SizedBox(height: 6),
-              Text('ETA: 25 Mar 2026 • 11:00 AM', style: TextStyle(fontSize: 13, color: _textMuted)),
+              const Text('ETA: 25 Mar 2026 • 11:00 AM', style: const TextStyle(fontSize: 13, color: _textMuted)),
               const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: LinearProgressIndicator(
                       value: progress,
-                      valueColor: AlwaysStoppedAnimation<Color>(_teal),
+                      valueColor: const AlwaysStoppedAnimation<Color>(_teal),
                       backgroundColor: _tableBg,
                       minHeight: 8,
                     ),
@@ -498,7 +498,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           SizedBox(
             width: 24,
             child: Text(num,
-                style: TextStyle(fontSize: 12, color: _textMuted)),
+                style: const TextStyle(fontSize: 12, color: _textMuted)),
           ),
           Expanded(
             flex: 3,
@@ -508,7 +508,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           Expanded(
             flex: 2,
             child: Text(dosage,
-                style: TextStyle(fontSize: 13, color: _textMuted)),
+                style: const TextStyle(fontSize: 13, color: _textMuted)),
           ),
           Expanded(
             flex: 1,
@@ -691,8 +691,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _IconBtn extends StatelessWidget {
-  final String assetPath;
   const _IconBtn({required this.assetPath});
+  final String assetPath;
 
   @override
   Widget build(BuildContext context) {

@@ -254,7 +254,7 @@ class _PharmacyNotificationCenterPageState
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
       ],
     );
@@ -337,7 +337,7 @@ class _PharmacyNotificationCenterPageState
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
         const SizedBox(height: 4),
         Container(
@@ -352,7 +352,7 @@ class _PharmacyNotificationCenterPageState
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              style: TextStyle(fontSize: 12, color: _textDark),
+              style: const TextStyle(fontSize: 12, color: _textDark),
               items: options
                   .map(
                     (option) => DropdownMenuItem(
@@ -377,7 +377,7 @@ class _PharmacyNotificationCenterPageState
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
         const SizedBox(height: 4),
         InkWell(
@@ -399,7 +399,7 @@ class _PharmacyNotificationCenterPageState
             ),
             child: Text(
               value != null ? '${value.year}-${value.month}-${value.day}' : 'Select Date',
-              style: TextStyle(fontSize: 12, color: _textDark),
+              style: const TextStyle(fontSize: 12, color: _textDark),
             ),
           ),
         ),
@@ -426,13 +426,13 @@ class _PharmacyNotificationCenterPageState
       ),
       child: Column(
         children: [
-          Row(
-            children: [
+          const Row(
+            children: const [
               Expanded(
                 flex: 1,
-                child: Text(
+                child: const Text(
                   'Type',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _textMuted,
@@ -441,9 +441,9 @@ class _PharmacyNotificationCenterPageState
               ),
               Expanded(
                 flex: 2,
-                child: Text(
+                child: const Text(
                   'Recipient',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _textMuted,
@@ -452,9 +452,9 @@ class _PharmacyNotificationCenterPageState
               ),
               Expanded(
                 flex: 2,
-                child: Text(
+                child: const Text(
                   'Message',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _textMuted,
@@ -463,9 +463,9 @@ class _PharmacyNotificationCenterPageState
               ),
               Expanded(
                 flex: 1,
-                child: Text(
+                child: const Text(
                   'Sent Date',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _textMuted,
@@ -474,9 +474,9 @@ class _PharmacyNotificationCenterPageState
               ),
               Expanded(
                 flex: 1,
-                child: Text(
+                child: const Text(
                   'Status',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _textMuted,
@@ -485,9 +485,9 @@ class _PharmacyNotificationCenterPageState
               ),
               Expanded(
                 flex: 1,
-                child: Text(
+                child: const Text(
                   'Action',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _textMuted,
@@ -514,28 +514,28 @@ class _PharmacyNotificationCenterPageState
                     flex: 1,
                     child: Text(
                       notification['type'],
-                      style: TextStyle(fontSize: 12, color: _textDark),
+                      style: const TextStyle(fontSize: 12, color: _textDark),
                     ),
                   ),
                   Expanded(
                     flex: 2,
                     child: Text(
                       notification['recipient'],
-                      style: TextStyle(fontSize: 12, color: _textDark),
+                      style: const TextStyle(fontSize: 12, color: _textDark),
                     ),
                   ),
                   Expanded(
                     flex: 2,
                     child: Text(
                       notification['message'],
-                      style: TextStyle(fontSize: 12, color: _textDark),
+                      style: const TextStyle(fontSize: 12, color: _textDark),
                     ),
                   ),
                   Expanded(
                     flex: 1,
                     child: Text(
                       notification['sentDate'],
-                      style: TextStyle(fontSize: 12, color: _textDark),
+                      style: const TextStyle(fontSize: 12, color: _textDark),
                     ),
                   ),
                   Expanded(
@@ -562,9 +562,9 @@ class _PharmacyNotificationCenterPageState
                                 color: _teal,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
+                              child: const Text(
                                 'Resend',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -581,9 +581,9 @@ class _PharmacyNotificationCenterPageState
                               color: Colors.grey,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(
+                            child: const Text(
                               'N/A',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
@@ -593,7 +593,7 @@ class _PharmacyNotificationCenterPageState
                   ),
                 ],
               ),
-            )).toList(),
+            )),
         ],
       ),
     );

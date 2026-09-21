@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../core/routing/app_routes.dart';
 
 /// Preview Prescription page — Doctor reviews script before publishing.
 class PreviewPrescriptionPage extends StatelessWidget {

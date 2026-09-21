@@ -163,7 +163,7 @@ class _LoginActivityPageState extends State<LoginActivityPage> {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);

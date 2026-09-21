@@ -3,10 +3,10 @@ import 'package:pholders_app/features/doctor/patients/presentation/patients_scre
 
 /// PatientPrescriptionDetailPage — displays the detailed information of a prescription for a patient.
 class PatientPrescriptionDetailPage extends StatelessWidget {
-  final String patientId;
-  final String prescriptionId;
 
   const PatientPrescriptionDetailPage({super.key, required this.patientId, required this.prescriptionId});
+  final String patientId;
+  final String prescriptionId;
 
   @override
   Widget build(BuildContext context) {

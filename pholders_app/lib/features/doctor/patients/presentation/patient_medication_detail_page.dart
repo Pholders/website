@@ -4,15 +4,15 @@ import 'package:pholders_app/features/doctor/patients/presentation/medication_de
 
 /// PatientMedicationDetailPage — displays the detailed information of a medication for a patient.
 class PatientMedicationDetailPage extends StatelessWidget {
-  final String patientId;
-  final String medicationId;
 
   const PatientMedicationDetailPage({super.key, required this.patientId, required this.medicationId});
+  final String patientId;
+  final String medicationId;
 
   @override
   Widget build(BuildContext context) {
     // Mock medication data for demonstration
-    final mockMedication = MedHistoryItem(
+    const mockMedication = MedHistoryItem(
       medication: 'Isotretinoin',
       dosage: '20mg',
       frequency: 'Once Daily',

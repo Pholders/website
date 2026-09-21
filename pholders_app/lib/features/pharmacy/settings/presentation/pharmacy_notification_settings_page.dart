@@ -184,10 +184,10 @@ class _PharmacyNotificationSettingsPageState
                           children: [
                             const Icon(Icons.inbox_outlined, color: _teal, size: 20),
                             const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
+                            const Expanded(
+                              child: const Text(
                                 'View all your notifications and alert history',
-                                style: TextStyle(fontSize: 13, color: _textMuted),
+                                style: const TextStyle(fontSize: 13, color: _textMuted),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -274,7 +274,7 @@ class _PharmacyNotificationSettingsPageState
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: _teal,
+            activeThumbColor: _teal,
           ),
         ],
       ),

@@ -13,12 +13,12 @@ import 'prescription_document_pdf.dart';
 /// Shows full prescription information including patient info,
 /// prescription details, instructions, doctor info, and digital signature.
 class PharmacyPrescriptionDetailPage extends StatefulWidget {
-  final String prescriptionId;
 
   const PharmacyPrescriptionDetailPage({
     super.key,
     required this.prescriptionId,
   });
+  final String prescriptionId;
 
   @override
   State<PharmacyPrescriptionDetailPage> createState() =>
@@ -259,9 +259,9 @@ class _PharmacyPrescriptionDetailPageState
           ),
         ),
         const SizedBox(width: 4),
-        Text(
+        const Text(
           '> Maria Wilson',
-          style: TextStyle(fontSize: 14, color: _textMuted),
+          style: const TextStyle(fontSize: 14, color: _textMuted),
         ),
         const Spacer(),
         // Action button — changes based on current status
@@ -289,9 +289,9 @@ class _PharmacyPrescriptionDetailPageState
         // Action icons
         _IconBtn(assetPath: 'assets/printer-icon.png', onTap: _printPrescriptionPdf),
         const SizedBox(width: 8),
-        _IconBtn(assetPath: 'assets/share-icon.png'),
+        const _IconBtn(assetPath: 'assets/share-icon.png'),
         const SizedBox(width: 8),
-        _IconBtn(assetPath: 'assets/call-icon.png'),
+        const _IconBtn(assetPath: 'assets/call-icon.png'),
       ],
     );
   }
@@ -305,9 +305,9 @@ class _PharmacyPrescriptionDetailPageState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Digitally signed by',
-                style: TextStyle(fontSize: 12, color: _textMuted),
+                style: const TextStyle(fontSize: 12, color: _textMuted),
               ),
               const SizedBox(height: 2),
               const Text(
@@ -319,9 +319,9 @@ class _PharmacyPrescriptionDetailPageState
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
+              const Text(
                 'HPCSA:',
-                style: TextStyle(fontSize: 12, color: _textMuted),
+                style: const TextStyle(fontSize: 12, color: _textMuted),
               ),
               const Text(
                 'MP1234567',
@@ -362,9 +362,9 @@ class _PharmacyPrescriptionDetailPageState
           ),
         ),
         // Signature stamp image placeholder
-        Text(
+        const Text(
           '01 Mar 2026',
-          style: TextStyle(fontSize: 13, color: _textMuted),
+          style: const TextStyle(fontSize: 13, color: _textMuted),
         ),
       ],
     );
@@ -393,7 +393,7 @@ class _PharmacyPrescriptionDetailPageState
             width: 120,
             child: Text(
               label,
-              style: TextStyle(fontSize: 13, color: _textMuted),
+              style: const TextStyle(fontSize: 13, color: _textMuted),
             ),
           ),
           const SizedBox(width: 16),
@@ -458,9 +458,9 @@ class _PharmacyPrescriptionDetailPageState
           ),
         ),
         const SizedBox(height: 8),
-        Text(
+        const Text(
           'Digital Preview',
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
         const SizedBox(height: 12),
         // Signature box
@@ -479,14 +479,14 @@ class _PharmacyPrescriptionDetailPageState
           ),
         ),
         const SizedBox(height: 10),
-        Text(
+        const Text(
           'Digitally signed on 25 Mar 2026',
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
         const SizedBox(height: 2),
-        Text(
+        const Text(
           'Verification Status',
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
       ],
     );
@@ -606,9 +606,9 @@ class _PharmacyPrescriptionDetailPageState
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.assetPath, this.onTap});
   final String assetPath;
   final VoidCallback? onTap;
-  const _IconBtn({required this.assetPath, this.onTap});
 
   @override
   Widget build(BuildContext context) {

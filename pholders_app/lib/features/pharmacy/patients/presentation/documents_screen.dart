@@ -83,15 +83,6 @@ extension DocTypeLabel on DocType {
 
 // ─── Document model ───────────────────────────────────────────────────────────
 class MedDocument {
-  final String id;
-  final String name;
-  final DocType type;
-  final String patientName;
-  final DateTime dateUploaded;
-  final String uploadedBy;
-  final String fileSize;
-  final String fileExtension;
-  bool isStarred;
 
   MedDocument({
     required this.id,
@@ -104,6 +95,15 @@ class MedDocument {
     required this.fileExtension,
     this.isStarred = false,
   });
+  final String id;
+  final String name;
+  final DocType type;
+  final String patientName;
+  final DateTime dateUploaded;
+  final String uploadedBy;
+  final String fileSize;
+  final String fileExtension;
+  bool isStarred;
 
   MedDocument copyWith({
     String? name,
@@ -125,9 +125,9 @@ class MedDocument {
 
 // ─── Documents Screen ─────────────────────────────────────────────────────────
 class DocumentsScreen extends StatefulWidget {
-  final Patient patient;
 
   const DocumentsScreen({super.key, required this.patient});
+  final Patient patient;
 
   @override
   State<DocumentsScreen> createState() => _DocumentsScreenState();
@@ -241,7 +241,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       Random().nextInt(9999).toString();
 
   List<MedDocument> get _filtered {
-    var list = _documents.where((d) {
+    final list = _documents.where((d) {
       final matchesType =
           _activeFilter == DocType.all || d.type == _activeFilter;
       final matchesSearch = _searchQuery.isEmpty ||
@@ -510,7 +510,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                 horizontal: 6, vertical: 1),
                             decoration: BoxDecoration(
                               color: active
-                                  ? Colors.white.withOpacity(0.25)
+                                  ? Colors.white.withValues(alpha: 0.25)
                                   : DocColors.tealLight,
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -543,24 +543,24 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 border: Border(
                     bottom: BorderSide(color: DocColors.border)),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                       flex: 4,
                       child: _DocHeaderCell('Document Name')),
-                  const Expanded(
+                  Expanded(
                       flex: 2, child: _DocHeaderCell('Type')),
-                  const Expanded(
+                  Expanded(
                       flex: 2, child: _DocHeaderCell('Patient')),
-                  const Expanded(
+                  Expanded(
                       flex: 2,
                       child: _DocHeaderCell('Date Uploaded')),
-                  const Expanded(
+                  Expanded(
                       flex: 2,
                       child: _DocHeaderCell('Uploaded By')),
-                  const Expanded(
+                  Expanded(
                       flex: 1, child: _DocHeaderCell('Size')),
-                  const Expanded(
+                  Expanded(
                       flex: 1, child: _DocHeaderCell('Actions')),
                 ],
               ),
@@ -576,7 +576,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                           Icon(Icons.folder_open_outlined,
                               size: 48,
                               color: DocColors.textSecondary
-                                  .withOpacity(0.4)),
+                                  .withValues(alpha: 0.4)),
                           const SizedBox(height: 12),
                           Text(
                             _searchQuery.isNotEmpty
@@ -621,15 +621,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
 // ─── Sort button ──────────────────────────────────────────────────────────────
 class _SortButton extends StatelessWidget {
-  final String? sortBy;
-  final bool sortAsc;
-  final void Function(String, bool) onChanged;
 
   const _SortButton({
     required this.sortBy,
     required this.sortAsc,
     required this.onChanged,
   });
+  final String? sortBy;
+  final bool sortAsc;
+  final void Function(String, bool) onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -708,8 +708,8 @@ class _SortButton extends StatelessWidget {
 
 // ─── Table header cell ────────────────────────────────────────────────────────
 class _DocHeaderCell extends StatelessWidget {
-  final String label;
   const _DocHeaderCell(this.label);
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -723,11 +723,6 @@ class _DocHeaderCell extends StatelessWidget {
 
 // ─── Document row ─────────────────────────────────────────────────────────────
 class _DocRow extends StatefulWidget {
-  final MedDocument doc;
-  final String Function(DateTime) formatDate;
-  final VoidCallback onView;
-  final VoidCallback onDelete;
-  final VoidCallback onToggleStar;
 
   const _DocRow({
     required this.doc,
@@ -736,6 +731,11 @@ class _DocRow extends StatefulWidget {
     required this.onDelete,
     required this.onToggleStar,
   });
+  final MedDocument doc;
+  final String Function(DateTime) formatDate;
+  final VoidCallback onView;
+  final VoidCallback onDelete;
+  final VoidCallback onToggleStar;
 
   @override
   State<_DocRow> createState() => _DocRowState();
@@ -747,7 +747,7 @@ class _DocRowState extends State<_DocRow> {
   void _showMenu(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.15),
+      barrierColor: Colors.black.withValues(alpha: 0.15),
       builder: (_) => _DocActionsMenu(
         doc: widget.doc,
         onView: widget.onView,
@@ -769,7 +769,7 @@ class _DocRowState extends State<_DocRow> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           color: _hovered
-              ? DocColors.tealLight.withOpacity(0.4)
+              ? DocColors.tealLight.withValues(alpha: 0.4)
               : Colors.transparent,
           padding: const EdgeInsets.symmetric(
               horizontal: 16, vertical: 14),
@@ -916,10 +916,6 @@ class _DocRowState extends State<_DocRow> {
 
 // ─── Document actions menu ────────────────────────────────────────────────────
 class _DocActionsMenu extends StatelessWidget {
-  final MedDocument doc;
-  final VoidCallback onView;
-  final VoidCallback onDelete;
-  final VoidCallback onToggleStar;
 
   const _DocActionsMenu({
     required this.doc,
@@ -927,6 +923,10 @@ class _DocActionsMenu extends StatelessWidget {
     required this.onDelete,
     required this.onToggleStar,
   });
+  final MedDocument doc;
+  final VoidCallback onView;
+  final VoidCallback onDelete;
+  final VoidCallback onToggleStar;
 
   @override
   Widget build(BuildContext context) {
@@ -997,7 +997,7 @@ class _DocActionsMenu extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -1050,21 +1050,21 @@ class _DocActionsMenu extends StatelessWidget {
 }
 
 class _DocAction {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool isDanger;
   const _DocAction({
     required this.label,
     required this.icon,
     required this.onTap,
     this.isDanger = false,
   });
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isDanger;
 }
 
 class _DocActionItem extends StatefulWidget {
-  final _DocAction action;
   const _DocActionItem({required this.action});
+  final _DocAction action;
 
   @override
   State<_DocActionItem> createState() => _DocActionItemState();
@@ -1118,8 +1118,8 @@ class _DocActionItemState extends State<_DocActionItem> {
 
 // ─── Document viewer dialog ───────────────────────────────────────────────────
 class _DocumentViewerDialog extends StatelessWidget {
-  final MedDocument doc;
   const _DocumentViewerDialog({required this.doc});
+  final MedDocument doc;
 
   @override
   Widget build(BuildContext context) {
@@ -1201,12 +1201,12 @@ class _DocumentViewerDialog extends StatelessWidget {
                   children: [
                     Icon(doc.type.icon,
                         size: 48,
-                        color: doc.type.color.withOpacity(0.4)),
+                        color: doc.type.color.withValues(alpha: 0.4)),
                     const SizedBox(height: 8),
-                    Text(
+                    const Text(
                       'Preview not available in demo mode.\nConnect to backend to load actual file.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12,
                           color: DocColors.textSecondary),
                     ),
@@ -1261,9 +1261,9 @@ class _DocumentViewerDialog extends StatelessWidget {
 }
 
 class _ViewRow extends StatelessWidget {
+  const _ViewRow({required this.label, required this.value});
   final String label;
   final String value;
-  const _ViewRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1290,8 +1290,8 @@ class _ViewRow extends StatelessWidget {
 
 // ─── Upload Document Dialog ───────────────────────────────────────────────────
 class _UploadDocumentDialog extends StatefulWidget {
-  final String patientName;
   const _UploadDocumentDialog({required this.patientName});
+  final String patientName;
 
   @override
   State<_UploadDocumentDialog> createState() =>
@@ -1385,7 +1385,7 @@ class _UploadDocumentDialogState extends State<_UploadDocumentDialog> {
                   color: DocColors.bg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: DocColors.teal.withOpacity(0.4),
+                      color: DocColors.teal.withValues(alpha: 0.4),
                       style: BorderStyle.solid,
                       width: 1.5),
                 ),
@@ -1515,7 +1515,7 @@ class _UploadDocumentDialogState extends State<_UploadDocumentDialog> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: DocColors.teal,
                     disabledBackgroundColor:
-                        DocColors.teal.withOpacity(0.5),
+                        DocColors.teal.withValues(alpha: 0.5),
                     padding:
                         const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -1567,9 +1567,9 @@ class _UploadDocumentDialogState extends State<_UploadDocumentDialog> {
 }
 
 class _UploadField extends StatelessWidget {
+  const _UploadField({required this.label, required this.child});
   final String label;
   final Widget child;
-  const _UploadField({required this.label, required this.child});
 
   @override
   Widget build(BuildContext context) {

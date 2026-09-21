@@ -40,7 +40,7 @@ class AccountSettings extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);
@@ -195,7 +195,7 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);
@@ -456,7 +456,7 @@ class _ProfessionalDetails extends StatelessWidget {
                     // ── Settings sidebar ──────────────────────────────────────────────
           SettingsSidebar(
             selectedItemId: 'professional',
-            onMenuItemSelected: (id) => AccountSettings()._navigate(context, id),
+            onMenuItemSelected: (id) => const AccountSettings()._navigate(context, id),
           ),
           // ── Content area ────────────────────────────────────────────────
           Expanded(

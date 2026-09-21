@@ -44,7 +44,7 @@ class SecuritySettingsPage extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);
@@ -165,7 +165,7 @@ class _SecuritySettings extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);
@@ -348,7 +348,7 @@ class _DeviceManagementState extends State<_DeviceManagement> {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);
@@ -510,7 +510,7 @@ class _LoginActivity extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);

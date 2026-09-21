@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../data/models/prescription.dart';
+import '../data/models/safety_report.dart';
 
 /// The prescriptions slice of the Redux store.
 class PrescriptionsState extends Equatable {
@@ -12,6 +13,8 @@ class PrescriptionsState extends Equatable {
     this.hasLoadedOnce = false,
     this.isCreating = false,
     this.lastCreatedId,
+    this.isCheckingInteractions = false,
+    this.safetyReport,
   });
 
   factory PrescriptionsState.initial() => const PrescriptionsState();
@@ -33,6 +36,12 @@ class PrescriptionsState extends Equatable {
   /// Set when a prescription has just been saved, so the form can close.
   final int? lastCreatedId;
 
+  /// True while a drug interaction check is running.
+  final bool isCheckingInteractions;
+
+  /// The most recent safety report, or null when none has been run.
+  final SafetyReport? safetyReport;
+
   PrescriptionsState copyWith({
     List<Prescription>? prescriptions,
     bool? isLoading,
@@ -41,8 +50,11 @@ class PrescriptionsState extends Equatable {
     bool? hasLoadedOnce,
     bool? isCreating,
     int? lastCreatedId,
+    bool? isCheckingInteractions,
+    SafetyReport? safetyReport,
     bool clearError = false,
     bool clearCreated = false,
+    bool clearReport = false,
   }) {
     return PrescriptionsState(
       prescriptions: prescriptions ?? this.prescriptions,
@@ -53,11 +65,14 @@ class PrescriptionsState extends Equatable {
       isCreating: isCreating ?? this.isCreating,
       lastCreatedId:
           clearCreated ? null : (lastCreatedId ?? this.lastCreatedId),
+      isCheckingInteractions:
+          isCheckingInteractions ?? this.isCheckingInteractions,
+      safetyReport: clearReport ? null : (safetyReport ?? this.safetyReport),
     );
   }
 
   @override
   List<Object?> get props =>
       [prescriptions, isLoading, errorMessage, busyIds, hasLoadedOnce,
-       isCreating, lastCreatedId];
+       isCreating, lastCreatedId, isCheckingInteractions, safetyReport];
 }

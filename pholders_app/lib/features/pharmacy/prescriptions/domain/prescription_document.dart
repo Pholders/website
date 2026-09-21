@@ -1,21 +1,6 @@
 /// Industry-standard prescription document model aligned with Pholders SRS
 /// (FR-G-010, FR-G-055) and SA e-prescribing practice (HPCSA, NAPPI, Schedules).
 class PrescriptionDocument {
-  final String referenceNumber;
-  final String prescriptionId;
-  final PrescriberInfo prescriber;
-  final PatientInfo patient;
-  final MedicalAidInfo medicalAid;
-  final DiagnosisInfo? diagnosis;
-  final List<PrescriptionMedication> medications;
-  final List<String> additionalSelfMedication;
-  final String genericSubstitution;
-  final CollectionInfo collection;
-  final PaymentInfo payment;
-  final DigitalSignatureInfo signature;
-  final String currentStatus;
-  final DateTime issuedDate;
-  final DateTime validUntilDate;
 
   const PrescriptionDocument({
     required this.referenceNumber,
@@ -34,6 +19,21 @@ class PrescriptionDocument {
     required this.issuedDate,
     required this.validUntilDate,
   });
+  final String referenceNumber;
+  final String prescriptionId;
+  final PrescriberInfo prescriber;
+  final PatientInfo patient;
+  final MedicalAidInfo medicalAid;
+  final DiagnosisInfo? diagnosis;
+  final List<PrescriptionMedication> medications;
+  final List<String> additionalSelfMedication;
+  final String genericSubstitution;
+  final CollectionInfo collection;
+  final PaymentInfo payment;
+  final DigitalSignatureInfo signature;
+  final String currentStatus;
+  final DateTime issuedDate;
+  final DateTime validUntilDate;
 
   /// Compact payload encoded in the document QR code for pharmacy scan/claim.
   String get qrPayload =>
@@ -63,13 +63,6 @@ class PrescriptionDocument {
 }
 
 class PrescriberInfo {
-  final String name;
-  final String qualification;
-  final String hpcsaNumber;
-  final String practiceNumber;
-  final String practiceName;
-  final String practiceAddress;
-  final String contactNumber;
 
   const PrescriberInfo({
     required this.name,
@@ -80,16 +73,16 @@ class PrescriberInfo {
     required this.practiceAddress,
     required this.contactNumber,
   });
+  final String name;
+  final String qualification;
+  final String hpcsaNumber;
+  final String practiceNumber;
+  final String practiceName;
+  final String practiceAddress;
+  final String contactNumber;
 }
 
 class PatientInfo {
-  final String name;
-  final String idNumber;
-  final String dateOfBirth;
-  final String gender;
-  final String address;
-  final String phone;
-  final String email;
 
   const PatientInfo({
     required this.name,
@@ -100,15 +93,16 @@ class PatientInfo {
     required this.phone,
     required this.email,
   });
+  final String name;
+  final String idNumber;
+  final String dateOfBirth;
+  final String gender;
+  final String address;
+  final String phone;
+  final String email;
 }
 
 class MedicalAidInfo {
-  final String schemeName;
-  final String plan;
-  final String memberNumber;
-  final String dependentCode;
-  final String dependentDescription;
-  final String authorizationNumber;
 
   const MedicalAidInfo({
     required this.schemeName,
@@ -118,34 +112,27 @@ class MedicalAidInfo {
     required this.dependentDescription,
     this.authorizationNumber = 'Not required',
   });
+  final String schemeName;
+  final String plan;
+  final String memberNumber;
+  final String dependentCode;
+  final String dependentDescription;
+  final String authorizationNumber;
 }
 
 class DiagnosisInfo {
-  final String icd10Code;
-  final String description;
 
   const DiagnosisInfo({
     required this.icd10Code,
     required this.description,
   });
+  final String icd10Code;
+  final String description;
 
   String get display => '$icd10Code — $description';
 }
 
 class PrescriptionMedication {
-  final int lineNumber;
-  final String name;
-  final String strength;
-  final String nappiCode;
-  final String schedule;
-  final String dosage;
-  final String route;
-  final String frequency;
-  final String duration;
-  final int quantityNumber;
-  final String quantityWords;
-  final int repeats;
-  final List<String> instructions;
 
   const PrescriptionMedication({
     required this.lineNumber,
@@ -162,6 +149,19 @@ class PrescriptionMedication {
     this.repeats = 0,
     this.instructions = const [],
   });
+  final int lineNumber;
+  final String name;
+  final String strength;
+  final String nappiCode;
+  final String schedule;
+  final String dosage;
+  final String route;
+  final String frequency;
+  final String duration;
+  final int quantityNumber;
+  final String quantityWords;
+  final int repeats;
+  final List<String> instructions;
 
   String get fullName => strength.isEmpty ? name : '$name $strength';
 
@@ -169,33 +169,28 @@ class PrescriptionMedication {
 }
 
 class CollectionInfo {
-  final String preference;
-  final String pharmacyName;
-  final String pharmacyAddress;
 
   const CollectionInfo({
     required this.preference,
     required this.pharmacyName,
     this.pharmacyAddress = '',
   });
+  final String preference;
+  final String pharmacyName;
+  final String pharmacyAddress;
 }
 
 class PaymentInfo {
-  final String method;
-  final String status;
 
   const PaymentInfo({
     required this.method,
     required this.status,
   });
+  final String method;
+  final String status;
 }
 
 class DigitalSignatureInfo {
-  final String signedBy;
-  final String hpcsaNumber;
-  final String verificationMethod;
-  final String verifiedStatus;
-  final DateTime signedAt;
 
   const DigitalSignatureInfo({
     required this.signedBy,
@@ -204,6 +199,11 @@ class DigitalSignatureInfo {
     required this.verifiedStatus,
     required this.signedAt,
   });
+  final String signedBy;
+  final String hpcsaNumber;
+  final String verificationMethod;
+  final String verifiedStatus;
+  final DateTime signedAt;
 
   String get signedAtFormatted {
     const months = [

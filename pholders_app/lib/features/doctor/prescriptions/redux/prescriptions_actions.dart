@@ -1,5 +1,6 @@
 import '../data/models/medicine_draft.dart';
 import '../data/models/prescription.dart';
+import '../data/models/safety_report.dart';
 
 /// Dispatched when the prescriptions list is opened or refreshed.
 class LoadPrescriptionsAction {
@@ -78,4 +79,32 @@ class PrescriptionCreatedAction {
 class CreatePrescriptionFailedAction {
   const CreatePrescriptionFailedAction({required this.errorMessage});
   final String errorMessage;
+}
+
+/// Dispatched when the doctor asks for a drug interaction check.
+class CheckInteractionsAction {
+  const CheckInteractionsAction({required this.prescriptionId});
+  final int prescriptionId;
+}
+
+/// Dispatched when the safety report comes back.
+class InteractionsCheckedAction {
+  const InteractionsCheckedAction({
+    required this.prescriptionId,
+    required this.report,
+  });
+  final int prescriptionId;
+  final SafetyReport report;
+}
+
+/// Dispatched when the check could not be run.
+class InteractionsCheckFailedAction {
+  const InteractionsCheckFailedAction({required this.errorMessage});
+  final String errorMessage;
+}
+
+/// Dispatched when the report is dismissed, so a stale one is not shown next
+/// time the dialog opens.
+class ClearInteractionsReportAction {
+  const ClearInteractionsReportAction();
 }

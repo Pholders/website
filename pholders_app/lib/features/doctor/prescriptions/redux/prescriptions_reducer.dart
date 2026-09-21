@@ -52,6 +52,35 @@ PrescriptionsState prescriptionsReducer(
     );
   }
 
+  if (action is CheckInteractionsAction) {
+    // Drop any previous report so the dialog cannot show a stale result while
+    // the new check is still running.
+    return state.copyWith(
+      isCheckingInteractions: true,
+      clearReport: true,
+      clearError: true,
+    );
+  }
+
+  if (action is InteractionsCheckedAction) {
+    return state.copyWith(
+      isCheckingInteractions: false,
+      safetyReport: action.report,
+      clearError: true,
+    );
+  }
+
+  if (action is InteractionsCheckFailedAction) {
+    return state.copyWith(
+      isCheckingInteractions: false,
+      errorMessage: action.errorMessage,
+    );
+  }
+
+  if (action is ClearInteractionsReportAction) {
+    return state.copyWith(clearReport: true, clearError: true);
+  }
+
   if (action is SignPrescriptionAction) {
     return state.copyWith(
       busyIds: {...state.busyIds, action.prescriptionId},

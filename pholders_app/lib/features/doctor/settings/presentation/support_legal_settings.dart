@@ -55,7 +55,7 @@ class SupportLegalSettings extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);
@@ -109,10 +109,10 @@ class _HelpCenter extends StatelessWidget {
             onMenuItemSelected: (id) => _navigate(context, id),
           ),
           // ── Content area ────────────────────────────────────────────────
-          Expanded(
+          const Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: const SettingsContentCard(
+              padding: EdgeInsets.all(24),
+              child: SettingsContentCard(
                 title: 'Help Center',
                 children: [
         _HelpSearch(),
@@ -155,7 +155,7 @@ class _HelpCenter extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);
@@ -254,7 +254,7 @@ class _LegalPanel extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);
@@ -308,10 +308,10 @@ class _ContactSupport extends StatelessWidget {
             onMenuItemSelected: (id) => _navigate(context, id),
           ),
           // ── Content area ────────────────────────────────────────────────
-          Expanded(
+          const Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: const SettingsContentCard(
+              padding: EdgeInsets.all(24),
+              child: SettingsContentCard(
                 title: 'Contact Support',
                 children: [
         Row(
@@ -353,7 +353,7 @@ class _ContactSupport extends StatelessWidget {
         context.go(AppRoutes.doctorSettingsPractice);
         break;
       case 'notification_settings':
-        context.go(AppRoutes.doctorSettingsPractice + '?tab=1');
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
         break;
       case 'notification_center':
         context.go(AppRoutes.doctorNotifications);

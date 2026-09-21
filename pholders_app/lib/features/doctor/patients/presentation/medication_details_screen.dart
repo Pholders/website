@@ -3,14 +3,14 @@ import 'package:pholders_app/features/doctor/patients/presentation/medication_sc
 
 // ─── Medication Details Screen ────────────────────────────────────────────────
 class MedicationDetailsScreen extends StatefulWidget {
-  final MedHistoryItem item;
-  final VoidCallback onBack;
 
   const MedicationDetailsScreen({
     super.key,
     required this.item,
     required this.onBack,
   });
+  final MedHistoryItem item;
+  final VoidCallback onBack;
 
   @override
   State<MedicationDetailsScreen> createState() =>
@@ -287,10 +287,10 @@ class _MedicationDetailsScreenState extends State<MedicationDetailsScreen> {
 
 // ─── Detail field (text value) ────────────────────────────────────────────────
 class _DetailField extends StatelessWidget {
-  final String label;
-  final String value;
 
   const _DetailField({required this.label, required this.value});
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
@@ -331,10 +331,10 @@ class _DetailField extends StatelessWidget {
 
 // ─── Detail field (custom widget value e.g. status badge) ────────────────────
 class _DetailFieldWidget extends StatelessWidget {
-  final String label;
-  final Widget child;
 
   const _DetailFieldWidget({required this.label, required this.child});
+  final String label;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {

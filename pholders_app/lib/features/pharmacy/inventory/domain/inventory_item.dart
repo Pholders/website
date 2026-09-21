@@ -1,9 +1,4 @@
 class InventoryItem {
-  final String name;
-  final String category;
-  final String nappiCode;
-  int quantity;
-  final int reorderLevel;
 
   InventoryItem({
     required this.name,
@@ -12,6 +7,11 @@ class InventoryItem {
     required this.reorderLevel,
     required this.nappiCode,
   });
+  final String name;
+  final String category;
+  final String nappiCode;
+  int quantity;
+  final int reorderLevel;
 
   bool get isOutOfStock => quantity == 0;
 

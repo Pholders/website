@@ -113,7 +113,7 @@ class PrescriptionDocumentPdf {
               children: [
                 pw.Text(
                   'ELECTRONIC PRESCRIPTION',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     color: _white,
                     fontSize: 11,
                     fontWeight: pw.FontWeight.bold,
@@ -123,7 +123,7 @@ class PrescriptionDocumentPdf {
                 pw.SizedBox(height: 6),
                 pw.Text(
                   prescriber.name,
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     color: _white,
                     fontSize: 18,
                     fontWeight: pw.FontWeight.bold,
@@ -136,7 +136,7 @@ class PrescriptionDocumentPdf {
                 pw.SizedBox(height: 4),
                 pw.Text(
                   prescriber.practiceName,
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     color: _white,
                     fontSize: 11,
                     fontWeight: pw.FontWeight.bold,
@@ -179,7 +179,7 @@ class PrescriptionDocumentPdf {
               pw.SizedBox(height: 4),
               pw.Text(
                 'Scan to verify',
-                style: pw.TextStyle(
+                style: const pw.TextStyle(
                   color: _white,
                   fontSize: 7.5,
                   fontWeight: pw.FontWeight.bold,
@@ -222,7 +222,7 @@ class PrescriptionDocumentPdf {
       children: [
         pw.Text(
           label,
-          style: pw.TextStyle(
+          style: const pw.TextStyle(
             fontSize: 7.5,
             color: _textMuted,
             fontWeight: pw.FontWeight.bold,
@@ -230,7 +230,7 @@ class PrescriptionDocumentPdf {
         ),
         pw.Text(
           value,
-          style: pw.TextStyle(
+          style: const pw.TextStyle(
             fontSize: 9.5,
             color: _textDark,
             fontWeight: pw.FontWeight.bold,
@@ -268,7 +268,7 @@ class PrescriptionDocumentPdf {
         children: [
           pw.Text(
             title,
-            style: pw.TextStyle(
+            style: const pw.TextStyle(
               fontSize: 10,
               fontWeight: pw.FontWeight.bold,
               color: _textDark,
@@ -299,7 +299,7 @@ class PrescriptionDocumentPdf {
           pw.Expanded(
             child: pw.Text(
               field.value,
-              style: pw.TextStyle(
+              style: const pw.TextStyle(
                 fontSize: 8.5,
                 color: _textDark,
                 fontWeight: pw.FontWeight.normal,
@@ -324,7 +324,7 @@ class PrescriptionDocumentPdf {
         children: [
           pw.Text(
             title,
-            style: pw.TextStyle(
+            style: const pw.TextStyle(
               fontSize: 10,
               fontWeight: pw.FontWeight.bold,
               color: _textDark,
@@ -351,7 +351,7 @@ class PrescriptionDocumentPdf {
       children: [
         pw.Text(
           'Prescribed Medications',
-          style: pw.TextStyle(
+          style: const pw.TextStyle(
             fontSize: 11,
             fontWeight: pw.FontWeight.bold,
             color: _textDark,
@@ -381,7 +381,7 @@ class PrescriptionDocumentPdf {
               pw.Expanded(
                 child: pw.Text(
                   '${med.lineNumber}. ${med.fullName}',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
                     color: _textDark,
@@ -390,7 +390,7 @@ class PrescriptionDocumentPdf {
               ),
               pw.Text(
                 'Sched ${med.schedule}',
-                style: pw.TextStyle(
+                style: const pw.TextStyle(
                   fontSize: 8.5,
                   fontWeight: pw.FontWeight.bold,
                   color: _teal,
@@ -461,7 +461,7 @@ class PrescriptionDocumentPdf {
               children: [
                 pw.Text(
                   'Digital Signature & Authentication',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
                     color: _textDark,
@@ -470,7 +470,7 @@ class PrescriptionDocumentPdf {
                 pw.SizedBox(height: 6),
                 pw.Text(
                   'Signed by: ${sig.signedBy}',
-                  style: pw.TextStyle(fontSize: 9, color: _textDark, fontWeight: pw.FontWeight.bold),
+                  style: const pw.TextStyle(fontSize: 9, color: _textDark, fontWeight: pw.FontWeight.bold),
                 ),
                 pw.Text(
                   'HPCSA: ${sig.hpcsaNumber}',
@@ -489,7 +489,7 @@ class PrescriptionDocumentPdf {
                   ),
                   child: pw.Text(
                     sig.verifiedStatus.toUpperCase(),
-                    style: pw.TextStyle(
+                    style: const pw.TextStyle(
                       color: _white,
                       fontSize: 8,
                       fontWeight: pw.FontWeight.bold,
@@ -514,7 +514,7 @@ class PrescriptionDocumentPdf {
             alignment: pw.Alignment.center,
             child: pw.Text(
               sig.signedBy,
-              style: pw.TextStyle(
+              style: const pw.TextStyle(
                 fontSize: 14,
                 color: _teal,
                 fontStyle: pw.FontStyle.italic,
@@ -552,8 +552,8 @@ class PrescriptionDocumentPdf {
 }
 
 class _PdfField {
-  final String label;
-  final String value;
 
   const _PdfField(this.label, this.value);
+  final String label;
+  final String value;
 }

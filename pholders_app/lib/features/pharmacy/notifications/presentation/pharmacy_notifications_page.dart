@@ -6,14 +6,6 @@ import '../../../../shared/theme/app_theme.dart';
 
 /// Notification model to represent a single notification.
 class Notification {
-  final String id;
-  final String title;
-  final String message;
-  final NotificationType type;
-  final DateTime timestamp;
-  final bool isRead;
-  final String? actionLabel;
-  final String? actionRoute;
 
   Notification({
     required this.id,
@@ -25,6 +17,14 @@ class Notification {
     this.actionLabel,
     this.actionRoute,
   });
+  final String id;
+  final String title;
+  final String message;
+  final NotificationType type;
+  final DateTime timestamp;
+  final bool isRead;
+  final String? actionLabel;
+  final String? actionRoute;
 }
 
 /// Types of notifications with corresponding colors.
@@ -261,7 +261,7 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(100),
-                            border: Border.all(color: Colors.black.withOpacity(0.08)),
+                            border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -436,14 +436,14 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
-          color: notification.isRead ? AppTheme.divider : typeColor.withOpacity(0.3),
+          color: notification.isRead ? AppTheme.divider : typeColor.withValues(alpha: 0.3),
           width: 1.5,
         ),
         boxShadow: notification.isRead
             ? []
             : [
                 BoxShadow(
-                  color: typeColor.withOpacity(0.1),
+                  color: typeColor.withValues(alpha: 0.1),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -463,7 +463,7 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: typeColor.withOpacity(0.1),
+                    color: typeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
                   child: Icon(
@@ -545,9 +545,9 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
                         ],
                       ),
                     ),
-                    PopupMenuItem<String>(
+                    const PopupMenuItem<String>(
                       value: 'delete',
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
                           SizedBox(width: 8),
@@ -611,10 +611,10 @@ class _PharmacyNotificationsPageState extends State<PharmacyNotificationsPage> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
+            child: const Icon(
               Icons.notifications_none,
               size: 40,
               color: AppTheme.primary,

@@ -4,9 +4,9 @@ import 'package:pholders_app/features/doctor/patients/presentation/documents_scr
 
 /// PatientDocumentsPage — displays the documents for a patient.
 class PatientDocumentsPage extends StatelessWidget {
-  final String patientId;
 
   const PatientDocumentsPage({super.key, required this.patientId});
+  final String patientId;
 
   @override
   Widget build(BuildContext context) {

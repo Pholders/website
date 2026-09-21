@@ -4,9 +4,9 @@ import 'package:pholders_app/features/doctor/appointments/presentation/appointme
 
 /// PatientAppointmentsPage — displays the appointments for a patient.
 class PatientAppointmentsPage extends StatelessWidget {
-  final String patientId;
 
   const PatientAppointmentsPage({super.key, required this.patientId});
+  final String patientId;
 
   @override
   Widget build(BuildContext context) {

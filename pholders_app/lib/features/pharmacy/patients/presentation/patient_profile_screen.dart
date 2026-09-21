@@ -8,14 +8,14 @@ import 'package:pholders_app/features/pharmacy/patients/presentation/medical_his
 
 // ─── Patient Profile Screen ───────────────────────────────────────────────────
 class PatientProfileScreen extends StatefulWidget {
-  final Patient patient;
-  final VoidCallback onBack;
 
   const PatientProfileScreen({
     super.key,
     required this.patient,
     required this.onBack,
   });
+  final Patient patient;
+  final VoidCallback onBack;
 
   @override
   State<PatientProfileScreen> createState() => _PatientProfileScreenState();
@@ -42,27 +42,27 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
   // Mock vitals
   final _vitals = [
-    _Vital(icon: Icons.favorite_rounded, label: 'Blood Pressure', value: '180/20', unit: 'mmHg', status: 'In the norm', isNorm: true),
-    _Vital(icon: Icons.monitor_heart_outlined, label: 'Heart Rate', value: '120', unit: 'bpm', status: 'Above the norm', isNorm: false),
-    _Vital(icon: Icons.accessibility_new_rounded, label: 'Body Weight', value: '74', unit: 'kg', status: 'In the norm', isNorm: true),
-    _Vital(icon: Icons.water_drop_outlined, label: 'Cholesterol', value: '130', unit: 'mg/dl', status: 'Above the norm', isNorm: false),
+    const _Vital(icon: Icons.favorite_rounded, label: 'Blood Pressure', value: '180/20', unit: 'mmHg', status: 'In the norm', isNorm: true),
+    const _Vital(icon: Icons.monitor_heart_outlined, label: 'Heart Rate', value: '120', unit: 'bpm', status: 'Above the norm', isNorm: false),
+    const _Vital(icon: Icons.accessibility_new_rounded, label: 'Body Weight', value: '74', unit: 'kg', status: 'In the norm', isNorm: true),
+    const _Vital(icon: Icons.water_drop_outlined, label: 'Cholesterol', value: '130', unit: 'mg/dl', status: 'Above the norm', isNorm: false),
   ];
 
   // Mock visits
   final _visits = [
-    _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
-    _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
-    _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
+    const _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
+    const _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
+    const _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
   ];
 
   // Mock timeline
   final _timeline = [
-    _TimelineItem(date: 'Dec 2024', label: 'Pre-diabetic'),
-    _TimelineItem(date: 'Jan 2024', label: 'Type 2'),
-    _TimelineItem(date: 'Dec 2023', label: 'Chronic thyroid disorder'),
-    _TimelineItem(date: 'Jul 2022', label: 'Angina Pectoris'),
-    _TimelineItem(date: 'Jun 2021', label: 'Chronic Flu'),
-    _TimelineItem(date: 'Jun 2021', label: 'Chronic Flu'),
+    const _TimelineItem(date: 'Dec 2024', label: 'Pre-diabetic'),
+    const _TimelineItem(date: 'Jan 2024', label: 'Type 2'),
+    const _TimelineItem(date: 'Dec 2023', label: 'Chronic thyroid disorder'),
+    const _TimelineItem(date: 'Jul 2022', label: 'Angina Pectoris'),
+    const _TimelineItem(date: 'Jun 2021', label: 'Chronic Flu'),
+    const _TimelineItem(date: 'Jun 2021', label: 'Chronic Flu'),
   ];
 
   @override
@@ -77,7 +77,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           child: Column(
             children: [
               _buildProfileTabs(),
-              Divider(height: 1, thickness: 1, color: AppProfileColors.border),
+              const Divider(height: 1, thickness: 1, color: AppProfileColors.border),
             ],
           ),
         ),
@@ -263,7 +263,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Icon(Icons.person, size: 80, color: AppProfileColors.teal),
+                    child: const Icon(Icons.person, size: 80, color: AppProfileColors.teal),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -303,10 +303,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Info grid
-                Wrap(
+                const Wrap(
                   spacing: 32,
                   runSpacing: 16,
-                  children: [
+                  children: const [
                     _InfoField(label: 'Gender', value: 'Female'),
                     _InfoField(label: 'Age', value: '32'),
                     _InfoField(label: 'Blood', value: '0'),
@@ -390,12 +390,12 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           const SizedBox(height: 16),
 
           // Date header
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.calendar_today_outlined,
+              Icon(Icons.calendar_today_outlined,
                   size: 14, color: AppProfileColors.textSecondary),
-              const SizedBox(width: 6),
-              const Text('Today, 21 Feb 2026',
+              SizedBox(width: 6),
+              Text('Today, 21 Feb 2026',
                   style: TextStyle(
                       fontSize: 12,
                       color: AppProfileColors.textSecondary,
@@ -477,12 +477,6 @@ class AppProfileColors {
 
 // ─── Data classes ─────────────────────────────────────────────────────────────
 class _Vital {
-  final IconData icon;
-  final String label;
-  final String value;
-  final String unit;
-  final String status;
-  final bool isNorm;
   const _Vital({
     required this.icon,
     required this.label,
@@ -491,14 +485,15 @@ class _Vital {
     required this.status,
     required this.isNorm,
   });
+  final IconData icon;
+  final String label;
+  final String value;
+  final String unit;
+  final String status;
+  final bool isNorm;
 }
 
 class _Visit {
-  final String time;
-  final String date;
-  final String service;
-  final String doctor;
-  final String status;
   const _Visit({
     required this.time,
     required this.date,
@@ -506,19 +501,24 @@ class _Visit {
     required this.doctor,
     required this.status,
   });
+  final String time;
+  final String date;
+  final String service;
+  final String doctor;
+  final String status;
 }
 
 class _TimelineItem {
+  const _TimelineItem({required this.date, required this.label});
   final String date;
   final String label;
-  const _TimelineItem({required this.date, required this.label});
 }
 
 // ─── Info field ───────────────────────────────────────────────────────────────
 class _InfoField extends StatelessWidget {
+  const _InfoField({required this.label, required this.value});
   final String label;
   final String value;
-  const _InfoField({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -546,8 +546,8 @@ class _InfoField extends StatelessWidget {
 
 // ─── Vital card ───────────────────────────────────────────────────────────────
 class _VitalCard extends StatelessWidget {
-  final _Vital vital;
   const _VitalCard({required this.vital});
+  final _Vital vital;
 
   @override
   Widget build(BuildContext context) {
@@ -559,7 +559,7 @@ class _VitalCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,7 +581,7 @@ class _VitalCard extends StatelessWidget {
               children: [
                 TextSpan(
                     text: vital.value,
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppProfileColors.textPrimary)),
@@ -607,9 +607,9 @@ class _VitalCard extends StatelessWidget {
 
 // ─── Visit row ────────────────────────────────────────────────────────────────
 class _VisitRow extends StatelessWidget {
+  const _VisitRow({required this.visit, required this.highlight});
   final _Visit visit;
   final bool highlight;
-  const _VisitRow({required this.visit, required this.highlight});
 
   @override
   Widget build(BuildContext context) {
@@ -617,7 +617,7 @@ class _VisitRow extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: highlight
-            ? AppProfileColors.purple.withOpacity(0.08)
+            ? AppProfileColors.purple.withValues(alpha: 0.08)
             : AppProfileColors.bg,
         borderRadius: BorderRadius.circular(12),
         border: Border(
@@ -717,9 +717,9 @@ class _VisitRow extends StatelessWidget {
 
 // ─── Timeline row ─────────────────────────────────────────────────────────────
 class _TimelineRow extends StatelessWidget {
+  const _TimelineRow({required this.item, required this.isLast});
   final _TimelineItem item;
   final bool isLast;
-  const _TimelineRow({required this.item, required this.isLast});
 
   @override
   Widget build(BuildContext context) {

@@ -20,13 +20,6 @@ class MedColors {
 
 // ─── Data models ──────────────────────────────────────────────────────────────
 class MedicationItem {
-  final String name;
-  final String dosage;
-  final String startDate;
-  final String endDate;
-  final double adherence;
-  final String prescribedBy;
-  final bool isActive;
 
   const MedicationItem({
     required this.name,
@@ -37,15 +30,16 @@ class MedicationItem {
     required this.prescribedBy,
     required this.isActive,
   });
+  final String name;
+  final String dosage;
+  final String startDate;
+  final String endDate;
+  final double adherence;
+  final String prescribedBy;
+  final bool isActive;
 }
 
 class MedHistoryItem {
-  final String medication;
-  final String dosage;
-  final String frequency;
-  final String duration;
-  final bool isActive;
-  final int adherence;
 
   const MedHistoryItem({
     required this.medication,
@@ -55,25 +49,31 @@ class MedHistoryItem {
     required this.isActive,
     required this.adherence,
   });
+  final String medication;
+  final String dosage;
+  final String frequency;
+  final String duration;
+  final bool isActive;
+  final int adherence;
 }
 
 class MedicalHistoryItem {
-  final IconData icon;
-  final String category;
-  final String value;
 
   const MedicalHistoryItem({
     required this.icon,
     required this.category,
     required this.value,
   });
+  final IconData icon;
+  final String category;
+  final String value;
 }
 
 // ─── Medication Screen ────────────────────────────────────────────────────────
 class MedicationScreen extends StatefulWidget {
-  final Patient patient;
 
   const MedicationScreen({super.key, required this.patient});
+  final Patient patient;
 
   @override
   State<MedicationScreen> createState() => _MedicationScreenState();
@@ -209,7 +209,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: MedColors.criticalRed.withOpacity(0.12),
+                  color: MedColors.criticalRed.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text('Critical',
@@ -385,8 +385,8 @@ class _MedicationScreenState extends State<MedicationScreen> {
 
 // ─── Medication card widget ───────────────────────────────────────────────────
 class _MedicationCard extends StatelessWidget {
-  final MedicationItem item;
   const _MedicationCard({required this.item});
+  final MedicationItem item;
 
   @override
   Widget build(BuildContext context) {
@@ -465,9 +465,9 @@ class _MedicationCard extends StatelessWidget {
 }
 
 class _MedRow extends StatelessWidget {
+  const _MedRow({required this.label, required this.value});
   final String label;
   final String value;
-  const _MedRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -498,8 +498,8 @@ class _MedRow extends StatelessWidget {
 
 // ─── Medical history row ──────────────────────────────────────────────────────
 class _MedicalHistoryRow extends StatelessWidget {
-  final MedicalHistoryItem item;
   const _MedicalHistoryRow({required this.item});
+  final MedicalHistoryItem item;
 
   @override
   Widget build(BuildContext context) {
@@ -534,8 +534,8 @@ class _MedicalHistoryRow extends StatelessWidget {
 
 // ─── Table header cell ────────────────────────────────────────────────────────
 class _TableHeader extends StatelessWidget {
-  final String label;
   const _TableHeader(this.label);
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -549,9 +549,9 @@ class _TableHeader extends StatelessWidget {
 
 // ─── Medication history row ───────────────────────────────────────────────────
 class _MedHistoryRow extends StatefulWidget {
+  const _MedHistoryRow({required this.item, required this.onViewDetails});
   final MedHistoryItem item;
   final VoidCallback onViewDetails;
-  const _MedHistoryRow({required this.item, required this.onViewDetails});
 
   @override
   State<_MedHistoryRow> createState() => _MedHistoryRowState();
@@ -563,7 +563,7 @@ class _MedHistoryRowState extends State<_MedHistoryRow> {
   void _showActionsMenu(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.15),
+      barrierColor: Colors.black.withValues(alpha: 0.15),
       builder: (_) => _MedActionsMenu(onViewDetails: widget.onViewDetails),
     );
   }
@@ -577,7 +577,7 @@ class _MedHistoryRowState extends State<_MedHistoryRow> {
       onExit: (_) => setState(() => _hovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        color: _hovered ? MedColors.tealLight.withOpacity(0.4) : Colors.transparent,
+        color: _hovered ? MedColors.tealLight.withValues(alpha: 0.4) : Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
@@ -668,8 +668,8 @@ class _MedHistoryRowState extends State<_MedHistoryRow> {
 
 // ─── Med actions menu modal ───────────────────────────────────────────────────
 class _MedActionsMenu extends StatelessWidget {
-  final VoidCallback onViewDetails;
   const _MedActionsMenu({required this.onViewDetails});
+  final VoidCallback onViewDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -696,7 +696,7 @@ class _MedActionsMenu extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -748,18 +748,18 @@ class _MedActionsMenu extends StatelessWidget {
 }
 
 class _MedAction {
+  const _MedAction({required this.label, required this.icon, required this.onTap});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  const _MedAction({required this.label, required this.icon, required this.onTap});
 }
 
 class _MedActionItem extends StatefulWidget {
+  const _MedActionItem(
+      {required this.label, required this.icon, required this.onTap});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  const _MedActionItem(
-      {required this.label, required this.icon, required this.onTap});
 
   @override
   State<_MedActionItem> createState() => _MedActionItemState();

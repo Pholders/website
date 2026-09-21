@@ -17,13 +17,6 @@ import 'pdf_download_stub.dart'
 enum TxStatus { paid, pending, cancelled, refund, processing }
 
 class Transaction {
-  final String id;
-  final String patient;
-  final String initials;
-  final String service;
-  final String amount;
-  final String date;
-  final TxStatus status;
 
   const Transaction({
     required this.id,
@@ -34,6 +27,13 @@ class Transaction {
     required this.date,
     required this.status,
   });
+  final String id;
+  final String patient;
+  final String initials;
+  final String service;
+  final String amount;
+  final String date;
+  final TxStatus status;
 
   Transaction copyWith({TxStatus? status}) => Transaction(
     id: id,
@@ -47,13 +47,13 @@ class Transaction {
 }
 
 final _initialTransactions = [
-  Transaction(id: 'TXN-001', patient: 'Maria Wilson',   initials: 'MW', service: 'Consultation', amount: 'R200', date: '05 May', status: TxStatus.paid),
-  Transaction(id: 'TXN-002', patient: 'James Mokoena',  initials: 'JM', service: 'Chemotherapy',  amount: 'R450', date: '03 May', status: TxStatus.pending),
-  Transaction(id: 'TXN-003', patient: 'Sarah Dlamini',  initials: 'SD', service: 'Consultation',  amount: 'R200', date: '03 May', status: TxStatus.cancelled),
-  Transaction(id: 'TXN-004', patient: 'John Nkosi',     initials: 'JN', service: 'X-Ray',         amount: 'R100', date: '02 May', status: TxStatus.paid),
-  Transaction(id: 'TXN-005', patient: 'Thandi Khumalo', initials: 'TK', service: 'Consultation',  amount: 'R80',  date: '01 May', status: TxStatus.refund),
-  Transaction(id: 'TXN-006', patient: 'Peter Sithole',  initials: 'PS', service: 'Blood Test',    amount: 'R200', date: '30 Apr', status: TxStatus.processing),
-  Transaction(id: 'TXN-007', patient: 'Lisa Mahlangu',  initials: 'LM', service: 'Consultation',  amount: 'R200', date: '29 Apr', status: TxStatus.paid),
+  const Transaction(id: 'TXN-001', patient: 'Maria Wilson',   initials: 'MW', service: 'Consultation', amount: 'R200', date: '05 May', status: TxStatus.paid),
+  const Transaction(id: 'TXN-002', patient: 'James Mokoena',  initials: 'JM', service: 'Chemotherapy',  amount: 'R450', date: '03 May', status: TxStatus.pending),
+  const Transaction(id: 'TXN-003', patient: 'Sarah Dlamini',  initials: 'SD', service: 'Consultation',  amount: 'R200', date: '03 May', status: TxStatus.cancelled),
+  const Transaction(id: 'TXN-004', patient: 'John Nkosi',     initials: 'JN', service: 'X-Ray',         amount: 'R100', date: '02 May', status: TxStatus.paid),
+  const Transaction(id: 'TXN-005', patient: 'Thandi Khumalo', initials: 'TK', service: 'Consultation',  amount: 'R80',  date: '01 May', status: TxStatus.refund),
+  const Transaction(id: 'TXN-006', patient: 'Peter Sithole',  initials: 'PS', service: 'Blood Test',    amount: 'R200', date: '30 Apr', status: TxStatus.processing),
+  const Transaction(id: 'TXN-007', patient: 'Lisa Mahlangu',  initials: 'LM', service: 'Consultation',  amount: 'R200', date: '29 Apr', status: TxStatus.paid),
 ];
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
@@ -145,9 +145,9 @@ class _BillingBodyState extends State<_BillingBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Billing & Payments', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+          const Text('Billing & Payments', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
           const SizedBox(height: 16),
-          _WithdrawButton(),
+          const _WithdrawButton(),
           const SizedBox(height: 18),
           const _StatBox(),
           const SizedBox(height: 24),
@@ -182,7 +182,7 @@ class _WithdrawButton extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('OK', style: TextStyle(color: AppColors.activeTeal)),
+              child: const Text('OK', style: const TextStyle(color: AppColors.activeTeal)),
             ),
           ],
         ),
@@ -221,9 +221,9 @@ class _StatBox extends StatelessWidget {
             left: 0, top: 0, bottom: 0,
             child: Container(
               width: 8,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.activeTeal,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
               ),
             ),
           ),
@@ -232,13 +232,13 @@ class _StatBox extends StatelessWidget {
             child: IntrinsicHeight(
               child: Row(
                 children: [
-                  _StatItem(icon: Icons.monetization_on_outlined, iconBg: AppColors.activeTeal.withOpacity(0.12), iconColor: AppColors.activeTeal, label: 'Total Earnings',     value: 'R88,200', sub: '+2.5% Learn more', subColor: const Color(0xFF1D9E75)),
+                  _StatItem(icon: Icons.monetization_on_outlined, iconBg: AppColors.activeTeal.withValues(alpha: 0.12), iconColor: AppColors.activeTeal, label: 'Total Earnings',     value: 'R88,200', sub: '+2.5% Learn more', subColor: const Color(0xFF1D9E75)),
                   _vDiv(),
-                  _StatItem(icon: Icons.account_balance_wallet_outlined, iconBg: AppColors.activeTeal.withOpacity(0.12), iconColor: AppColors.activeTeal, label: 'Available Balance', value: 'R8,200',  sub: 'Ready to withdraw'),
+                  _StatItem(icon: Icons.account_balance_wallet_outlined, iconBg: AppColors.activeTeal.withValues(alpha: 0.12), iconColor: AppColors.activeTeal, label: 'Available Balance', value: 'R8,200',  sub: 'Ready to withdraw'),
                   _vDiv(),
-                  _StatItem(icon: Icons.access_time_outlined, iconBg: const Color(0xFFFAEEDA), iconColor: const Color(0xFFBA7517), label: 'Pending Payments',   value: 'R3,400',  sub: 'In progress'),
+                  const _StatItem(icon: Icons.access_time_outlined, iconBg: Color(0xFFFAEEDA), iconColor: Color(0xFFBA7517), label: 'Pending Payments',   value: 'R3,400',  sub: 'In progress'),
                   _vDiv(),
-                  _StatItem(icon: Icons.check_circle_outline,  iconBg: const Color(0xFFE1F5EE), iconColor: const Color(0xFF1D9E75), label: 'Completed Payments', value: '42',      sub: 'Transactions'),
+                  const _StatItem(icon: Icons.check_circle_outline,  iconBg: Color(0xFFE1F5EE), iconColor: Color(0xFF1D9E75), label: 'Completed Payments', value: '42',      sub: 'Transactions'),
                 ],
               ),
             ),
@@ -252,6 +252,8 @@ class _StatBox extends StatelessWidget {
 }
 
 class _StatItem extends StatelessWidget {
+
+  const _StatItem({required this.icon, required this.iconBg, required this.iconColor, required this.label, required this.value, required this.sub, this.subColor});
   final IconData icon;
   final Color iconBg;
   final Color iconColor;
@@ -259,8 +261,6 @@ class _StatItem extends StatelessWidget {
   final String value;
   final String sub;
   final Color? subColor;
-
-  const _StatItem({required this.icon, required this.iconBg, required this.iconColor, required this.label, required this.value, required this.sub, this.subColor});
 
   @override
   Widget build(BuildContext context) {
@@ -272,9 +272,9 @@ class _StatItem extends StatelessWidget {
           children: [
             Container(width: 32, height: 32, decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: iconColor, size: 18)),
             const SizedBox(height: 10),
-            Text(label, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
             const SizedBox(height: 4),
-            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
             const SizedBox(height: 3),
             Text(sub, style: TextStyle(fontSize: 10, color: subColor ?? AppColors.textMuted)),
           ],
@@ -286,8 +286,8 @@ class _StatItem extends StatelessWidget {
 
 // ─── Transactions header ──────────────────────────────────────────────────────
 class _TransactionsHeader extends StatefulWidget {
-  final TextEditingController controller;
   const _TransactionsHeader({required this.controller});
+  final TextEditingController controller;
 
   @override
   State<_TransactionsHeader> createState() => _TransactionsHeaderState();
@@ -305,33 +305,33 @@ class _TransactionsHeaderState extends State<_TransactionsHeader> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(children: [
-          Icon(Icons.swap_horiz, color: AppColors.activeTeal, size: 18),
-          const SizedBox(width: 8),
-          Text('Transactions', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+        const Row(children: [
+          const Icon(Icons.swap_horiz, color: AppColors.activeTeal, size: 18),
+          SizedBox(width: 8),
+          const Text('Transactions', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
         ]),
         SizedBox(
           width: 220,
           height: 36,
           child: TextField(
             controller: widget.controller,
-            style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: 'Search for transactions...',
-              hintStyle: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              prefixIcon: Icon(Icons.search, size: 16, color: AppColors.textSecondary),
+              hintStyle: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textSecondary),
               suffixIcon: widget.controller.text.isNotEmpty
                   ? GestureDetector(
                       onTap: () => widget.controller.clear(),
-                      child: Icon(Icons.close, size: 16, color: AppColors.textSecondary),
+                      child: const Icon(Icons.close, size: 16, color: AppColors.textSecondary),
                     )
                   : null,
               filled: true,
-              fillColor: AppColors.brandTeal.withOpacity(0.12),
+              fillColor: AppColors.brandTeal.withValues(alpha: 0.12),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: AppColors.divider, width: 0.5)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: AppColors.divider, width: 0.5)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: AppColors.activeTeal, width: 1.5)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.divider, width: 0.5)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.divider, width: 0.5)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.activeTeal, width: 1.5)),
             ),
           ),
         ),
@@ -351,13 +351,13 @@ class _ColumnHeaders extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.divider, width: 1.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4, offset: const Offset(0, 2))],
+        border: const Border(bottom: const BorderSide(color: AppColors.divider, width: 1.5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: List.generate(_cols.length, (i) => Expanded(
           flex: _flex[i],
-          child: Text(_cols[i], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+          child: Text(_cols[i], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
         )),
       ),
     );
@@ -366,10 +366,10 @@ class _ColumnHeaders extends StatelessWidget {
 
 // ─── Data rows box ────────────────────────────────────────────────────────────
 class _DataRowsBox extends StatelessWidget {
-  final List<Transaction> transactions;
-  final void Function(String id) onCancel;
 
   const _DataRowsBox({required this.transactions, required this.onCancel});
+  final List<Transaction> transactions;
+  final void Function(String id) onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -381,13 +381,13 @@ class _DataRowsBox extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.divider, width: 0.5),
         ),
-        child: Center(
+        child: const Center(
           child: Column(children: [
-            Icon(Icons.search_off_rounded, size: 40, color: AppColors.textSecondary),
-            const SizedBox(height: 8),
-            Text('No transactions found', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            const SizedBox(height: 4),
-            Text('Try a different search term', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            const Icon(Icons.search_off_rounded, size: 40, color: AppColors.textSecondary),
+            SizedBox(height: 8),
+            const Text('No transactions found', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            SizedBox(height: 4),
+            const Text('Try a different search term', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ]),
         ),
       );
@@ -405,9 +405,9 @@ class _DataRowsBox extends StatelessWidget {
             left: 0, top: 0, bottom: 0,
             child: Container(
               width: 8,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.activeTeal,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
               ),
             ),
           ),
@@ -432,11 +432,11 @@ class _DataRowsBox extends StatelessWidget {
 
 // ─── Transaction row ──────────────────────────────────────────────────────────
 class _TxRow extends StatefulWidget {
+
+  const _TxRow({required this.tx, required this.isLast, required this.onCancel});
   final Transaction tx;
   final bool isLast;
   final void Function(String id) onCancel;
-
-  const _TxRow({required this.tx, required this.isLast, required this.onCancel});
 
   @override
   State<_TxRow> createState() => _TxRowState();
@@ -464,17 +464,17 @@ class _TxRowState extends State<_TxRow> {
                   children: [
                     pw.Text(
                       'PHolders Healthcare',
-                      style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF2D9B8C)),
+                      style: const pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: const PdfColor.fromInt(0xFF2D9B8C)),
                     ),
                     pw.SizedBox(height: 4),
                     pw.Text(
                       'Payment Receipt',
-                      style: pw.TextStyle(fontSize: 16, color: PdfColors.grey700),
+                      style: const pw.TextStyle(fontSize: 16, color: PdfColors.grey700),
                     ),
                     pw.SizedBox(height: 20),
                     pw.Container(
-                      decoration: pw.BoxDecoration(
-                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400)),
+                      decoration: const pw.BoxDecoration(
+                        border: const pw.Border(bottom: const pw.BorderSide(color: PdfColors.grey400)),
                       ),
                     ),
                   ],
@@ -494,15 +494,15 @@ class _TxRowState extends State<_TxRow> {
                   pw.SizedBox(height: 10),
                   _pdfDetailRow('Date', tx.date),
                   pw.SizedBox(height: 10),
-                  _pdfDetailRow('Amount', tx.amount, isBold: true, color: PdfColor.fromInt(0xFF2D9B8C)),
+                  _pdfDetailRow('Amount', tx.amount, isBold: true, color: const PdfColor.fromInt(0xFF2D9B8C)),
                   pw.SizedBox(height: 10),
                   _pdfDetailRow('Status', statusInfo.label, isBold: true),
                 ],
               ),
               pw.SizedBox(height: 30),
               pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400)),
+                decoration: const pw.BoxDecoration(
+                  border: const pw.Border(bottom: const pw.BorderSide(color: PdfColors.grey400)),
                 ),
               ),
               pw.SizedBox(height: 20),
@@ -511,14 +511,14 @@ class _TxRowState extends State<_TxRow> {
               pw.Center(
                 child: pw.Text(
                   'Thank you for using PHolders Healthcare Platform',
-                  style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
                 ),
               ),
               pw.SizedBox(height: 8),
               pw.Center(
                 child: pw.Text(
                   'Generated on ${DateTime.now().toString().split('.')[0]}',
-                  style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500),
+                  style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500),
                 ),
               ),
             ],
@@ -542,7 +542,7 @@ class _TxRowState extends State<_TxRow> {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Text(label, style: pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+        pw.Text(label, style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
         pw.Text(
           value,
           style: pw.TextStyle(
@@ -575,16 +575,16 @@ class _TxRowState extends State<_TxRow> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.activeTeal,
-                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
                 ),
                 child: Column(children: [
                   const Icon(Icons.receipt_long_outlined, color: Colors.white, size: 36),
                   const SizedBox(height: 8),
                   const Text('Payment Receipt', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  Text('PHolders Healthcare', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12)),
+                  Text('PHolders Healthcare', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
                 ]),
               ),
 
@@ -606,7 +606,7 @@ class _TxRowState extends State<_TxRow> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Status', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        const Text('Status', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                           decoration: BoxDecoration(color: statusInfo.bg, borderRadius: BorderRadius.circular(12)),
@@ -649,7 +649,7 @@ class _TxRowState extends State<_TxRow> {
                         label: const Text('Copy to Clipboard'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.activeTeal,
-                          side: BorderSide(color: AppColors.activeTeal),
+                          side: const BorderSide(color: AppColors.activeTeal),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
@@ -677,7 +677,7 @@ class _TxRowState extends State<_TxRow> {
                         icon: const Icon(Icons.download, size: 16),
                         label: const Text('Download as PDF'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.brandTeal.withOpacity(0.9),
+                          backgroundColor: AppColors.brandTeal.withValues(alpha: 0.9),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -716,7 +716,7 @@ class _TxRowState extends State<_TxRow> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           Text(
             value,
             style: TextStyle(
@@ -730,7 +730,7 @@ class _TxRowState extends State<_TxRow> {
     );
   }
 
-  Widget _receiptDivider() => Divider(color: AppColors.divider, height: 1);
+  Widget _receiptDivider() => const Divider(color: AppColors.divider, height: 1);
 
   // ── View Details dialog ────────────────────────────────────────────────────
   void _showDetails(BuildContext context) {
@@ -753,9 +753,9 @@ class _TxRowState extends State<_TxRow> {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.activeTeal,
-                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,7 +764,7 @@ class _TxRowState extends State<_TxRow> {
                         children: [
                           CircleAvatar(
                             radius: 32,
-                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundColor: Colors.white.withValues(alpha: 0.2),
                             child: Text(
                               tx.initials,
                               style: const TextStyle(
@@ -791,7 +791,7 @@ class _TxRowState extends State<_TxRow> {
                                 Text(
                                   'Transaction Details',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withValues(alpha: 0.8),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -804,7 +804,7 @@ class _TxRowState extends State<_TxRow> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -813,7 +813,7 @@ class _TxRowState extends State<_TxRow> {
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
                               ),
@@ -872,7 +872,7 @@ class _TxRowState extends State<_TxRow> {
                         iconColor: AppColors.activeTeal,
                         label: 'Amount',
                         value: tx.amount,
-                        valueStyle: TextStyle(
+                        valueStyle: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: AppColors.activeTeal,
@@ -895,7 +895,7 @@ class _TxRowState extends State<_TxRow> {
                         decoration: BoxDecoration(
                           color: statusInfo.bg,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: statusInfo.fg.withOpacity(0.3)),
+                          border: Border.all(color: statusInfo.fg.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           children: [
@@ -916,7 +916,7 @@ class _TxRowState extends State<_TxRow> {
                                     'Status',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: statusInfo.fg.withOpacity(0.7),
+                                      color: statusInfo.fg.withValues(alpha: 0.7),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -949,7 +949,7 @@ class _TxRowState extends State<_TxRow> {
                               },
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.activeTeal,
-                                side: BorderSide(color: AppColors.activeTeal),
+                                side: const BorderSide(color: AppColors.activeTeal),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                               ),
@@ -1003,7 +1003,7 @@ class _TxRowState extends State<_TxRow> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.12),
+            color: iconColor.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: iconColor, size: 20),
@@ -1015,7 +1015,7 @@ class _TxRowState extends State<_TxRow> {
             children: [
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 11,
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
@@ -1025,7 +1025,7 @@ class _TxRowState extends State<_TxRow> {
               Text(
                 value,
                 style: valueStyle ??
-                    TextStyle(
+                    const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
@@ -1072,7 +1072,7 @@ class _TxRowState extends State<_TxRow> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Are you sure you want to cancel this transaction?', style: TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+            const Text('Are you sure you want to cancel this transaction?', style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -1101,7 +1101,7 @@ class _TxRowState extends State<_TxRow> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Keep', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('Keep', style: const TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1132,8 +1132,8 @@ class _TxRowState extends State<_TxRow> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        Text(value, style: TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
+        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text(value, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -1176,8 +1176,8 @@ class _TxRowState extends State<_TxRow> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(tx.patient, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-                      Text('${tx.service}  ·  ${tx.amount}  ·  ${tx.date}', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      Text(tx.patient, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                      Text('${tx.service}  ·  ${tx.amount}  ·  ${tx.date}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                     ]),
                   ),
                 ],
@@ -1189,11 +1189,11 @@ class _TxRowState extends State<_TxRow> {
             ListTile(
               leading: Container(
                 width: 36, height: 36,
-                decoration: BoxDecoration(color: AppColors.activeTeal.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-                child: Icon(Icons.info_outline, color: AppColors.activeTeal, size: 18),
+                decoration: BoxDecoration(color: AppColors.activeTeal.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.info_outline, color: AppColors.activeTeal, size: 18),
               ),
               title: const Text('View Details', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-              subtitle: Text('See full transaction information', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              subtitle: const Text('See full transaction information', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               onTap: () {
                 Navigator.pop(context);
                 _showDetails(context);
@@ -1204,11 +1204,11 @@ class _TxRowState extends State<_TxRow> {
             ListTile(
               leading: Container(
                 width: 36, height: 36,
-                decoration: BoxDecoration(color: AppColors.activeTeal.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-                child: Icon(Icons.receipt_long_outlined, color: AppColors.activeTeal, size: 18),
+                decoration: BoxDecoration(color: AppColors.activeTeal.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.receipt_long_outlined, color: AppColors.activeTeal, size: 18),
               ),
               title: const Text('Download Receipt', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-              subtitle: Text('View and copy transaction receipt', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              subtitle: const Text('View and copy transaction receipt', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               onTap: () {
                 Navigator.pop(context);
                 _showReceipt(context);
@@ -1231,7 +1231,7 @@ class _TxRowState extends State<_TxRow> {
               ),
               subtitle: Text(
                 canCancel ? 'Mark this transaction as cancelled' : 'Already ${_statusStyle(tx.status).label.toLowerCase()}',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
               onTap: canCancel
                   ? () {
@@ -1258,8 +1258,8 @@ class _TxRowState extends State<_TxRow> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          color: _hovered ? AppColors.brandTeal.withOpacity(0.04) : Colors.transparent,
-          border: widget.isLast ? null : Border(bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+          color: _hovered ? AppColors.brandTeal.withValues(alpha: 0.04) : Colors.transparent,
+          border: widget.isLast ? null : const Border(bottom: const BorderSide(color: AppColors.divider, width: 0.5)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
@@ -1273,12 +1273,12 @@ class _TxRowState extends State<_TxRow> {
                   child: Text(widget.tx.initials, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF0F6E56))),
                 ),
                 const SizedBox(width: 10),
-                Flexible(child: Text(widget.tx.patient, style: TextStyle(fontSize: 12, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
+                Flexible(child: Text(widget.tx.patient, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
               ]),
             ),
-            Expanded(flex: 19, child: Text(widget.tx.service, style: TextStyle(fontSize: 12, color: AppColors.textPrimary))),
-            Expanded(flex: 12, child: Text(widget.tx.amount,  style: TextStyle(fontSize: 12, color: AppColors.textPrimary))),
-            Expanded(flex: 13, child: Text(widget.tx.date,    style: TextStyle(fontSize: 12, color: AppColors.textPrimary))),
+            Expanded(flex: 19, child: Text(widget.tx.service, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
+            Expanded(flex: 12, child: Text(widget.tx.amount,  style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
+            Expanded(flex: 13, child: Text(widget.tx.date,    style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
             Expanded(
               flex: 21,
               child: FittedBox(
@@ -1298,7 +1298,7 @@ class _TxRowState extends State<_TxRow> {
             Expanded(
               flex: 10,
               child: IconButton(
-                icon: Icon(Icons.more_vert, size: 18, color: AppColors.textSecondary),
+                icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textSecondary),
                 onPressed: () => _showMenu(context),
               ),
             ),

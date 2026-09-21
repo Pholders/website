@@ -2,6 +2,7 @@ import '../../../../core/auth/token_storage.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import 'models/prescription.dart';
+import 'models/safety_report.dart';
 
 /// Doctor-side prescription calls.
 ///
@@ -111,9 +112,32 @@ class PrescriptionsRepository {
     );
   }
 
-  /// Checks the prescription's medicines against each other for interactions.
-  Future<Map<String, dynamic>> checkInteractions(int prescriptionId) {
-    return _api.post('/prescriptions/$prescriptionId/check-interactions');
+  /// Checks the prescription's medicines against each other, and optionally
+  /// against what else the patient is on.
+  ///
+  /// Worth running before signing: a signed prescription can no longer be
+  /// edited, so a flagged interaction found afterwards can only be revoked.
+  ///
+  /// The backend defaults [patientAge] to 35 and [patientWeight] to 70 when
+  /// they are not supplied, which is worth knowing before trusting a dosage
+  /// review for a child or a frail patient.
+  Future<SafetyReport> checkInteractions(
+    int prescriptionId, {
+    List<String> patientConditions = const [],
+    List<String> currentMedications = const [],
+    int? patientAge,
+    int? patientWeight,
+  }) async {
+    final data = await _api.post(
+      '/prescriptions/$prescriptionId/check-interactions',
+      body: {
+        'patientConditions': patientConditions,
+        'currentMedications': currentMedications,
+        if (patientAge != null) 'patientAge': patientAge,
+        if (patientWeight != null) 'patientWeight': patientWeight,
+      },
+    );
+    return SafetyReport.fromJson(data);
   }
 
   /// Signs a prescription, making it valid and dispensable.

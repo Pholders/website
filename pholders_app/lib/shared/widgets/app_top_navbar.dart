@@ -9,14 +9,14 @@ import '../theme/app_theme.dart';
 ///
 /// Shows breadcrumb (Pholders > PageName), search bar, and notification bell.
 class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
-  final String role;
-  final VoidCallback? onMenuTap;
 
   const AppTopNavbar({
     super.key,
     required this.role,
     this.onMenuTap,
   });
+  final String role;
+  final VoidCallback? onMenuTap;
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -68,17 +68,17 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
           ],
 
           // Breadcrumb
-          Text(
+          const Text(
             'Pholders',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               color: AppTheme.textSecondary,
             ),
           ),
           const SizedBox(width: 6),
-          Text(
+          const Text(
             '>',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               color: AppTheme.textSecondary,
             ),
@@ -107,12 +107,12 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.search, size: 18, color: AppTheme.textSecondary),
+                const Icon(Icons.search, size: 18, color: AppTheme.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _getSearchHint(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
                     ),

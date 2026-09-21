@@ -1214,7 +1214,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
           height: 20,
           padding: const EdgeInsets.symmetric(horizontal: 9),
           decoration: BoxDecoration(
-            color: bg.withOpacity(.85),
+            color: bg.withValues(alpha: .85),
             borderRadius: BorderRadius.circular(3),
           ),
           child: Row(
@@ -1340,7 +1340,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: type,
+                  initialValue: type,
                   decoration: const InputDecoration(labelText: 'Care type'),
                   items: const [
                     DropdownMenuItem(
@@ -1360,7 +1360,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                       setDialogState(() => type = value ?? type),
                 ),
                 DropdownButtonFormField<String>(
-                  value: priority,
+                  initialValue: priority,
                   decoration: const InputDecoration(labelText: 'Priority'),
                   items: const [
                     DropdownMenuItem(value: 'Low', child: Text('Low')),
@@ -1430,7 +1430,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                   decoration: const InputDecoration(labelText: 'Condition'),
                 ),
                 DropdownButtonFormField<String>(
-                  value: priority,
+                  initialValue: priority,
                   decoration: const InputDecoration(labelText: 'Priority'),
                   items: const [
                     DropdownMenuItem(value: 'Low', child: Text('Low')),

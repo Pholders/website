@@ -4,9 +4,9 @@ import 'package:pholders_app/features/doctor/patients/presentation/medical_histo
 
 /// PatientHistoryPage — displays the medical history for a patient.
 class PatientHistoryPage extends StatelessWidget {
-  final String patientId;
 
   const PatientHistoryPage({super.key, required this.patientId});
+  final String patientId;
 
   @override
   Widget build(BuildContext context) {

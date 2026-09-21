@@ -132,7 +132,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildKPICards(isMobile, isTablet),
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           if (!isMobile)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,7 +141,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                   flex: 2,
                   child: _buildSalesTrendCard(),
                 ),
-                SizedBox(width: AppTheme.spacingMd),
+                const SizedBox(width: AppTheme.spacingMd),
                 Expanded(
                   child: _buildTopMedicationsCard(),
                 ),
@@ -149,12 +149,12 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
             )
           else ...[
             _buildSalesTrendCard(),
-            SizedBox(height: AppTheme.spacingMd),
+            const SizedBox(height: AppTheme.spacingMd),
             _buildTopMedicationsCard(),
           ],
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           _buildInventoryStatusCard(),
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           _buildRecentTransactionsCard(),
         ],
       ),
@@ -183,7 +183,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               });
             }),
           ),
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           _buildSectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,7 +194,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: AppTheme.spacingMd),
+                const SizedBox(height: AppTheme.spacingMd),
                 Wrap(
                   spacing: AppTheme.spacingMd,
                   runSpacing: AppTheme.spacingMd,
@@ -207,25 +207,25 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               ],
             ),
           ),
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           _buildSectionLabel('Order Summary'),
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           _buildSectionCard(
             child: Column(
               children: [
                 _buildDetailRow('Order ID', tx['orderId'] as String),
-                Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
+                const Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
                 _buildDetailRow('Date', tx['timestamp'] as String),
-                Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
+                const Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
                 _buildDetailRow('Amount', tx['amount'] as String),
-                Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
+                const Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
                 _buildDetailRow('Status', status),
               ],
             ),
           ),
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           _buildSectionLabel('Items (3)'),
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           ...List.generate(3, (index) {
             return Padding(
               padding: EdgeInsets.only(bottom: index < 2 ? AppTheme.spacingSm : 0),
@@ -244,7 +244,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          SizedBox(height: AppTheme.spacingXs),
+                          const SizedBox(height: AppTheme.spacingXs),
                           Text(
                             '${150 - index * 10} units @ R${50 + index * 5}.00',
                             style: Theme.of(context).textTheme.bodySmall,
@@ -377,7 +377,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
         border: Border.all(color: const Color(0xFFE7EEF5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -394,7 +394,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               borderRadius: BorderRadius.circular(999),
             ),
           ),
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -411,7 +411,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                         letterSpacing: 0.2,
                       ),
                     ),
-                    SizedBox(height: AppTheme.spacingXs),
+                    const SizedBox(height: AppTheme.spacingXs),
                     Text(
                       value,
                       style: const TextStyle(
@@ -424,19 +424,19 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                   ],
                 ),
               ),
-              SizedBox(width: AppTheme.spacingMd),
+              const SizedBox(width: AppTheme.spacingMd),
               Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, size: 18, color: color),
               ),
             ],
           ),
-          SizedBox(height: AppTheme.spacingSm),
+          const SizedBox(height: AppTheme.spacingSm),
           Text(
             subtitle,
             maxLines: 2,
@@ -461,7 +461,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                   size: 14,
                   color: trendColor,
                 ),
-                SizedBox(width: AppTheme.spacingXs),
+                const SizedBox(width: AppTheme.spacingXs),
                 Text(
                   change,
                   style: TextStyle(
@@ -470,12 +470,12 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                     color: trendColor,
                   ),
                 ),
-                SizedBox(width: AppTheme.spacingSm),
-                Expanded(
+                const SizedBox(width: AppTheme.spacingSm),
+                const Expanded(
                   child: Text(
                     'vs previous period',
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textSecondary,
@@ -499,9 +499,9 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'Sales Trend',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
@@ -511,17 +511,17 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _accent.withOpacity(0.12),
+                  color: _accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.trending_up, size: 12, color: _accent),
-                    SizedBox(width: 4),
+                    const Icon(Icons.trending_up, size: 12, color: _accent),
+                    const SizedBox(width: 4),
                     Text(
                       '+12.5%',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: _accent,
@@ -532,7 +532,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               ),
             ],
           ),
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -564,7 +564,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
             color: AppTheme.textSecondary,
           ),
         ),
-        SizedBox(width: AppTheme.spacingSm),
+        const SizedBox(width: AppTheme.spacingSm),
         Expanded(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -572,13 +572,13 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               height: height * 18,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_accent, _accent.withOpacity(0.55)],
+                  colors: [_accent, _accent.withValues(alpha: 0.55)],
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _accent.withOpacity(0.2),
+                    color: _accent.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -596,7 +596,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
       ('Paracetamol 500mg', 324, AppTheme.primary),
       ('Amoxicillin 250mg', 287, AppTheme.secondary),
       ('Ibuprofen 400mg', 256, AppTheme.warning),
-      ('Metformin 500mg', 198, Color(0xFF309CA3)),
+      ('Metformin 500mg', 198, const Color(0xFF309CA3)),
       ('Omeprazole 20mg', 165, AppTheme.error),
     ];
 
@@ -605,16 +605,16 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Top Medications',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
               letterSpacing: -0.3,
             ),
           ),
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -634,7 +634,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: med.$3.withOpacity(0.15),
+                            color: med.$3.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                           ),
                           child: Center(
@@ -648,7 +648,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                             ),
                           ),
                         ),
-                        SizedBox(width: AppTheme.spacingSm),
+                        const SizedBox(width: AppTheme.spacingSm),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -661,7 +661,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                                   color: AppTheme.textPrimary,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                                 child: LinearProgressIndicator(
@@ -674,7 +674,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                             ],
                           ),
                         ),
-                        SizedBox(width: AppTheme.spacingSm),
+                        const SizedBox(width: AppTheme.spacingSm),
                         Text(
                           '${med.$2}',
                           style: const TextStyle(
@@ -720,7 +720,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: AppTheme.spacingXs),
+                    const SizedBox(height: AppTheme.spacingXs),
                     Text(
                       showingInventoryDetails
                           ? 'Operational detail for stock health and replenishment.'
@@ -732,7 +732,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                   ],
                 ),
               ),
-              SizedBox(width: AppTheme.spacingMd),
+              const SizedBox(width: AppTheme.spacingMd),
               TextButton.icon(
                 onPressed: () {
                   setState(() {
@@ -751,7 +751,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
               ),
-              SizedBox(width: AppTheme.spacingMd),
+              const SizedBox(width: AppTheme.spacingMd),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppTheme.spacingMd,
@@ -783,12 +783,12 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               ),
             ],
           ),
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           if (showingInventoryDetails)
             _buildInventoryDetailsView(context, statuses, total)
           else
             _buildInventorySummaryView(context, statuses, total),
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           Container(
             padding: const EdgeInsets.all(AppTheme.spacingMd),
             decoration: BoxDecoration(
@@ -798,7 +798,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
             child: Row(
               children: [
                 const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 18),
-                SizedBox(width: AppTheme.spacingSm),
+                const SizedBox(width: AppTheme.spacingSm),
                 Expanded(
                   child: Text(
                     '32 items need attention across low-stock and out-of-stock categories.',
@@ -842,9 +842,9 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
             child: Container(
               padding: const EdgeInsets.all(AppTheme.spacingMd),
               decoration: BoxDecoration(
-                color: status.$3.withOpacity(0.06),
+                color: status.$3.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(color: status.$3.withOpacity(0.12)),
+                border: Border.all(color: status.$3.withValues(alpha: 0.12)),
               ),
               child: Row(
                 children: [
@@ -852,7 +852,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: status.$3.withOpacity(0.12),
+                      color: status.$3.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     alignment: Alignment.center,
@@ -864,7 +864,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                       ),
                     ),
                   ),
-                  SizedBox(width: AppTheme.spacingMd),
+                  const SizedBox(width: AppTheme.spacingMd),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -886,7 +886,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            SizedBox(width: AppTheme.spacingSm),
+                            const SizedBox(width: AppTheme.spacingSm),
                             Icon(
                               Icons.chevron_right_rounded,
                               size: 18,
@@ -894,14 +894,14 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                             ),
                           ],
                         ),
-                        SizedBox(height: AppTheme.spacingXs),
+                        const SizedBox(height: AppTheme.spacingXs),
                         Text(
                           _inventoryStatusDescription(status.$1),
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppTheme.textSecondary,
                           ),
                         ),
-                        SizedBox(height: AppTheme.spacingSm),
+                        const SizedBox(height: AppTheme.spacingSm),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                           child: LinearProgressIndicator(
@@ -956,13 +956,13 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                     padding: const EdgeInsets.all(AppTheme.spacingMd),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? status.$3.withOpacity(0.14)
-                          : status.$3.withOpacity(0.08),
+                          ? status.$3.withValues(alpha: 0.14)
+                          : status.$3.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                       border: Border.all(
                         color: isSelected
-                            ? status.$3.withOpacity(0.45)
-                            : status.$3.withOpacity(0.12),
+                            ? status.$3.withValues(alpha: 0.45)
+                            : status.$3.withValues(alpha: 0.12),
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
@@ -976,7 +976,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        SizedBox(height: AppTheme.spacingSm),
+                        const SizedBox(height: AppTheme.spacingSm),
                         Text(
                           '${status.$2}',
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -984,7 +984,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                             color: status.$3,
                           ),
                         ),
-                        SizedBox(height: AppTheme.spacingXs),
+                        const SizedBox(height: AppTheme.spacingXs),
                         Text(
                           '$percentage% of tracked items',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -999,7 +999,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
             );
           }),
         ),
-        SizedBox(height: AppTheme.spacingLg),
+        const SizedBox(height: AppTheme.spacingLg),
         Container(
           padding: const EdgeInsets.all(AppTheme.spacingMd),
           decoration: BoxDecoration(
@@ -1015,7 +1015,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                 value: _selectedInventorySecondaryValue(activeStatus),
                 valueColor: _selectedInventorySecondaryColor(activeStatus),
               ),
-              Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
+              const Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
               _buildInventoryDetailRow(
                 context,
                 label: _selectedInventoryTertiaryLabel(activeStatus),
@@ -1025,7 +1025,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
             ],
           ),
         ),
-        SizedBox(height: AppTheme.spacingLg),
+        const SizedBox(height: AppTheme.spacingLg),
         _buildInventoryMedicationList(context, activeStatus, matchingMedications),
       ],
     );
@@ -1058,7 +1058,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: AppTheme.spacingXs),
+                    const SizedBox(height: AppTheme.spacingXs),
                     Text(
                       '${medications.length} matching medication${medications.length == 1 ? '' : 's'} in this status.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1070,12 +1070,12 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               ),
             ],
           ),
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           ...List.generate(medications.length, (index) {
             final medication = medications[index];
             return Column(
               children: [
-                if (index > 0) Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
+                if (index > 0) const Divider(color: AppTheme.divider, height: AppTheme.spacingLg),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingSm),
                   child: Row(
@@ -1091,7 +1091,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            SizedBox(height: AppTheme.spacingXs),
+                            const SizedBox(height: AppTheme.spacingXs),
                             Text(
                               '${medication.medicationId} Â· ${medication.sku}',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1151,7 +1151,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        SizedBox(height: AppTheme.spacingXs),
+        const SizedBox(height: AppTheme.spacingXs),
         Text(
           value,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -1308,9 +1308,9 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'Recent Transactions',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
@@ -1329,10 +1329,10 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _accent.withOpacity(0.1),
+                    color: _accent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     border: Border.all(
-                      color: _accent.withOpacity(0.24),
+                      color: _accent.withValues(alpha: 0.24),
                     ),
                   ),
                   child: const Text(
@@ -1348,7 +1348,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               ),
             ],
           ),
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -1359,7 +1359,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                   return Column(
                     children: [
                       if (index > 0)
-                        Divider(color: AppTheme.divider, height: AppTheme.spacingMd),
+                        const Divider(color: AppTheme.divider, height: AppTheme.spacingMd),
                       GestureDetector(
                         onTap: () {
                           setState(() {
@@ -1373,7 +1373,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                           });
                         },
                         child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: AppTheme.spacingSm),
+                          padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingSm),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -1389,7 +1389,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                                         color: AppTheme.textPrimary,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    const SizedBox(height: 4),
                                     Text(
                                       tx.$5,
                                       style: const TextStyle(
@@ -1412,14 +1412,14 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                                       color: AppTheme.textPrimary,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
+                                  const SizedBox(height: 4),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: tx.$4.withOpacity(0.12),
+                                      color: tx.$4.withValues(alpha: 0.12),
                                       borderRadius:
                                           BorderRadius.circular(AppTheme.radiusSm),
                                     ),
@@ -1478,11 +1478,11 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               });
             }),
           ),
-          SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: AppTheme.spacingLg),
           ...List.generate(transactions.length, (index) {
             final tx = transactions[index];
-            final statusColor = tx.$4 as Color;
-            final status = tx.$3 as String;
+            final statusColor = tx.$4;
+            final status = tx.$3;
 
             return Padding(
               padding: EdgeInsets.only(bottom: index < transactions.length - 1 ? AppTheme.spacingSm : 0),
@@ -1509,37 +1509,37 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              tx.$1 as String,
+                              tx.$1,
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            SizedBox(height: AppTheme.spacingXs),
+                            const SizedBox(height: AppTheme.spacingXs),
                             Text(
-                              tx.$5 as String,
+                              tx.$5,
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
                       ),
-                      SizedBox(width: AppTheme.spacingMd),
+                      const SizedBox(width: AppTheme.spacingMd),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            tx.$2 as String,
+                            tx.$2,
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          SizedBox(height: AppTheme.spacingXs),
+                          const SizedBox(height: AppTheme.spacingXs),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.12),
+                              color: statusColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                             ),
                             child: Text(
@@ -1650,7 +1650,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
         border: Border.all(color: AppTheme.divider),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -1667,7 +1667,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
             children: [
               if (leading != null) ...[
                 leading,
-                SizedBox(width: AppTheme.spacingMd),
+                const SizedBox(width: AppTheme.spacingMd),
               ],
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 560),
@@ -1682,7 +1682,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    SizedBox(height: AppTheme.spacingXs),
+                    const SizedBox(height: AppTheme.spacingXs),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -1714,7 +1714,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
         border: Border.all(color: AppTheme.divider),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -1838,7 +1838,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(100),
-                border: Border.all(color: Colors.black.withOpacity(0.08)),
+                border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1877,7 +1877,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.72),
+            color: Colors.white.withValues(alpha: 0.72),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFD1F5F5)),
           ),
@@ -1917,7 +1917,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.72),
+            color: Colors.white.withValues(alpha: 0.72),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFD1F5F5)),
           ),
@@ -2044,7 +2044,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
           padding: const EdgeInsets.all(AppTheme.spacingLg),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [_accent, _accent.withOpacity(0.78)],
+              colors: [_accent, _accent.withValues(alpha: 0.78)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -2057,7 +2057,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(child: _buildHeaderSummary(context)),
-                    SizedBox(width: AppTheme.spacingLg),
+                    const SizedBox(width: AppTheme.spacingLg),
                     SizedBox(
                       width: 280,
                       child: _buildHeaderFilters(context, compact: true),
@@ -2069,7 +2069,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
                   children: [
                     _buildHeaderSummary(context),
                     if (includeFilters) ...[
-                      SizedBox(height: AppTheme.spacingLg),
+                      const SizedBox(height: AppTheme.spacingLg),
                       _buildHeaderFilters(context),
                     ],
                   ],
@@ -2091,12 +2091,12 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               vertical: AppTheme.spacingSm,
             ),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.14),
+              color: Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
-            child: Row(
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Icon(Icons.insights, color: Colors.white, size: 18),
                 SizedBox(width: AppTheme.spacingSm),
                 Text(
@@ -2109,7 +2109,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               ],
             ),
           ),
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           Text(
             'Revenue is trending ahead of fulfilment volume.',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -2117,11 +2117,11 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          SizedBox(height: AppTheme.spacingSm),
+          const SizedBox(height: AppTheme.spacingSm),
           Text(
             'Average order value is up 4.1% while low-stock items remain concentrated in a small group of medications.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withOpacity(0.88),
+              color: Colors.white.withValues(alpha: 0.88),
             ),
           ),
         ],
@@ -2136,15 +2136,15 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
         vertical: AppTheme.spacingSm,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
+        color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: Colors.white.withOpacity(0.18)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.calendar_month, color: Colors.white, size: 16),
-          SizedBox(width: AppTheme.spacingSm),
+          const SizedBox(width: AppTheme.spacingSm),
           Text(
             'Report window',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -2169,7 +2169,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           filterLabel,
-          SizedBox(height: AppTheme.spacingMd),
+          const SizedBox(height: AppTheme.spacingMd),
           selector,
         ],
       );
@@ -2190,7 +2190,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
       child: Container(
         padding: const EdgeInsets.all(AppTheme.spacingSm),
         decoration: BoxDecoration(
-          color: _accent.withOpacity(0.12),
+          color: _accent.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         ),
         child: const Icon(Icons.arrow_back, color: _accent, size: 18),
@@ -2214,7 +2214,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
         vertical: AppTheme.spacingSm,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       ),
       child: Column(
@@ -2229,7 +2229,7 @@ class _PharmacyReportsPageState extends State<PharmacyReportsPage> {
               color: AppTheme.textSecondary,
             ),
           ),
-          SizedBox(height: AppTheme.spacingXs),
+          const SizedBox(height: AppTheme.spacingXs),
           Text(
             value,
             style: TextStyle(

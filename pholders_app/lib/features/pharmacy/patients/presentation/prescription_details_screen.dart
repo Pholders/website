@@ -3,14 +3,14 @@ import 'package:pholders_app/features/pharmacy/patients/presentation/prescriptio
 
 // ─── Prescription Details Screen ──────────────────────────────────────────────
 class PrescriptionDetailsScreen extends StatelessWidget {
-  final Prescription prescription;
-  final VoidCallback onBack;
 
   const PrescriptionDetailsScreen({
     super.key,
     required this.prescription,
     required this.onBack,
   });
+  final Prescription prescription;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +35,7 @@ class PrescriptionDetailsScreen extends StatelessWidget {
                   child: Container(
                     width: 30,
                     height: 30,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: RxColors.tealLight,
                       shape: BoxShape.circle,
                     ),
@@ -114,7 +114,7 @@ class PrescriptionDetailsScreen extends StatelessWidget {
               value: '${prescription.dosage} once daily',
             ),
             const SizedBox(height: 14),
-            _PxDetailField(
+            const _PxDetailField(
               label: 'Duration',
               value: '30 days',
             ),
@@ -165,10 +165,10 @@ class PrescriptionDetailsScreen extends StatelessWidget {
 
 // ─── Detail field ─────────────────────────────────────────────────────────────
 class _PxDetailField extends StatelessWidget {
-  final String label;
-  final String value;
 
   const _PxDetailField({required this.label, required this.value});
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
@@ -208,9 +208,9 @@ class _PxDetailField extends StatelessWidget {
 
 // ─── Icon button ──────────────────────────────────────────────────────────────
 class _IconBtn extends StatefulWidget {
+  const _IconBtn({required this.icon, required this.onTap});
   final IconData icon;
   final VoidCallback onTap;
-  const _IconBtn({required this.icon, required this.onTap});
 
   @override
   State<_IconBtn> createState() => _IconBtnState();

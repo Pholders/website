@@ -95,9 +95,9 @@ class PharmacySettingsPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      const Text(
                         'Select a category from the sidebar to manage your settings.',
-                        style: TextStyle(fontSize: 14, color: _textMuted),
+                        style: const TextStyle(fontSize: 14, color: _textMuted),
                       ),
                                             const SizedBox(height: 32),
                       _buildQuickLink(
@@ -178,7 +178,7 @@ class PharmacySettingsPage extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: _textMuted),
+                    style: const TextStyle(fontSize: 12, color: _textMuted),
                   ),
                 ],
               ),
