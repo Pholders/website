@@ -33,12 +33,6 @@ class RxColors {
 enum RxStatus { approved, pending, dispensed, expired, revoked }
 
 class Prescription {
-  final String id;
-  final String patientName;
-  final String medication;
-  final String dosage;
-  final String dateIssued;
-  final RxStatus status;
 
   const Prescription({
     required this.id,
@@ -48,6 +42,12 @@ class Prescription {
     required this.dateIssued,
     required this.status,
   });
+  final String id;
+  final String patientName;
+  final String medication;
+  final String dosage;
+  final String dateIssued;
+  final RxStatus status;
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -64,9 +64,9 @@ List<Prescription> _mockPrescriptions(String patientName) => [
 
 // ─── Prescriptions Screen ─────────────────────────────────────────────────────
 class PrescriptionsScreen extends StatefulWidget {
-  final Patient? patient;
 
   const PrescriptionsScreen({super.key, this.patient});
+  final Patient? patient;
 
   @override
   State<PrescriptionsScreen> createState() => _PrescriptionsScreenState();
@@ -513,8 +513,8 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
 
 // ─── Table header cell ────────────────────────────────────────────────────────
 class _RxHeaderCell extends StatelessWidget {
-  final String label;
   const _RxHeaderCell(this.label);
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -528,14 +528,6 @@ class _RxHeaderCell extends StatelessWidget {
 
 // ─── Prescription row ─────────────────────────────────────────────────────────
 class _RxRow extends StatefulWidget {
-  final Prescription prescription;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onViewDetails;
-
-  /// Null when the action does not apply to this prescription's status.
-  final VoidCallback? onSign;
-  final VoidCallback? onRevoke;
 
   const _RxRow({
     required this.prescription,
@@ -545,6 +537,14 @@ class _RxRow extends StatefulWidget {
     this.onSign,
     this.onRevoke,
   });
+  final Prescription prescription;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onViewDetails;
+
+  /// Null when the action does not apply to this prescription's status.
+  final VoidCallback? onSign;
+  final VoidCallback? onRevoke;
 
   @override
   State<_RxRow> createState() => _RxRowState();
@@ -556,7 +556,7 @@ class _RxRowState extends State<_RxRow> {
   void _showMenu(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.15),
+      barrierColor: Colors.black.withValues(alpha: 0.15),
       builder: (_) => _RxActionsMenu(
         onEdit: widget.onEdit,
         onDelete: widget.onDelete,
@@ -579,7 +579,7 @@ class _RxRowState extends State<_RxRow> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           color: _hovered
-              ? RxColors.tealLight.withOpacity(0.4)
+              ? RxColors.tealLight.withValues(alpha: 0.4)
               : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
@@ -675,8 +675,8 @@ class _RxRowState extends State<_RxRow> {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 class _RxStatusBadge extends StatelessWidget {
-  final RxStatus status;
   const _RxStatusBadge({required this.status});
+  final RxStatus status;
 
   @override
   Widget build(BuildContext context) {
@@ -722,9 +722,9 @@ class _RxStatusBadge extends StatelessWidget {
 
 // ─── Action button ────────────────────────────────────────────────────────────
 class _RxActionBtn extends StatelessWidget {
+  const _RxActionBtn({required this.icon, required this.onTap});
   final IconData icon;
   final VoidCallback onTap;
-  const _RxActionBtn({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -746,11 +746,6 @@ class _RxActionBtn extends StatelessWidget {
 
 // ─── Actions menu ─────────────────────────────────────────────────────────────
 class _RxActionsMenu extends StatelessWidget {
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onViewDetails;
-  final VoidCallback? onSign;
-  final VoidCallback? onRevoke;
 
   const _RxActionsMenu({
     required this.onEdit,
@@ -759,6 +754,11 @@ class _RxActionsMenu extends StatelessWidget {
     this.onSign,
     this.onRevoke,
   });
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onViewDetails;
+  final VoidCallback? onSign;
+  final VoidCallback? onRevoke;
 
   @override
   Widget build(BuildContext context) {
@@ -775,10 +775,6 @@ class _RxActionsMenu extends StatelessWidget {
             onTap: () { Navigator.pop(context); onRevoke!(); }),
       _RxAction(label: 'Edit Prescription', icon: Icons.edit_outlined,
           onTap: () { Navigator.pop(context); onEdit(); }),
-      _RxAction(label: 'Mark as Dispensed', icon: Icons.check_circle_outline,
-          onTap: () => Navigator.pop(context)),
-      _RxAction(label: 'Send to Pharmacy', icon: Icons.local_pharmacy_outlined,
-          onTap: () => Navigator.pop(context)),
       _RxAction(label: 'Delete', icon: Icons.delete_outline,
           onTap: () { Navigator.pop(context); onDelete(); }),
     ];
@@ -795,7 +791,7 @@ class _RxActionsMenu extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -854,18 +850,14 @@ class _RxActionsMenu extends StatelessWidget {
 }
 
 class _RxAction {
+  const _RxAction(
+      {required this.label, required this.icon, required this.onTap});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  const _RxAction(
-      {required this.label, required this.icon, required this.onTap});
 }
 
 class _RxActionMenuItem extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool isDanger;
 
   const _RxActionMenuItem({
     required this.label,
@@ -873,6 +865,10 @@ class _RxActionMenuItem extends StatefulWidget {
     required this.onTap,
     this.isDanger = false,
   });
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isDanger;
 
   @override
   State<_RxActionMenuItem> createState() => _RxActionMenuItemState();
@@ -924,10 +920,10 @@ class _RxActionMenuItemState extends State<_RxActionMenuItem> {
 
 // ─── Add / Edit prescription dialog ──────────────────────────────────────────
 class _PrescriptionFormDialog extends StatefulWidget {
-  final String patientName;
-  final Prescription? existing;
   const _PrescriptionFormDialog(
       {required this.patientName, this.existing});
+  final String patientName;
+  final Prescription? existing;
 
   @override
   State<_PrescriptionFormDialog> createState() =>
@@ -1080,14 +1076,14 @@ class _PrescriptionFormDialogState
 }
 
 class _RxFormField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final String hint;
 
   const _RxFormField(
       {required this.label,
       required this.controller,
       required this.hint});
+  final String label;
+  final TextEditingController controller;
+  final String hint;
 
   @override
   Widget build(BuildContext context) {
