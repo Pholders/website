@@ -12,7 +12,81 @@ have been wrong about login, signing, signup fields and the medicine payload.
 
 ---
 
+## What phase 1 actually is
+
+Taken from the SRS, section 3.2.1.1 Project Phases, which is the **only** place
+in the document that defines a phase. The functional requirements in section 5
+carry no phase tags at all, so anything not traceable to the text below is not
+phase 1 by the SRS — it may still be wanted, but that is a separate decision.
+
+> **PHASE 1**
+> - Search for nearest doctor and book appointment. Once the patient is on the
+>   system, and visits doctor, doc should be able to create the script and
+>   patient should be able to pay for the consultation prior to entering
+>   doctor's office using self payment online. When payment is confirmed or
+>   medical aid payment is applicable app will release script to patient and
+>   pharmacies.
+> - Allow patient to find doctor nearest to them (if under medical aid, doctor
+>   that's covered by medical plan) using geolocation.
+> - Allow patient to review doctor's service.
+> - Allow patient to set/receive reminders on appointments.
+> - Establish regulatory partnership e.g. AES signing.
+> - Establish Pharmacy Partnership Network — agreements with chains and
+>   independents to claim prescriptions + handle orders/delivery. Also develop
+>   pharmacy integrations.
+> - Medical Aid Switches
+
+### What that asks of the doctor app
+
+| # | Obligation | From | State |
+|---|---|---|---|
+| 1 | Doctor has an account and can sign in | prerequisite | done |
+| 2 | Doctor is discoverable and bookable — profile, consultation fee, location | bullets 1, 2 | done. Availability is on the record but not editable in the app |
+| 3 | Doctor sees and manages the booking | bullet 1 | done — list, accept, complete |
+| 4 | Doctor creates a script for a patient **already on the system** | bullet 1 | done |
+| 5 | Script is signed (AES) | bullet 5 | done — RSA-SHA256 |
+| 6 | Script is released to patient **and pharmacies** once payment is confirmed | bullet 1 | **not done** |
+| 7 | Doctor can see the patient's medical aid details | bullet 7 | **not done** — not in any doctor payload |
+| 8 | Doctor's rating from patient reviews | bullet 3 | **not done** — endpoint exists and is public |
+
+Note bullet 1 says "**once the patient is on the system**". Creating a script
+for a patient who is not yet registered is therefore not phase 1, and neither
+is the SMS invite that would go with it.
+
+### Not phase 1 by the SRS
+
+None of these appear in 3.2.1.1. They come from the functional requirements,
+which are untagged, so their phase is an open question rather than a given:
+
+Templates screen · Search Scripts · Dashboard reports · Sick notes ·
+SMS invite to an off-system patient · Doctor forgot password ·
+Edit/delete a script · Drug interaction check · Notification settings ·
+Security settings · Device management · Login activity
+
+Some of those are already built — device management, login activity and the
+interaction check among them. That is not wasted work, but it was not required
+by phase 1, which is worth knowing before more is spent there.
+
+### The one real phase 1 gap
+
+Obligation 6 has no route. A pharmacy can list prescriptions it has already
+claimed (`GET /prescriptions/pharmacy/claimed`) but there is **no endpoint that
+lists scripts released to the network**, so there is nothing for a pharmacy to
+claim from. Claiming itself (`POST /:id/claim`) is patient-role. Until that
+exists, the phase 1 loop stops at the signature.
+
+Obligation 8 is the cheapest of the three: the reviews endpoints are public.
+
+```
+GET /users/appointments/doctors/:doctorId/reviews
+GET /users/appointments/doctors/:doctorId/reviews/summary
+```
+
+---
+
 ## Done
+
+
 
 - [x] API client, token storage, auth middleware, route guard
 - [x] Doctor signup, email verification, login, logout
