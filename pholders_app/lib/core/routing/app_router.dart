@@ -47,6 +47,7 @@ import '../../features/doctor/settings/presentation/security_settings.dart';
 import '../../features/doctor/settings/presentation/preferences_settings.dart';
 import '../../features/doctor/settings/presentation/integrations_settings.dart';
 import '../../features/doctor/settings/presentation/login_activity.dart';
+import '../../features/doctor/settings/presentation/support_legal_settings.dart';
 import '../../shared/pages/linked_services_page.dart';
 
 // ─── Pharmacy pages ───────────────────────────────────────────────────────────
@@ -69,6 +70,11 @@ import '../../shared/widgets/shell_layout.dart';
 ///
 /// The router reads auth state from the Redux [Store] to handle redirects.
 /// All route strings come from [AppRoutes] — never hardcoded here.
+/// Several settings screens are one widget holding two or more panels chosen
+/// by `?tab=`. The links have always carried the query string; nothing read it.
+int _tab(GoRouterState state) =>
+    int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
+
 GoRouter createRouter(Store<AppState> store) {
   return GoRouter(
     // Let GoRouter use the browser URL instead of forcing splash.
@@ -241,15 +247,33 @@ GoRouter createRouter(Store<AppState> store) {
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsProfessional,
-            builder: (context, state) => const AccountSettings(),
+            // Both halves of Account settings are one widget picked by tab, so
+            // without this the Professional Details link showed Personal
+            // Information.
+            builder: (context, state) => const AccountSettings(initialTab: 1),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsFees,
             builder: (context, state) => const PracticeSettings(),
           ),
           GoRoute(
+            path: AppRoutes.doctorSettingsPractice,
+            builder: (context, state) =>
+                PracticeSettings(initialTab: _tab(state)),
+          ),
+          GoRoute(
             path: AppRoutes.doctorSettingsNotifications,
             builder: (context, state) => const PreferencesSettings(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsPreferences,
+            builder: (context, state) =>
+                PreferencesSettings(initialTab: _tab(state)),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsSupportLegal,
+            builder: (context, state) =>
+                SupportLegalSettings(initialTab: _tab(state)),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsSecurity,

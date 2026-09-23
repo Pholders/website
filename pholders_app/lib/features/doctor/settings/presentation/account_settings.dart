@@ -28,10 +28,10 @@ class AccountSettings extends StatelessWidget {
   void _navigate(BuildContext context, String id) {
     switch (id) {
       case 'personal_information':
-        context.go('${AppRoutes.doctorSettings}account?tab=0');
+        context.go(AppRoutes.doctorSettingsProfile);
         break;
       case 'professional':
-        context.go('${AppRoutes.doctorSettings}account?tab=1');
+        context.go(AppRoutes.doctorSettingsProfessional);
         break;
       case 'fees_setup':
         context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
@@ -183,10 +183,10 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
   void _navigate(BuildContext context, String id) {
     switch (id) {
       case 'personal_information':
-        context.go('${AppRoutes.doctorSettings}account?tab=0');
+        context.go(AppRoutes.doctorSettingsProfile);
         break;
       case 'professional':
-        context.go('${AppRoutes.doctorSettings}account?tab=1');
+        context.go(AppRoutes.doctorSettingsProfessional);
         break;
       case 'fees_setup':
         context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
@@ -443,11 +443,121 @@ class _ProfileFormState extends State<_ProfileForm> {
   }
 }
 
-class _ProfessionalDetails extends StatelessWidget {
+class _ProfessionalDetails extends StatefulWidget {
   const _ProfessionalDetails();
 
   @override
+  State<_ProfessionalDetails> createState() => _ProfessionalDetailsState();
+}
+
+class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
+  final _licenseNumber = TextEditingController();
+  final _hpcsa = TextEditingController();
+  final _experience = TextEditingController();
+  final _clinicName = TextEditingController();
+  final _clinicAddress = TextEditingController();
+  final _city = TextEditingController();
+  final _zipCode = TextEditingController();
+
+  String? _specialization;
+  String? _province;
+  bool _prefilled = false;
+  String? _problem;
+
+  /// The options the screen ships with. A doctor whose stored value is not on
+  /// the list keeps it — see [_specializations].
+  static const _baseSpecializations = [
+    'General Practitioner',
+    'Cardiologist',
+    'Dermatologist',
+    'Neurologist',
+    'Paediatrician',
+    'Psychiatrist',
+  ];
+
+  static const _provinces = [
+    'Eastern Cape',
+    'Free State',
+    'Gauteng',
+    'KwaZulu-Natal',
+    'Limpopo',
+    'Mpumalanga',
+    'Northern Cape',
+    'North West',
+    'Western Cape',
+  ];
+
+  /// Existing doctors hold values this list never had — the test account is
+  /// "General Practice", not "General Practitioner". Dropping it would either
+  /// crash the dropdown or silently rewrite the doctor's specialization on the
+  /// next save, so an unknown value is kept and offered.
+  List<String> get _specializations {
+    final current = _specialization;
+    if (current == null || _baseSpecializations.contains(current)) {
+      return _baseSpecializations;
+    }
+    return [current, ..._baseSpecializations];
+  }
+
+  @override
+  void dispose() {
+    _licenseNumber.dispose();
+    _hpcsa.dispose();
+    _experience.dispose();
+    _clinicName.dispose();
+    _clinicAddress.dispose();
+    _city.dispose();
+    _zipCode.dispose();
+    super.dispose();
+  }
+
+  void _prefill(Doctor? doctor) {
+    if (doctor == null || _prefilled) return;
+    _hpcsa.text = doctor.hpcsaNumber ?? '';
+    _experience.text = doctor.experience?.toString() ?? '';
+    _clinicName.text = doctor.clinicName ?? '';
+    _clinicAddress.text = doctor.clinicAddress ?? '';
+    _city.text = doctor.city ?? '';
+    _zipCode.text = doctor.zipCode ?? '';
+    _specialization = doctor.specialization;
+    _province = _provinces.contains(doctor.province) ? doctor.province : null;
+    _prefilled = true;
+  }
+
+  void _save() {
+    final experienceText = _experience.text.trim();
+    final experience = experienceText.isEmpty ? null : int.tryParse(experienceText);
+    if (experienceText.isNotEmpty && experience == null) {
+      setState(() => _problem = 'Years of experience must be a number.');
+      return;
+    }
+    setState(() => _problem = null);
+
+    StoreProvider.of<AppState>(context).dispatch(
+      UpdateDoctorProfileAction(
+        specialization: _specialization,
+        experience: experience,
+        clinicName: _clinicName.text.trim(),
+        clinicAddress: _clinicAddress.text.trim(),
+        city: _city.text.trim(),
+        province: _province,
+        zipCode: _zipCode.text.trim(),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return StoreConnector<AppState, _ProfileViewModel>(
+      converter: _ProfileViewModel.fromStore,
+      builder: (context, vm) {
+        _prefill(vm.doctor);
+        return _buildScreen(context, vm);
+      },
+    );
+  }
+
+  Widget _buildScreen(BuildContext context, _ProfileViewModel vm) {
     return Scaffold(
       backgroundColor: const Color(0xFFE8F8F8),
       body: Row(
@@ -472,11 +582,26 @@ class _ProfessionalDetails extends StatelessWidget {
             children: [
               const SettingsSectionTitle('Medical Credentials', muted: true),
               const SizedBox(height: 8),
-              const Row(
+              Row(
                 children: [
-                  Expanded(child: _Field(label: 'Medical License Number')),
-                  SizedBox(width: 48),
-                  Expanded(child: _Field(label: 'HPCSA Number')),
+                  // No column on the doctors table, so this is not sent on
+                  // save. Left visible rather than removed from their design.
+                  Expanded(
+                    child: _Field(
+                      label: 'Medical License Number',
+                      controller: _licenseNumber,
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                  // The endpoint strips hpcsa_number before writing, so an
+                  // editable field would discard whatever was typed.
+                  Expanded(
+                    child: _Field(
+                      label: 'HPCSA Number',
+                      controller: _hpcsa,
+                      readOnly: true,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -500,59 +625,54 @@ class _ProfessionalDetails extends StatelessWidget {
           ),
         ),
         hint: const Text('Select Specialization'),
-        items: const [
-          DropdownMenuItem(
-            value: 'General Practitioner',
-            child: Text('General Practitioner'),
-          ),
-          DropdownMenuItem(
-            value: 'Cardiologist',
-            child: Text('Cardiologist'),
-          ),
-          DropdownMenuItem(
-            value: 'Dermatologist',
-            child: Text('Dermatologist'),
-          ),
-          DropdownMenuItem(
-            value: 'Neurologist',
-            child: Text('Neurologist'),
-          ),
-          DropdownMenuItem(
-            value: 'Paediatrician',
-            child: Text('Paediatrician'),
-          ),
-          DropdownMenuItem(
-            value: 'Psychiatrist',
-            child: Text('Psychiatrist'),
-          ),
+        value: _specialization,
+        items: [
+          for (final s in _specializations)
+            DropdownMenuItem(value: s, child: Text(s)),
         ],
-        onChanged: (value) {},
+        onChanged: (value) => setState(() => _specialization = value),
       ),
     ],
   ),
 ),
                   const SizedBox(width: 48),
-                  const Expanded(child: _Field(label: 'Years of Experience')),
+                  Expanded(
+                    child: _Field(
+                      label: 'Years of Experience',
+                      controller: _experience,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 28),
               const SettingsSectionTitle('Practice Information', muted: true),
               const SizedBox(height: 8),
-              const Row(
+              Row(
                 children: [
-                  Expanded(child: _Field(label: 'Practice Name')),
-                  SizedBox(width: 48),
-                  Expanded(child: _Field(label: 'Practice Address')),
+                  Expanded(
+                    child: _Field(
+                      label: 'Practice Name',
+                      controller: _clinicName,
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                  Expanded(
+                    child: _Field(
+                      label: 'Practice Address',
+                      controller: _clinicAddress,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: _Field(
                       label: 'City',
                       hint: 'Johannesburg',
-                      trailing: Icon(Icons.keyboard_arrow_down,
+                      controller: _city,
+                      trailing: const Icon(Icons.keyboard_arrow_down,
                           color: Color(0xFF748486)),
                     ),
                   ),
@@ -575,45 +695,12 @@ class _ProfessionalDetails extends StatelessWidget {
           ),
         ),
         hint: const Text('Gauteng'),
-        items: const [
-          DropdownMenuItem(
-            value: 'Eastern Cape',
-            child: Text('Eastern Cape'),
-          ),
-          DropdownMenuItem(
-            value: 'Free State',
-            child: Text('Free State'),
-          ),
-          DropdownMenuItem(
-            value: 'Gauteng',
-            child: Text('Gauteng'),
-          ),
-          DropdownMenuItem(
-            value: 'KwaZulu-Natal',
-            child: Text('KwaZulu-Natal'),
-          ),
-          DropdownMenuItem(
-            value: 'Limpopo',
-            child: Text('Limpopo'),
-          ),
-          DropdownMenuItem(
-            value: 'Mpumalanga',
-            child: Text('Mpumalanga'),
-          ),
-          DropdownMenuItem(
-            value: 'Northern Cape',
-            child: Text('Northern Cape'),
-          ),
-          DropdownMenuItem(
-            value: 'North West',
-            child: Text('North West'),
-          ),
-          DropdownMenuItem(
-            value: 'Western Cape',
-            child: Text('Western Cape'),
-          ),
+        value: _province,
+        items: [
+          for (final p in _provinces)
+            DropdownMenuItem(value: p, child: Text(p)),
         ],
-        onChanged: (value) {},
+        onChanged: (value) => setState(() => _province = value),
       ),
     ],
   ),
@@ -621,16 +708,23 @@ class _ProfessionalDetails extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 22),
-              const SizedBox(
+              SizedBox(
                   width: 210,
-                  child: _Field(label: 'Postal Code', hint: '2001')),
+                  child: _Field(
+                    label: 'Postal Code',
+                    hint: '2001',
+                    controller: _zipCode,
+                  )),
             ],
           ),
         ),
                 const SizedBox(height: 44),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: _SignatureArea(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _SignatureArea(
+            onSave: vm.isSaving ? null : _save,
+            errorMessage: _problem ?? vm.errorMessage,
+          ),
         ),
       ],
               ),
@@ -643,7 +737,12 @@ class _ProfessionalDetails extends StatelessWidget {
 }
 
 class _SignatureArea extends StatelessWidget {
-  const _SignatureArea();
+  const _SignatureArea({this.onSave, this.errorMessage});
+
+  /// The Save Changes button at the foot of this section saves the whole
+  /// Professional Details screen, not just the signature.
+  final VoidCallback? onSave;
+  final String? errorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -690,10 +789,18 @@ class _SignatureArea extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        const Align(
+        if (errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              errorMessage!,
+              style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111)),
+            ),
+          ),
+        Align(
           alignment: Alignment.centerRight,
           child: SettingsButton('Save Changes',
-              width: 150, filled: false, height: 30),
+              width: 150, filled: false, height: 30, onTap: onSave),
         ),
       ],
     );

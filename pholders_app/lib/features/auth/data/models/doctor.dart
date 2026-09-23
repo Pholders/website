@@ -23,6 +23,7 @@ class Doctor extends Equatable {
     this.clinicAddress,
     this.city,
     this.province,
+    this.zipCode,
     this.qualification,
     this.bio,
     this.profileImage,
@@ -49,6 +50,7 @@ class Doctor extends Equatable {
       clinicAddress: _asString(json['clinic_address'] ?? json['clinicAddress']),
       city: _asString(json['city']),
       province: _asString(json['province']),
+      zipCode: _asString(json['zip_code'] ?? json['zipCode']),
       qualification: _asString(json['qualification']),
       bio: _asString(json['bio']),
       profileImage: _asString(json['profile_image'] ?? json['profileImage']),
@@ -73,6 +75,7 @@ class Doctor extends Equatable {
   final String? clinicAddress;
   final String? city;
   final String? province;
+  final String? zipCode;
   final String? qualification;
   final String? bio;
   final String? profileImage;

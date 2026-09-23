@@ -41,10 +41,10 @@ class SettingsPage extends StatelessWidget {
         void _navigate(BuildContext context, String id) {
     switch (id) {
       case 'personal_information':
-        context.go('${AppRoutes.doctorSettings}account?tab=0');
+        context.go(AppRoutes.doctorSettingsProfile);
         break;
       case 'professional':
-        context.go('${AppRoutes.doctorSettings}account?tab=1');
+        context.go(AppRoutes.doctorSettingsProfessional);
         break;
       case 'fees_setup':
         context.go('${AppRoutes.doctorSettingsPractice}?tab=0');

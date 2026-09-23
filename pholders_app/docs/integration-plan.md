@@ -110,12 +110,18 @@ GET /users/appointments/doctors/:doctorId/reviews/summary
       (`PUT /users/doctor/profile`). Email and HPCSA are read-only because the
       endpoint strips them.
 
-## To do
+- [x] Professional Details form — specialization, experience, practice name
+      and address, city, province and postal code load and save
+      (`PUT /users/doctor/profile`). HPCSA is read-only because the endpoint
+      strips it; Medical License Number has no column, so it is shown but not
+      sent.
+- [x] Settings navigation — `Professional Details` pointed at
+      `/doctor/settingsaccount`, and the router ignored the tab, so the link
+      404'd and the route showed the wrong panel. Practice, Preferences and
+      Support & Legal were declared in `AppRoutes` but never registered, so
+      every one of those sidebar links was dead too.
 
-- [ ] **Professional Details section** of account settings — specialization,
-      experience, practice name and address, city, province, postal code all
-      map to real columns but are still decorative. Same pattern as the
-      Personal Information section, which is now bound.
+## To do
 
 - [ ] **Pharmacy prescription queue** — `GET /prescriptions/pharmacy/claimed`,
       `/pharmacy/dispense-history`, `/pharmacy/dispense-stats`,
@@ -237,9 +243,14 @@ exercised end to end for this reason.
 3. **Live server runs `NODE_ENV=development`**, so `resend-verification`
    returns the OTP in the HTTP response. Anyone can request a code for any
    unverified account and read it.
-4. **Booking fails when a doctor has no consultation fee** — a not-null
+4. **Changing the practice address does not move the doctor on the map.**
+   Signup geocodes the address and stores latitude/longitude;
+   `PUT /users/doctor/profile` writes `clinic_address` without re-geocoding.
+   A doctor who relocates stays discoverable at their old coordinates, which
+   works against phase 1's "find doctor nearest to them".
+5. **Booking fails when a doctor has no consultation fee** — a not-null
    violation surfaced as "Failed to book appointment".
-5. **Cash bookings auto-cancel.** `appointmentCleanupService` cancels
+6. **Cash bookings auto-cancel.** `appointmentCleanupService` cancels
    `pending_payment` bookings after a timeout, and `cash_on_arrival` starts in
    that state, so appointment 5 vanished before it could be accepted. Worth
    confirming the timeout is meant to apply to cash.
