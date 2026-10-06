@@ -44,6 +44,7 @@ class Prescription {
     required this.dosage,
     required this.dateIssued,
     required this.status,
+    this.note,
   });
   final String id;
   final String patientName;
@@ -51,6 +52,10 @@ class Prescription {
   final String dosage;
   final String dateIssued;
   final RxStatus status;
+
+  /// Read-only detail behind the status: which pharmacy dispensed it and
+  /// when, or why it was revoked. The doctor never sets either.
+  final String? note;
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -237,12 +242,18 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
       medication: p.diagnosis ?? '-',
       dosage: p.number,
       dateIssued: p.formattedDate,
+      // Dispensing is tracked separately from the signature, so a dispensed
+      // script still reads as 'signed'. A revoke outranks it: a withdrawn
+      // script should not look fulfilled.
       status: switch (p.status) {
-        api.PrescriptionStatus.signed => RxStatus.approved,
-        api.PrescriptionStatus.pending => RxStatus.pending,
         api.PrescriptionStatus.revoked => RxStatus.revoked,
+        api.PrescriptionStatus.signed =>
+          p.isDispensed ? RxStatus.dispensed : RxStatus.approved,
+        api.PrescriptionStatus.pending => RxStatus.pending,
         api.PrescriptionStatus.unknown => RxStatus.pending,
       },
+      note: p.dispensedSummary ??
+          (p.revokeReason == null ? null : 'Revoked: ${p.revokeReason}'),
     );
   }
 
@@ -694,7 +705,24 @@ class _RxRowState extends State<_RxRow> {
                                     // Status badge
             Expanded(
               flex: 2,
-              child: _RxStatusBadge(status: rx.status),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _RxStatusBadge(status: rx.status),
+                  if (rx.note != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        rx.note!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 11, color: RxColors.textSecondary),
+                      ),
+                    ),
+                ],
+              ),
             ),
 
             // Actions

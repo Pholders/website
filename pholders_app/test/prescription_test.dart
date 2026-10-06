@@ -6,6 +6,7 @@ import 'package:pholders_app/features/doctor/prescriptions/redux/prescriptions_r
 import 'package:pholders_app/features/doctor/prescriptions/redux/prescriptions_state.dart';
 
 void main() {
+  _dispensingTests();
   group('Prescription.fromJson', () {
     // The real row shape from GET /prescriptions/doctor/all, which returns a
     // mapped summary rather than the raw database record.
@@ -101,6 +102,58 @@ void main() {
 
       expect(state.prescriptions, isEmpty);
       expect(state.hasLoadedOnce, isFalse);
+    });
+  });
+}
+
+void _dispensingTests() {
+  group('dispensing and revoke detail', () {
+    Map<String, dynamic> row(Map<String, dynamic> extra) => {
+          'id': 7,
+          'prescriptionNumber': 'RX-7',
+          'patient': 'Test Patient',
+          'diagnosis': 'Flu',
+          'status': 'signed',
+          'createdAt': '2026-10-06T08:00:00.000Z',
+          ...extra,
+        };
+
+    test('reads the fields the doctor list now returns', () {
+      final p = Prescription.fromJson(row({
+        'patientId': 15,
+        'appointmentId': 4,
+        'isDispensed': true,
+        'dispensedAt': '2026-10-07T10:30:00.000Z',
+        'dispensedByPharmacyName': 'Clicks Sandton',
+      }));
+
+      expect(p.patientId, 15);
+      expect(p.appointmentId, 4);
+      expect(p.isDispensed, isTrue);
+      expect(p.dispensedSummary, contains('Clicks Sandton'));
+    });
+
+    test('an undispensed script has no dispensing line', () {
+      expect(Prescription.fromJson(row({})).dispensedSummary, isNull);
+    });
+
+    test('older responses without the fields still parse', () {
+      // The fields were added to getDoctorPrescriptions in Oct 2026; a cached
+      // or older server must not break the list.
+      final p = Prescription.fromJson(row({}));
+
+      expect(p.patientId, isNull);
+      expect(p.isDispensed, isFalse);
+      expect(p.dispensedSummary, isNull);
+    });
+
+    test('keeps the revoke reason so the row can say why', () {
+      final p = Prescription.fromJson(
+        row({'status': 'revoked', 'revokeReason': 'Wrong dosage'}),
+      );
+
+      expect(p.status, PrescriptionStatus.revoked);
+      expect(p.revokeReason, 'Wrong dosage');
     });
   });
 }

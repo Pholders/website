@@ -20,6 +20,12 @@ class Prescription extends Equatable {
     this.diagnosis,
     this.status = PrescriptionStatus.unknown,
     this.createdAt,
+    this.patientId,
+    this.appointmentId,
+    this.revokeReason,
+    this.isDispensed = false,
+    this.dispensedAt,
+    this.dispensedByPharmacyName,
   });
 
   factory Prescription.fromJson(Map<String, dynamic> json) {
@@ -30,6 +36,12 @@ class Prescription extends Equatable {
       diagnosis: _asString(json['diagnosis']),
       status: _statusFrom(_asString(json['status'])),
       createdAt: DateTime.tryParse(_asString(json['createdAt']) ?? ''),
+      patientId: _asInt(json['patientId']),
+      appointmentId: _asInt(json['appointmentId']),
+      revokeReason: _asString(json['revokeReason']),
+      isDispensed: json['isDispensed'] == true,
+      dispensedAt: DateTime.tryParse(_asString(json['dispensedAt']) ?? ''),
+      dispensedByPharmacyName: _asString(json['dispensedByPharmacyName']),
     );
   }
 
@@ -42,8 +54,36 @@ class Prescription extends Equatable {
   final PrescriptionStatus status;
   final DateTime? createdAt;
 
+  /// Lets the app open the patient a script was written for. Null on older
+  /// responses — the field was added to the doctor list in Oct 2026.
+  final int? patientId;
+  final int? appointmentId;
+
+  /// Why the doctor withdrew it. A revoke cannot happen without one.
+  final String? revokeReason;
+
+  /// Dispensing is the pharmacy's act, not the doctor's; these are shown and
+  /// never set from here.
+  final bool isDispensed;
+  final DateTime? dispensedAt;
+  final String? dispensedByPharmacyName;
+
   /// True once signed, which is when it becomes dispensable.
   bool get isSigned => status == PrescriptionStatus.signed;
+
+  /// A short line for the dispensing detail, or null when it has not been
+  /// dispensed.
+  String? get dispensedSummary {
+    if (!isDispensed) return null;
+    final pharmacy = dispensedByPharmacyName;
+    final when = dispensedAt;
+    if (pharmacy != null && when != null) {
+      return 'Dispensed by $pharmacy on ${_shortDate(when)}';
+    }
+    if (pharmacy != null) return 'Dispensed by $pharmacy';
+    if (when != null) return 'Dispensed on ${_shortDate(when)}';
+    return 'Dispensed';
+  }
 
   /// Label for the status chip.
   String get statusLabel {
@@ -60,14 +100,15 @@ class Prescription extends Equatable {
   }
 
   /// "01 Mar", matching the column format in the prescriptions table.
-  String get formattedDate {
-    final d = createdAt;
-    if (d == null) return '';
+  String get formattedDate => createdAt == null ? '' : _shortDate(createdAt!);
+
+  static String _shortDate(DateTime d) {
     const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
-    return '${d.day.toString().padLeft(2, '0')} ${months[d.month - 1]}';
+    final local = d.toLocal();
+    return '${local.day.toString().padLeft(2, '0')} ${months[local.month - 1]}';
   }
 
   static PrescriptionStatus _statusFrom(String? raw) {
@@ -97,5 +138,9 @@ class Prescription extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, number, patientName, diagnosis, status, createdAt];
+  List<Object?> get props => [
+        id, number, patientName, diagnosis, status, createdAt,
+        patientId, appointmentId, revokeReason,
+        isDispensed, dispensedAt, dispensedByPharmacyName,
+      ];
 }
