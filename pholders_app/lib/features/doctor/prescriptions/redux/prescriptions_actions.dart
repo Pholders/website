@@ -1,6 +1,7 @@
 import '../data/models/medicine_draft.dart';
 import '../data/models/prescription.dart';
 import '../data/models/safety_report.dart';
+import '../data/models/signing_receipt.dart';
 
 /// Dispatched when the prescriptions list is opened or refreshed.
 class LoadPrescriptionsAction {
@@ -39,6 +40,21 @@ class RevokePrescriptionAction {
   });
   final int prescriptionId;
   final String reason;
+}
+
+/// Dispatched once a prescription is signed, carrying the QR payload and
+/// access link so the UI can show them.
+///
+/// This is the only chance to show them: the token is minted during signing
+/// and no doctor endpoint returns it afterwards.
+class PrescriptionSignedAction {
+  const PrescriptionSignedAction({required this.receipt});
+  final SigningReceipt receipt;
+}
+
+/// Dismisses the signing receipt so it cannot reappear on the next sign.
+class ClearSigningReceiptAction {
+  const ClearSigningReceiptAction();
 }
 
 /// Dispatched when a sign or revoke call fails.

@@ -88,6 +88,14 @@ PrescriptionsState prescriptionsReducer(
     );
   }
 
+  if (action is PrescriptionSignedAction) {
+    return state.copyWith(signingReceipt: action.receipt);
+  }
+
+  if (action is ClearSigningReceiptAction) {
+    return state.copyWith(clearReceipt: true);
+  }
+
   if (action is RevokePrescriptionAction) {
     return state.copyWith(
       busyIds: {...state.busyIds, action.prescriptionId},

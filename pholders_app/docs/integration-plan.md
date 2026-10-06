@@ -121,6 +121,11 @@ GET /users/appointments/doctors/:doctorId/reviews/summary
       Support & Legal were declared in `AppRoutes` but never registered, so
       every one of those sidebar links was dead too.
 
+- [x] Signing receipt — the QR and secure link the sign call returns are now
+      shown to the doctor. They are minted during signing and no doctor
+      endpoint returns them afterwards, so the dialog says the code cannot be
+      recovered once closed.
+
 ## To do
 
 - [ ] **Pharmacy prescription queue** — `GET /prescriptions/pharmacy/claimed`,
@@ -232,9 +237,22 @@ inactive." Doctors are unaffected — doctor signup creates the account active.
 Pharmacy login is wired from the controller's response shape but could not be
 exercised end to end for this reason.
 
+### The doctor's prescription list drops fields it already has
+
+`Prescription.getByDoctorId` selects `patient_id`, `is_revoked` and
+`appointment_id`, but `getDoctorPrescriptions` maps only six fields and sends
+none of them. Dispense columns are not selected at all. `GET
+/prescriptions/:prescriptionId` is patient-role, so there is no other route a
+doctor could read them from.
+
+Three UI items wait on that one mapper: showing a revoked script as revoked,
+showing dispense status read-only (pharmacies dispense, doctors display), and
+having a `patientId` to open a patient from a script.
+
 ### Smaller ones
 
-1. **QR link points at localhost.** Signing returns
+1. **QR link points at localhost.** `FRONTEND_URL` is unset on the deployed
+   server, so `QRCodeService` falls back to a localhost address. Signing returns
    `accessLink: http://localhost:3000/prescriptions/qr/...` from the deployed
    server. Since scanning at the pharmacy is a real path, this matters.
 2. **Re-login is refused while a stale session exists.** `preventAuthenticated`

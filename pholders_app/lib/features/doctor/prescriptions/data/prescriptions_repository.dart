@@ -3,6 +3,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import 'models/prescription.dart';
 import 'models/safety_report.dart';
+import 'models/signing_receipt.dart';
 
 /// Doctor-side prescription calls.
 ///
@@ -148,7 +149,11 @@ class PrescriptionsRepository {
   /// the signature. So signing only works from the session that logged in.
   ///
   /// Fails with 400 if the prescription has no medicines yet.
-  Future<void> sign(int prescriptionId) async {
+  ///
+  /// Returns the signing receipt, which carries the QR payload and access
+  /// link. They are generated here and nowhere else — no doctor endpoint
+  /// returns them later — so the caller must show them before they are lost.
+  Future<SigningReceipt> sign(int prescriptionId) async {
     final token = await _tokenStorage.readToken();
     if (token == null || token.isEmpty) {
       throw const ApiException(
@@ -157,10 +162,13 @@ class PrescriptionsRepository {
         kind: ApiErrorKind.http,
       );
     }
-    await _api.post(
+    final data = await _api.post(
       '/prescriptions/$prescriptionId/sign',
       body: {'sessionToken': token},
     );
+    // The id is echoed in, so a server that omits it still yields a receipt
+    // the UI can key on.
+    return SigningReceipt.fromJson({'prescriptionId': prescriptionId, ...data});
   }
 
   /// Revokes a prescription so it can no longer be dispensed.

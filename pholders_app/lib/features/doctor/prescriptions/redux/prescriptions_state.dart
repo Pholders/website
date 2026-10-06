@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../data/models/prescription.dart';
 import '../data/models/safety_report.dart';
+import '../data/models/signing_receipt.dart';
 
 /// The prescriptions slice of the Redux store.
 class PrescriptionsState extends Equatable {
@@ -15,6 +16,7 @@ class PrescriptionsState extends Equatable {
     this.lastCreatedId,
     this.isCheckingInteractions = false,
     this.safetyReport,
+    this.signingReceipt,
   });
 
   factory PrescriptionsState.initial() => const PrescriptionsState();
@@ -42,6 +44,10 @@ class PrescriptionsState extends Equatable {
   /// The most recent safety report, or null when none has been run.
   final SafetyReport? safetyReport;
 
+  /// Set for the one render after a successful sign, so the QR and access
+  /// link can be shown. Cleared when the doctor dismisses them.
+  final SigningReceipt? signingReceipt;
+
   PrescriptionsState copyWith({
     List<Prescription>? prescriptions,
     bool? isLoading,
@@ -52,9 +58,11 @@ class PrescriptionsState extends Equatable {
     int? lastCreatedId,
     bool? isCheckingInteractions,
     SafetyReport? safetyReport,
+    SigningReceipt? signingReceipt,
     bool clearError = false,
     bool clearCreated = false,
     bool clearReport = false,
+    bool clearReceipt = false,
   }) {
     return PrescriptionsState(
       prescriptions: prescriptions ?? this.prescriptions,
@@ -68,11 +76,14 @@ class PrescriptionsState extends Equatable {
       isCheckingInteractions:
           isCheckingInteractions ?? this.isCheckingInteractions,
       safetyReport: clearReport ? null : (safetyReport ?? this.safetyReport),
+      signingReceipt:
+          clearReceipt ? null : (signingReceipt ?? this.signingReceipt),
     );
   }
 
   @override
   List<Object?> get props =>
       [prescriptions, isLoading, errorMessage, busyIds, hasLoadedOnce,
-       isCreating, lastCreatedId, isCheckingInteractions, safetyReport];
+       isCreating, lastCreatedId, isCheckingInteractions, safetyReport,
+       signingReceipt];
 }

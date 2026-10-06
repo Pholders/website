@@ -70,7 +70,12 @@ List<Middleware<AppState>> createPrescriptionsMiddleware({
 
   Future<void> sign(Store<AppState> store, SignPrescriptionAction action) async {
     try {
-      await repository.sign(action.prescriptionId);
+      final receipt = await repository.sign(action.prescriptionId);
+      // The QR and link exist only in this response, so hand them to the UI
+      // before anything else can overwrite the slice.
+      if (receipt.hasCode) {
+        store.dispatch(PrescriptionSignedAction(receipt: receipt));
+      }
       // Signing changes the status, so refetch rather than guessing.
       await load(store, 'all');
     } on ApiException catch (e) {

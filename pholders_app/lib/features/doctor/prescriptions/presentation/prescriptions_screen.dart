@@ -5,7 +5,9 @@ import 'package:redux/redux.dart';
 import 'package:pholders_app/app/app_state.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
 import 'package:pholders_app/features/doctor/prescriptions/data/models/prescription.dart' as api;
+import 'package:pholders_app/features/doctor/prescriptions/data/models/signing_receipt.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/interaction_check_dialog.dart';
+import 'package:pholders_app/features/doctor/prescriptions/presentation/signing_receipt_dialog.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/new_prescription_dialog.dart';
 import 'package:pholders_app/features/doctor/prescriptions/redux/prescriptions_actions.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescription_details_screen.dart';
@@ -110,6 +112,27 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
         patientName: rx.patientName,
       ),
     );
+  }
+
+  /// The prescription whose receipt has already been shown, so a rebuild
+  /// cannot reopen the dialog over itself.
+  int? _receiptShownFor;
+
+  /// Shows the QR and access link as soon as signing returns them.
+  ///
+  /// It has to be automatic: the token exists only in the sign response, so
+  /// there is no screen the doctor could navigate back to for it.
+  void _maybeShowReceipt(SigningReceipt? receipt) {
+    if (receipt == null || _receiptShownFor == receipt.prescriptionId) return;
+    _receiptShownFor = receipt.prescriptionId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => SigningReceiptDialog(receipt: receipt),
+      );
+    });
   }
 
   /// Signs a prescription after confirming, since signing is what makes it
@@ -306,6 +329,9 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
       converter: _RxViewModel.fromStore,
       builder: (context, vm) {
         _livePrescriptions = vm.prescriptions.map(_fromApi).toList();
+        // Checked on every build rather than via onDidChange: the receipt
+        // must not be missed, and the guard inside makes repeats harmless.
+        _maybeShowReceipt(vm.signingReceipt);
 
         if (vm.isLoading && !vm.hasLoadedOnce) {
           return const Center(
@@ -1159,6 +1185,7 @@ class _RxViewModel {
     required this.isLoading,
     required this.hasLoadedOnce,
     this.errorMessage,
+    this.signingReceipt,
   });
 
   factory _RxViewModel.fromStore(Store<AppState> store) {
@@ -1168,6 +1195,7 @@ class _RxViewModel {
       isLoading: state.isLoading,
       hasLoadedOnce: state.hasLoadedOnce,
       errorMessage: state.errorMessage,
+      signingReceipt: state.signingReceipt,
     );
   }
 
@@ -1175,4 +1203,5 @@ class _RxViewModel {
   final bool isLoading;
   final bool hasLoadedOnce;
   final String? errorMessage;
+  final SigningReceipt? signingReceipt;
 }
