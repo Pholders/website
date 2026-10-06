@@ -25,7 +25,7 @@ function`.
 | 3 | Doctor prescription list returns the fields it already queried | `07f37e3` | Backend-System |
 | 4 | Doctor appointments return `patientId`; added `scope` | `07f37e3` | Backend-System |
 | 5 | Prescription row shows dispensing and revoke detail | `f6f0ce6` | website |
-| 6 | Appointments load the whole diary, not just the inbox | pending | website |
+| 6 | Appointments load the whole diary, not just the inbox | `173c186` | website |
 
 Still outstanding, deliberately not done:
 
