@@ -9,6 +9,7 @@ class Appointment extends Equatable {
   const Appointment({
     required this.id,
     required this.patientName,
+    this.patientId,
     this.patientEmail,
     this.patientPhone,
     this.date,
@@ -24,6 +25,7 @@ class Appointment extends Equatable {
     return Appointment(
       id: _asInt(json['id']) ?? 0,
       patientName: _asString(json['patientName']) ?? 'Unknown patient',
+      patientId: _asInt(json['patientId']),
       patientEmail: _asString(json['patientEmail']),
       patientPhone: _asString(json['patientPhone']),
       date: DateTime.tryParse(_asString(json['appointmentDate']) ?? ''),
@@ -38,6 +40,11 @@ class Appointment extends Equatable {
 
   final int id;
   final String patientName;
+
+  /// The patient's own id, as opposed to the appointment's. Null on a backend
+  /// that predates it being returned — nothing may assume it is present.
+  final int? patientId;
+
   final String? patientEmail;
   final String? patientPhone;
   final DateTime? date;
@@ -117,5 +124,6 @@ class Appointment extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, patientName, date, timeSlot, status, doctorAccepted];
+  List<Object?> get props =>
+      [id, patientName, patientId, date, timeSlot, status, doctorAccepted];
 }

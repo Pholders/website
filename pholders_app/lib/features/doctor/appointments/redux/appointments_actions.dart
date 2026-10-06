@@ -1,8 +1,13 @@
+import '../data/appointments_repository.dart';
 import '../data/models/appointment.dart';
 
 /// Dispatched when the appointments page opens or the user pulls to refresh.
 class LoadAppointmentsAction {
-  const LoadAppointmentsAction();
+  const LoadAppointmentsAction({this.scope = AppointmentScope.all});
+
+  /// Defaults to the whole diary. Only ask for [AppointmentScope.inbox] when
+  /// the screen genuinely wants unactioned bookings alone.
+  final AppointmentScope scope;
 }
 
 /// Dispatched by the middleware when the appointment list arrives.

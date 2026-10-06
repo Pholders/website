@@ -1,23 +1,40 @@
 import '../../../../core/network/api_client.dart';
 import 'models/appointment.dart';
 
+/// Which slice of the doctor's appointments to fetch.
+///
+/// The endpoint used to return [inbox] and nothing else, which meant an
+/// appointment vanished from the doctor's diary the moment they accepted it —
+/// and with it the ability to write a prescription against it.
+enum AppointmentScope {
+  /// Bookings not yet accepted. The endpoint's original behaviour.
+  inbox,
+
+  /// Accepted and still ahead of today.
+  upcoming,
+
+  /// Everything bar cancellations, which is what a diary wants.
+  all,
+}
+
 /// Doctor-side appointment calls.
 class AppointmentsRepository {
   const AppointmentsRepository(this._api);
 
   final ApiClient _api;
 
-  /// Fetches the doctor's appointments awaiting action.
+  /// Fetches the doctor's appointments.
   ///
-  /// Note this is not the doctor's full diary: the backend filters to
-  /// `status IN ('pending_payment', 'scheduled')` AND `doctor_accepted = false`.
-  /// An appointment therefore disappears from this list as soon as it is
-  /// accepted, and there is currently no endpoint that returns accepted or
-  /// completed appointments for a doctor.
-  Future<List<Appointment>> fetchPending({int limit = 50, int offset = 0}) async {
+  /// A backend that predates the `scope` parameter ignores it and returns the
+  /// inbox, so this degrades to the old behaviour rather than failing.
+  Future<List<Appointment>> fetch({
+    AppointmentScope scope = AppointmentScope.all,
+    int limit = 50,
+    int offset = 0,
+  }) async {
     final data = await _api.get(
       '/users/doctor/appointments',
-      queryParameters: {'limit': limit, 'offset': offset},
+      queryParameters: {'limit': limit, 'offset': offset, 'scope': scope.name},
     );
 
     final list = data['appointments'];

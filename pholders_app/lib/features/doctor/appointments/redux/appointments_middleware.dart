@@ -9,9 +9,12 @@ import 'appointments_actions.dart';
 List<Middleware<AppState>> createAppointmentsMiddleware({
   required AppointmentsRepository repository,
 }) {
-  Future<void> load(Store<AppState> store) async {
+  Future<void> load(
+    Store<AppState> store, [
+    AppointmentScope scope = AppointmentScope.all,
+  ]) async {
     try {
-      final appointments = await repository.fetchPending();
+      final appointments = await repository.fetch(scope: scope);
       store.dispatch(AppointmentsLoadedAction(appointments: appointments));
     } on ApiException catch (e) {
       store.dispatch(AppointmentsLoadFailedAction(errorMessage: e.message));
@@ -24,8 +27,8 @@ List<Middleware<AppState>> createAppointmentsMiddleware({
   ) async {
     try {
       await repository.accept(action.appointmentId);
-      // Accepting removes the appointment from this endpoint's filter, so
-      // refetch rather than patching it in place.
+      // Accepting flips doctor_accepted, which changes which scopes the
+      // appointment falls into, so refetch rather than patching in place.
       await load(store);
     } on ApiException catch (e) {
       store.dispatch(AcceptAppointmentFailedAction(
@@ -59,7 +62,7 @@ List<Middleware<AppState>> createAppointmentsMiddleware({
     next(action);
 
     if (action is LoadAppointmentsAction) {
-      load(store);
+      load(store, action.scope);
     } else if (action is AcceptAppointmentAction) {
       accept(store, action);
     } else if (action is CompleteAppointmentAction) {
