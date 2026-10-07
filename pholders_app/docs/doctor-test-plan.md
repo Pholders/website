@@ -183,10 +183,68 @@ the test pharmacy with a mailbox the team controls.
 
 ---
 
+## Pharmacy
+
+**P1 — A pharmacy can be activated**  *(needs the deploy)*
+Given a pharmacy registered with a mailbox the team controls
+When it verifies with the code it was emailed
+Then it is active and can log in.
+And if the signup email is lost, `resend-verification` now issues a code that
+`verify-otp` actually accepts.
+
+**P2 — A pharmacy signs in**
+Then it reaches its dashboard.
+
+**P3 — Claimed scripts**
+Given a patient has claimed a script at this pharmacy
+Then it appears on the pharmacy's claimed list with its medicines.
+
+**P4 — Dispense**
+When the pharmacy dispenses
+Then the script reads dispensed, and D17 becomes true on the doctor's row.
+
+---
+
+## Newly reachable, never exercised
+
+These 46 routes 404'd until `35c65fe`. The paths are right and the modules
+load, but none has run live, so treat them as new code.
+
+**X1 — Patient records a medical aid**  *(needed by D16)*
+`PUT /api/profile/medical-aid`, then read it back.
+
+**X2 — Terms and privacy**
+`GET /api/legal/terms`, `/privacy`.
+
+**X3 — Support**
+`POST /api/support/tickets`, `/contact`; `GET /api/support/faq`, `/tickets`.
+
+**X4 — Patient profile and security**
+Profile read and update, avatar, password change, 2FA enable and verify,
+biometrics.
+
+**X5 — Devices and activity**
+Device list, revoke one, revoke others, login activity.
+
+**X6 — Account protection**
+Report suspicious, freeze, unfreeze by emailed link, audit-log export.
+
+**X7 — Linked services**
+Doctors, pharmacies and dependents: list, link, unlink.
+
+**X8 — Medical aid documents**
+Card upload, signed card URL, claims, invoices, and the signed-token
+download — which is deliberately unauthenticated and must still refuse a
+token belonging to someone else.
+
+---
+
 ## Order worth following
 
 1. Deploy, and set `FRONTEND_URL`. Nine items are queued behind it.
 2. Run D1–D9. They need nobody else and will catch most regressions.
 3. Seed a patient and run D10–D14. These are the phase 1 loop.
-4. Fix pharmacy activation, then D17 closes the loop.
-5. D15 and D16 need Prince's side to write a review and hold a scheme.
+4. Run X1, then D16. X1 is the shortest path through the newly mounted code.
+5. Register a pharmacy on a real mailbox, run P1-P4, and D17 closes the loop.
+6. Sweep X2-X8 — never served before, and mostly patient-side, so worth
+   doing with Prince.
