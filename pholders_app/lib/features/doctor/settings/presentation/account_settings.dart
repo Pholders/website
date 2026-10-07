@@ -467,6 +467,20 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   /// Catalogue ids of the schemes this doctor accepts.
   Set<int> _medicalAidIds = {};
 
+  /// One consulting window per weekday, as the backend stores them. Days the
+  /// doctor does not work hold null.
+  final Map<String, _Window?> _hours = {
+    for (final day in _weekdays) day: null,
+  };
+
+  /// Extra windows the doctor already had. The form edits one per day, so
+  /// these are carried through untouched rather than silently dropped.
+  final Map<String, List<String>> _extraWindows = {};
+
+  static const _weekdays = [
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+  ];
+
   /// The options the screen ships with. A doctor whose stored value is not on
   /// the list keeps it — see [_specializations].
   static const _baseSpecializations = [
@@ -538,14 +552,55 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
     _specialization = doctor.specialization;
     _province = _provinces.contains(doctor.province) ? doctor.province : null;
     _medicalAidIds = doctor.medicalAids.map((s) => s.id).toSet();
+    _prefillHours(doctor.availability);
     _prefilled = true;
   }
 
+  void _prefillHours(Map<String, List<String>>? availability) {
+    if (availability == null) return;
+    for (final day in _weekdays) {
+      final windows = availability[day] ?? const [];
+      _hours[day] = windows.isEmpty ? null : _Window.parse(windows.first);
+      if (windows.length > 1) {
+        _extraWindows[day] = windows.sublist(1);
+      }
+    }
+  }
+
+  /// Rebuilds the availability map the backend expects, keeping any extra
+  /// windows this form does not edit.
+  Map<String, List<String>> _availabilityPayload() {
+    return {
+      for (final day in _weekdays)
+        day: [
+          if (_hours[day] != null) _hours[day]!.asRange,
+          ...?_extraWindows[day],
+        ],
+    };
+  }
+
+  /// Returns the first problem with the entered hours, or null.
+  String? _hoursProblem() {
+    for (final day in _weekdays) {
+      final window = _hours[day];
+      if (window == null) continue;
+      if (!window.isValid) {
+        return 'Consulting hours must look like 08:00, and the closing time '
+            'must be later than the opening time.';
+      }
+    }
+    return null;
+  }
   void _save() {
     final experienceText = _experience.text.trim();
     final experience = experienceText.isEmpty ? null : int.tryParse(experienceText);
     if (experienceText.isNotEmpty && experience == null) {
       setState(() => _problem = 'Years of experience must be a number.');
+      return;
+    }
+    final hoursProblem = _hoursProblem();
+    if (hoursProblem != null) {
+      setState(() => _problem = hoursProblem);
       return;
     }
     setState(() => _problem = null);
@@ -560,6 +615,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
         province: _province,
         zipCode: _zipCode.text.trim(),
         medicalAidIds: _medicalAidIds.toList(),
+        availability: _availabilityPayload(),
       ),
     );
   }
@@ -747,6 +803,21 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
                 selected: _medicalAidIds,
                 onChanged: (ids) => setState(() => _medicalAidIds = ids),
               ),
+              const SizedBox(height: 28),
+              const SettingsSectionTitle('Consulting Hours', muted: true),
+              const SizedBox(height: 4),
+              const Text(
+                'The hours patients can book you for. Untick a day to show as '
+                'closed.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF748486)),
+              ),
+              const SizedBox(height: 10),
+              for (final day in _weekdays)
+                _DayHoursRow(
+                  day: day,
+                  window: _hours[day],
+                  onChanged: (window) => setState(() => _hours[day] = window),
+                ),
             ],
           ),
         ),
@@ -773,6 +844,10 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
 /// A fixed catalogue rather than free text: the patient's own scheme is free
 /// text, and the two are matched on a normalised form, so free text on both
 /// sides would never match reliably.
+///
+/// Uses the same 14px check as the rest of settings, but driven by the
+/// parent's selection — [SmallCheck] keeps its own state from its first
+/// build, which would drift once the catalogue arrives after the profile.
 class _MedicalAidPicker extends StatelessWidget {
   const _MedicalAidPicker({
     required this.catalogue,
@@ -784,6 +859,12 @@ class _MedicalAidPicker extends StatelessWidget {
   final Set<int> selected;
   final ValueChanged<Set<int>> onChanged;
 
+  void _toggle(int id) {
+    final next = {...selected};
+    if (!next.remove(id)) next.add(id);
+    onChanged(next);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (catalogue.isEmpty) {
@@ -791,29 +872,203 @@ class _MedicalAidPicker extends StatelessWidget {
       // have it. Say so rather than showing an empty box that looks broken.
       return const Text(
         'Medical aid list unavailable.',
-        style: TextStyle(fontSize: 12, color: Color(0xFF748486)),
+        style: TextStyle(fontSize: 11, color: Color(0xFF748486)),
       );
     }
 
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: 24,
+      runSpacing: 10,
       children: [
         for (final scheme in catalogue)
-          FilterChip(
-            label: Text(scheme.name, style: const TextStyle(fontSize: 12)),
-            selected: selected.contains(scheme.id),
-            onSelected: (isOn) {
-              final next = {...selected};
-              if (isOn) {
-                next.add(scheme.id);
-              } else {
-                next.remove(scheme.id);
-              }
-              onChanged(next);
-            },
+          SizedBox(
+            width: 230,
+            child: _SchemeCheck(
+              label: scheme.name,
+              checked: selected.contains(scheme.id),
+              onTap: () => _toggle(scheme.id),
+            ),
           ),
       ],
+    );
+  }
+}
+
+/// The settings check mark, without [SmallCheck]'s internal state.
+class _SchemeCheck extends StatelessWidget {
+  const _SchemeCheck({
+    required this.label,
+    required this.checked,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool checked;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.black, width: 1.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: checked ? const Icon(Icons.check, size: 11) : null,
+          ),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One consulting window, "08:00-17:00" as the backend stores it.
+class _Window {
+  const _Window(this.from, this.to);
+
+  factory _Window.parse(String raw) {
+    final parts = raw.split('-');
+    return _Window(
+      parts.isNotEmpty ? parts[0].trim() : '',
+      parts.length > 1 ? parts[1].trim() : '',
+    );
+  }
+
+  final String from;
+  final String to;
+
+  String get asRange => '$from-$to';
+
+  static final _time = RegExp(r'^\d{2}:\d{2}$');
+
+  /// The backend rejects anything that is not HH:MM-HH:MM, and refuses a
+  /// closing time that is not after the opening one.
+  bool get isValid =>
+      _time.hasMatch(from) && _time.hasMatch(to) && to.compareTo(from) > 0;
+}
+
+/// One weekday's hours: a check to open or close the day, and the window.
+class _DayHoursRow extends StatelessWidget {
+  const _DayHoursRow({
+    required this.day,
+    required this.window,
+    required this.onChanged,
+  });
+
+  final String day;
+  final _Window? window;
+  final ValueChanged<_Window?> onChanged;
+
+  String get _label => '${day[0].toUpperCase()}${day.substring(1)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final open = window != null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: _SchemeCheck(
+              label: _label,
+              checked: open,
+              // Reopening a day lands on the usual working window rather than
+              // two empty boxes the doctor has to fill in from scratch.
+              onTap: () => onChanged(open ? null : const _Window('08:00', '17:00')),
+            ),
+          ),
+          if (open) ...[
+            SizedBox(
+              width: 90,
+              child: _TimeBox(
+                value: window!.from,
+                onChanged: (v) => onChanged(_Window(v, window!.to)),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('to', style: TextStyle(fontSize: 11)),
+            ),
+            SizedBox(
+              width: 90,
+              child: _TimeBox(
+                value: window!.to,
+                onChanged: (v) => onChanged(_Window(window!.from, v)),
+              ),
+            ),
+          ] else
+            const Text('Closed',
+                style: TextStyle(fontSize: 11, color: Color(0xFF748486))),
+        ],
+      ),
+    );
+  }
+}
+
+/// A plain HH:MM box, styled like the other settings inputs.
+class _TimeBox extends StatefulWidget {
+  const _TimeBox({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_TimeBox> createState() => _TimeBoxState();
+}
+
+class _TimeBoxState extends State<_TimeBox> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.value);
+
+  @override
+  void didUpdateWidget(_TimeBox old) {
+    super.didUpdateWidget(old);
+    // Only follow an external change, so typing is never interrupted.
+    if (widget.value != _controller.text && widget.value != old.value) {
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      onChanged: widget.onChanged,
+      style: const TextStyle(fontSize: 11),
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: '08:00',
+        hintStyle: const TextStyle(fontSize: 11, color: Color(0xFFC1C1C1)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        filled: true,
+        fillColor: const Color(0xFFEAF7F7),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide.none,
+        ),
+      ),
     );
   }
 }

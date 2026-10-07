@@ -56,6 +56,7 @@ class Doctor extends Equatable {
     this.status,
     this.emailVerified = false,
     this.medicalAids = const [],
+    this.availability,
   });
 
   /// Builds a [Doctor] from either the login or the profile payload.
@@ -84,6 +85,7 @@ class Doctor extends Equatable {
       status: _asString(json['status']),
       emailVerified: json['email_verified'] == true,
       medicalAids: _schemesFrom(json['medicalAids'] ?? json['medical_aids']),
+      availability: _availabilityFrom(json['availability']),
     );
   }
 
@@ -114,6 +116,10 @@ class Doctor extends Equatable {
   /// feature, which is indistinguishable from "accepts none" — so the UI
   /// must not read an empty list as a deliberate choice.
   final List<MedicalAidScheme> medicalAids;
+
+  /// Consulting windows per weekday, e.g. `{'monday': ['08:00-17:00']}`.
+  /// Null when the doctor has never set any.
+  final Map<String, List<String>>? availability;
 
   /// "John Smith", or the email local part when the name is missing.
   String get fullName {
@@ -149,6 +155,18 @@ class Doctor extends Equatable {
   @override
   List<Object?> get props =>
       [id, firstName, lastName, email, hpcsaNumber, medicalAids];
+
+  static Map<String, List<String>>? _availabilityFrom(dynamic raw) {
+    if (raw is! Map) return null;
+    final result = <String, List<String>>{};
+    raw.forEach((key, value) {
+      if (value is List) {
+        result[key.toString()] =
+            value.map((w) => w.toString()).where((w) => w.isNotEmpty).toList();
+      }
+    });
+    return result;
+  }
 
   static List<MedicalAidScheme> _schemesFrom(dynamic raw) {
     if (raw is! List) return const [];

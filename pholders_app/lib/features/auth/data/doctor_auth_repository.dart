@@ -171,6 +171,7 @@ class DoctorAuthRepository {
     String? bio,
     double? consultationFee,
     List<int>? medicalAidIds,
+    Map<String, List<String>>? availability,
   }) async {
     final data = await _api.put(
       '/users/doctor/profile',
@@ -192,6 +193,9 @@ class DoctorAuthRepository {
         // whenever it is non-null, unlike the fields above which are omitted
         // to avoid blanking what the doctor did not edit.
         if (medicalAidIds != null) 'medicalAids': medicalAidIds,
+        // Sent whole: a day with an empty list means closed, which a merge
+        // could never express.
+        if (availability != null) 'availability': availability,
       },
     );
     return Doctor.fromJson(data);

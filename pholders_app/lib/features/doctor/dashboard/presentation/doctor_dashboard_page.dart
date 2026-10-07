@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../reviews/redux/reviews_actions.dart';
+import '../../reviews/redux/reviews_state.dart';
+import '../../reviews/data/models/rating_summary.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 
 import '../../../../app/app_state.dart';
@@ -12,6 +15,21 @@ class DoctorDashboardPage extends StatefulWidget {
 }
 
 class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    // The reviews routes carry no role guard, so the doctor's own id has to
+    // be passed rather than inferred from the token.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final store = StoreProvider.of<AppState>(context);
+      final doctorId = store.state.authState.doctor?.id;
+      if (doctorId != null && doctorId > 0) {
+        store.dispatch(LoadRatingSummaryAction(doctorId: doctorId));
+      }
+    });
+  }
+
   bool showAlert = true;
   String selectedTrend = 'Monthly';
   String selectedPatientFilter = 'All';
@@ -301,12 +319,34 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                     'vs last month',
                   ),
                   _statDivider(),
-                  _statTile(
-                    Icons.reviews,
-                    'Reviews',
-                    '10+',
-                    '*****',
-                    'Last updated 06:30',
+                  StoreConnector<AppState, ReviewsState>(
+                    converter: (store) => store.state.reviewsState,
+                    builder: (context, reviews) {
+                      final summary = reviews.summary;
+                      // Until the first fetch resolves there is nothing
+                      // honest to show, and 0 would read as a bad score
+                      // rather than an absent one.
+                      final String subtext;
+                      if (summary != null) {
+                        subtext = summary.hasReviews
+                            ? '${summary.averageLabel} out of 5'
+                            : 'No reviews yet';
+                      } else if (reviews.isLoading) {
+                        subtext = 'Loading ratings...';
+                      } else if (reviews.errorMessage != null) {
+                        subtext = 'Ratings unavailable';
+                      } else {
+                        subtext = '';
+                      }
+
+                      return _statTile(
+                        Icons.reviews,
+                        'Reviews',
+                        summary == null ? '—' : '${summary.totalReviews}',
+                        summary == null ? '' : _stars(summary.filledStars),
+                        subtext,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -316,6 +356,11 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
       ),
     );
   }
+
+  /// The tile already drew stars as text; this keeps that and makes them
+  /// reflect the real score.
+  static String _stars(int filled) =>
+      ('★' * filled) + ('☆' * (5 - filled));
 
   Widget _statTile(
     IconData icon,

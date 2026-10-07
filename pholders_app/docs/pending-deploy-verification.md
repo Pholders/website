@@ -26,7 +26,9 @@ function`.
 | 4 | Doctor appointments return `patientId`; added `scope` | `07f37e3` | Backend-System |
 | 5 | Prescription row shows dispensing and revoke detail | `f6f0ce6` | website |
 | 6 | Appointments load the whole diary, not just the inbox | `173c186` | website |
-| 7 | Doctor medical aid acceptance (catalogue + picker + search filter) | `637c473` / pending | both |
+| 7 | Doctor medical aid acceptance (catalogue + picker + search filter) | `637c473` / `b558d22` | both |
+| 8 | Re-geocode when the practice address changes | `03736ca` | Backend-System |
+| 9 | Consulting hours editable; doctor's rating on the dashboard | pending | website |
 
 Still outstanding:
 
@@ -163,6 +165,32 @@ Prince before he builds the screen.
 
 Nothing on the patient side changed, so existing medical aid behaviour should
 be exactly as before.
+
+### 8. A moved practice moves on the map
+
+The live test doctor is the case to check: `clinic_address` reads
+"12 Rivonia Road, Sandton" while the coordinates are -26.20227, 28.04363 —
+Johannesburg CBD, about 10km out, and exactly what their signup city
+geocodes to.
+
+Save Professional Details without changing anything, then re-read the
+profile. Latitude and longitude should move to roughly -26.104, 28.054.
+
+The street address itself does not geocode — "12 Rivonia Road, Sandton"
+resolves to nothing — so this works via the city and province fallback. The
+response carries `location_updated`, and `location_warning` when the pin
+could not be moved at all.
+
+### 9. Consulting hours and the rating
+
+Hours already render from the live profile and save through the same
+endpoint, so only the round trip needs confirming: untick a day, save,
+reload.
+
+The rating tile on the dashboard currently reads "Ratings unavailable",
+which is correct while the reviews endpoints still 500. After the deploy it
+should show the review count, stars and the average — or "No reviews yet"
+for a doctor nobody has rated, which must not read as a zero score.
 
 ---
 

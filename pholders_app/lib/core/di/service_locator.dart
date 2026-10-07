@@ -5,6 +5,7 @@ import '../../features/auth/data/doctor_auth_repository.dart';
 import '../../features/auth/data/pharmacy_auth_repository.dart';
 import '../../features/doctor/appointments/data/appointments_repository.dart';
 import '../../features/doctor/prescriptions/data/prescriptions_repository.dart';
+import '../../features/doctor/reviews/data/reviews_repository.dart';
 import '../auth/token_storage.dart';
 import '../network/api_client.dart';
 
@@ -48,5 +49,9 @@ Future<void> setupServiceLocator() async {
 
   sl.registerLazySingleton<PrescriptionsRepository>(
     () => PrescriptionsRepository(sl<ApiClient>(), sl<TokenStorage>()),
+  );
+
+  sl.registerLazySingleton<ReviewsRepository>(
+    () => ReviewsRepository(sl<ApiClient>()),
   );
 }

@@ -213,6 +213,7 @@ class UpdateDoctorProfileAction {
     this.zipCode,
     this.consultationFee,
     this.medicalAidIds,
+    this.availability,
   });
 
   final String? firstName;
@@ -233,6 +234,10 @@ class UpdateDoctorProfileAction {
   /// Catalogue ids of the schemes this doctor accepts. An empty list clears
   /// them, so null means "leave as they are" and `[]` means "none".
   final List<int>? medicalAidIds;
+
+  /// Consulting windows per weekday. A day with an empty list is closed, so
+  /// this is sent whole rather than merged.
+  final Map<String, List<String>>? availability;
 }
 
 /// Dispatched when a profile save fails.

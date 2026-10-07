@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../features/doctor/reviews/redux/reviews_state.dart';
 
 import '../core/auth/auth_state.dart';
 import '../features/doctor/appointments/redux/appointments_state.dart';
@@ -18,6 +19,7 @@ class AppState extends Equatable {
     required this.authState,
     required this.appointmentsState,
     required this.prescriptionsState,
+    required this.reviewsState,
   });
 
   /// The initial state when the app starts.
@@ -26,13 +28,15 @@ class AppState extends Equatable {
       authState: AuthState.initial(),
       appointmentsState: AppointmentsState.initial(),
       prescriptionsState: PrescriptionsState.initial(),
+      reviewsState: ReviewsState.initial(),
     );
   }
   final AuthState authState;
   final AppointmentsState appointmentsState;
   final PrescriptionsState prescriptionsState;
+  final ReviewsState reviewsState;
 
   @override
   List<Object?> get props =>
-      [authState, appointmentsState, prescriptionsState];
+      [authState, appointmentsState, prescriptionsState, reviewsState];
 }
