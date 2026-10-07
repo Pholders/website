@@ -180,6 +180,16 @@ List<Middleware<AppState>> createAuthMiddleware({
     }
   }
 
+  Future<void> loadMedicalAidCatalogue(Store<AppState> store) async {
+    try {
+      final schemes = await doctorAuth.fetchMedicalAidCatalogue();
+      store.dispatch(MedicalAidCatalogueLoadedAction(schemes: schemes));
+    } on ApiException {
+      // A backend without the catalogue endpoint leaves the picker empty
+      // rather than breaking the settings screen around it.
+    }
+  }
+
   Future<void> updateProfile(
     Store<AppState> store,
     UpdateDoctorProfileAction action,
@@ -197,6 +207,7 @@ List<Middleware<AppState>> createAuthMiddleware({
         province: action.province,
         zipCode: action.zipCode,
         consultationFee: action.consultationFee,
+        medicalAidIds: action.medicalAidIds,
       );
       store.dispatch(DoctorProfileLoadedAction(doctor: doctor));
       // Keep the stored display name in step with the change.
@@ -243,6 +254,8 @@ List<Middleware<AppState>> createAuthMiddleware({
       handleLogin(store, action);
     } else if (action is DoctorSignupRequestAction) {
       handleSignup(store, action);
+    } else if (action is LoadMedicalAidCatalogueAction) {
+      loadMedicalAidCatalogue(store);
     } else if (action is UpdateDoctorProfileAction) {
       updateProfile(store, action);
     } else if (action is RequestVerificationOtpAction) {

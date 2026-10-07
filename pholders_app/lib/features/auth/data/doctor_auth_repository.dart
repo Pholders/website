@@ -142,6 +142,20 @@ class DoctorAuthRepository {
   ///
   /// Only non-null values are sent, so a partial edit does not blank the
   /// fields it left alone.
+  /// The medical aid schemes a doctor can say they accept.
+  ///
+  /// Comes from a catalogue rather than free text so that a patient's own
+  /// scheme — which is free text — can be matched against it.
+  Future<List<MedicalAidScheme>> fetchMedicalAidCatalogue() async {
+    final data = await _api.get('/users/medical-aids');
+    final list = data['schemes'];
+    if (list is! List) return const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(MedicalAidScheme.fromJson)
+        .toList();
+  }
+
   Future<Doctor> updateProfile({
     String? firstName,
     String? lastName,
@@ -156,6 +170,7 @@ class DoctorAuthRepository {
     String? qualification,
     String? bio,
     double? consultationFee,
+    List<int>? medicalAidIds,
   }) async {
     final data = await _api.put(
       '/users/doctor/profile',
@@ -173,6 +188,10 @@ class DoctorAuthRepository {
         if (qualification != null) 'qualification': qualification,
         if (bio != null) 'bio': bio,
         if (consultationFee != null) 'consultation_fee': consultationFee,
+        // An empty list is a real choice — "I accept none" — so this is sent
+        // whenever it is non-null, unlike the fields above which are omitted
+        // to avoid blanking what the doctor did not edit.
+        if (medicalAidIds != null) 'medicalAids': medicalAidIds,
       },
     );
     return Doctor.fromJson(data);

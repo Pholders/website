@@ -188,6 +188,17 @@ class VerifyEmailFailureAction {
 ///
 /// Only the fields being changed are carried; the repository omits nulls so a
 /// partial edit does not blank anything else.
+/// Dispatched to load the medical aid catalogue the picker offers.
+class LoadMedicalAidCatalogueAction {
+  const LoadMedicalAidCatalogueAction();
+}
+
+/// Dispatched when the catalogue arrives.
+class MedicalAidCatalogueLoadedAction {
+  const MedicalAidCatalogueLoadedAction({required this.schemes});
+  final List<MedicalAidScheme> schemes;
+}
+
 class UpdateDoctorProfileAction {
   const UpdateDoctorProfileAction({
     this.firstName,
@@ -201,6 +212,7 @@ class UpdateDoctorProfileAction {
     this.province,
     this.zipCode,
     this.consultationFee,
+    this.medicalAidIds,
   });
 
   final String? firstName;
@@ -217,6 +229,10 @@ class UpdateDoctorProfileAction {
   /// The doctor's consultation fee. Booking copies this onto the appointment,
   /// and fails outright when it is null.
   final double? consultationFee;
+
+  /// Catalogue ids of the schemes this doctor accepts. An empty list clears
+  /// them, so null means "leave as they are" and `[]` means "none".
+  final List<int>? medicalAidIds;
 }
 
 /// Dispatched when a profile save fails.

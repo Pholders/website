@@ -9,6 +9,28 @@ import 'package:equatable/equatable.dart';
 ///    (`id`, `first_name`, `hpcsa_number`, …).
 ///
 /// [Doctor.fromJson] accepts either, so callers do not have to care.
+/// One medical aid scheme from the backend catalogue.
+///
+/// Doctors pick from the catalogue rather than typing a name, because the
+/// patient's own scheme is free text and the two are matched on a normalised
+/// form — free text on both sides would never match reliably.
+class MedicalAidScheme extends Equatable {
+  const MedicalAidScheme({required this.id, required this.name});
+
+  factory MedicalAidScheme.fromJson(Map<String, dynamic> json) {
+    return MedicalAidScheme(
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      name: json['name']?.toString() ?? '',
+    );
+  }
+
+  final int id;
+  final String name;
+
+  @override
+  List<Object?> get props => [id, name];
+}
+
 class Doctor extends Equatable {
   const Doctor({
     required this.id,
@@ -33,6 +55,7 @@ class Doctor extends Equatable {
     this.reviewCount,
     this.status,
     this.emailVerified = false,
+    this.medicalAids = const [],
   });
 
   /// Builds a [Doctor] from either the login or the profile payload.
@@ -60,6 +83,7 @@ class Doctor extends Equatable {
       reviewCount: _asInt(json['review_count']),
       status: _asString(json['status']),
       emailVerified: json['email_verified'] == true,
+      medicalAids: _schemesFrom(json['medicalAids'] ?? json['medical_aids']),
     );
   }
 
@@ -85,6 +109,11 @@ class Doctor extends Equatable {
   final int? reviewCount;
   final String? status;
   final bool emailVerified;
+
+  /// Schemes this doctor accepts. Empty on a backend that predates the
+  /// feature, which is indistinguishable from "accepts none" — so the UI
+  /// must not read an empty list as a deliberate choice.
+  final List<MedicalAidScheme> medicalAids;
 
   /// "John Smith", or the email local part when the name is missing.
   String get fullName {
@@ -118,5 +147,14 @@ class Doctor extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, firstName, lastName, email, hpcsaNumber];
+  List<Object?> get props =>
+      [id, firstName, lastName, email, hpcsaNumber, medicalAids];
+
+  static List<MedicalAidScheme> _schemesFrom(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(MedicalAidScheme.fromJson)
+        .toList();
+  }
 }

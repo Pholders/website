@@ -464,6 +464,9 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   bool _prefilled = false;
   String? _problem;
 
+  /// Catalogue ids of the schemes this doctor accepts.
+  Set<int> _medicalAidIds = {};
+
   /// The options the screen ships with. A doctor whose stored value is not on
   /// the list keeps it — see [_specializations].
   static const _baseSpecializations = [
@@ -500,6 +503,19 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // The picker needs the catalogue; it is reference data, so this is a
+    // no-op after the first load.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        StoreProvider.of<AppState>(context)
+            .dispatch(const LoadMedicalAidCatalogueAction());
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _licenseNumber.dispose();
     _hpcsa.dispose();
@@ -521,6 +537,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
     _zipCode.text = doctor.zipCode ?? '';
     _specialization = doctor.specialization;
     _province = _provinces.contains(doctor.province) ? doctor.province : null;
+    _medicalAidIds = doctor.medicalAids.map((s) => s.id).toSet();
     _prefilled = true;
   }
 
@@ -542,6 +559,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
         city: _city.text.trim(),
         province: _province,
         zipCode: _zipCode.text.trim(),
+        medicalAidIds: _medicalAidIds.toList(),
       ),
     );
   }
@@ -715,6 +733,20 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
                     hint: '2001',
                     controller: _zipCode,
                   )),
+              const SizedBox(height: 28),
+              const SettingsSectionTitle('Medical Aids Accepted', muted: true),
+              const SizedBox(height: 4),
+              const Text(
+                'Patients searching for a doctor covered by their plan will '
+                'only see you if you accept their scheme.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF748486)),
+              ),
+              const SizedBox(height: 10),
+              _MedicalAidPicker(
+                catalogue: vm.medicalAidCatalogue,
+                selected: _medicalAidIds,
+                onChanged: (ids) => setState(() => _medicalAidIds = ids),
+              ),
             ],
           ),
         ),
@@ -732,6 +764,56 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
           ),
                 ],
       ),
+    );
+  }
+}
+
+/// Lets the doctor tick the medical aid schemes they accept.
+///
+/// A fixed catalogue rather than free text: the patient's own scheme is free
+/// text, and the two are matched on a normalised form, so free text on both
+/// sides would never match reliably.
+class _MedicalAidPicker extends StatelessWidget {
+  const _MedicalAidPicker({
+    required this.catalogue,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<MedicalAidScheme> catalogue;
+  final Set<int> selected;
+  final ValueChanged<Set<int>> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (catalogue.isEmpty) {
+      // Either the catalogue has not arrived yet or this backend does not
+      // have it. Say so rather than showing an empty box that looks broken.
+      return const Text(
+        'Medical aid list unavailable.',
+        style: TextStyle(fontSize: 12, color: Color(0xFF748486)),
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final scheme in catalogue)
+          FilterChip(
+            label: Text(scheme.name, style: const TextStyle(fontSize: 12)),
+            selected: selected.contains(scheme.id),
+            onSelected: (isOn) {
+              final next = {...selected};
+              if (isOn) {
+                next.add(scheme.id);
+              } else {
+                next.remove(scheme.id);
+              }
+              onChanged(next);
+            },
+          ),
+      ],
     );
   }
 }
@@ -902,6 +984,7 @@ class _ProfileViewModel {
     required this.isSaving,
     this.doctor,
     this.errorMessage,
+    this.medicalAidCatalogue = const [],
   });
 
   factory _ProfileViewModel.fromStore(Store<AppState> store) {
@@ -910,10 +993,12 @@ class _ProfileViewModel {
       isSaving: auth.isLoading,
       doctor: auth.doctor,
       errorMessage: auth.errorMessage,
+      medicalAidCatalogue: auth.medicalAidCatalogue,
     );
   }
 
   final bool isSaving;
   final Doctor? doctor;
   final String? errorMessage;
+  final List<MedicalAidScheme> medicalAidCatalogue;
 }

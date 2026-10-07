@@ -26,11 +26,10 @@ function`.
 | 4 | Doctor appointments return `patientId`; added `scope` | `07f37e3` | Backend-System |
 | 5 | Prescription row shows dispensing and revoke detail | `f6f0ce6` | website |
 | 6 | Appointments load the whole diary, not just the inbox | `173c186` | website |
+| 7 | Doctor medical aid acceptance (catalogue + picker + search filter) | `637c473` / pending | both |
 
-Still outstanding, deliberately not done:
+Still outstanding:
 
-- **Medical aid acceptance on `doctors`** — needs a migration against the
-  shared database, so it was deferred rather than slipped in with code fixes.
 - **`FRONTEND_URL` on Render** — unset, so `QRCodeService` falls back to
   `http://localhost:3000`. The signing dialog warns about it, but the link
   cannot work until the env var is set. Set it at the same time as the deploy.
@@ -128,6 +127,42 @@ Accept an appointment, then reload the appointments page.
   was accepted.
 
 This one is the clearest to check through the UI rather than curl.
+
+### 7. Medical aid acceptance
+
+This one carries the only schema change — two new tables, created by
+`config/addDoctorMedicalAids.js` from `initDb` on boot. Watch the deploy log
+for:
+
+```
+✅ medical_aid_schemes_catalogue ready
+✅ Seeded 20 medical aid schemes
+✅ doctor_medical_aids ready
+```
+
+Then:
+
+```bash
+curl -s "$B/users/medical-aids" -H "Authorization: Bearer $T"
+```
+
+- 20 schemes, each with an `id` and `name`.
+
+Tick some schemes in Professional Details, save, reload. They should persist,
+and `GET /users/doctor/profile` should carry a `medicalAids` array.
+
+Then the part that matters for phase 1 — a patient with a scheme on file
+searching with `coveredByMyMedicalAid: true` on `POST /doctors/nearby` should
+see only doctors who accept it, and the response should say
+`medical_aid_filter_applied: true`.
+
+**Check the negative case too.** A patient whose scheme is not in the
+catalogue gets `medical_aid_filter_applied: false` and an unfiltered list. The
+patient app must not label that "covered by your plan" — worth flagging to
+Prince before he builds the screen.
+
+Nothing on the patient side changed, so existing medical aid behaviour should
+be exactly as before.
 
 ---
 

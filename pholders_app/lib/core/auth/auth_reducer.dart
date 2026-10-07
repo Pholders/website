@@ -31,8 +31,13 @@ AuthState authReducer(AuthState state, dynamic action) {
 
   if (action is LogoutAction || action is SessionExpiredAction) {
     // isRestoring stays false — startup restore has already happened, and
-    // leaving it true would trap the router on the loading screen.
-    return AuthState.initial().copyWith(isRestoring: false);
+    // leaving it true would trap the router on the loading screen. The
+    // scheme catalogue is kept: it is reference data, holds nothing about
+    // the doctor, and refetching it on every login is wasted.
+    return AuthState.initial().copyWith(
+      isRestoring: false,
+      medicalAidCatalogue: state.medicalAidCatalogue,
+    );
   }
 
   if (action is RestoreSessionAction) {
@@ -54,6 +59,10 @@ AuthState authReducer(AuthState state, dynamic action) {
 
   if (action is UpdateDoctorProfileFailedAction) {
     return state.copyWith(isLoading: false, errorMessage: action.errorMessage);
+  }
+
+  if (action is MedicalAidCatalogueLoadedAction) {
+    return state.copyWith(medicalAidCatalogue: action.schemes);
   }
 
   if (action is DoctorProfileLoadedAction) {

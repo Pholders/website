@@ -19,6 +19,7 @@ class AuthState extends Equatable {
     this.signupEmail,
     this.devOtpCode,
     this.isEmailVerified = false,
+    this.medicalAidCatalogue = const [],
   });
 
   /// The initial state before any login attempt.
@@ -27,6 +28,10 @@ class AuthState extends Equatable {
   /// The JWT token returned by the REST API on successful login.
   /// Null when the user is not authenticated.
   final String? token;
+
+  /// Schemes the doctor can choose from. Survives logout — it is reference
+  /// data, not anything belonging to the signed-in doctor.
+  final List<MedicalAidScheme> medicalAidCatalogue;
 
   /// The authenticated user's role: 'doctor' or 'pharmacy'.
   /// Null when the user is not authenticated.
@@ -77,6 +82,7 @@ class AuthState extends Equatable {
     String? signupEmail,
     String? devOtpCode,
     bool? isEmailVerified,
+    List<MedicalAidScheme>? medicalAidCatalogue,
     bool clearError = false,
     bool clearToken = false,
     bool clearSignup = false,
@@ -93,11 +99,12 @@ class AuthState extends Equatable {
       devOtpCode: clearSignup ? null : (devOtpCode ?? this.devOtpCode),
       isEmailVerified:
           clearSignup ? false : (isEmailVerified ?? this.isEmailVerified),
+      medicalAidCatalogue: medicalAidCatalogue ?? this.medicalAidCatalogue,
     );
   }
 
   @override
   List<Object?> get props =>
       [token, role, userName, doctor, isLoading, errorMessage, isRestoring,
-       signupEmail, devOtpCode, isEmailVerified];
+       signupEmail, devOtpCode, isEmailVerified, medicalAidCatalogue];
 }
