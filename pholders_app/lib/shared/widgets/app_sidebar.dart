@@ -56,20 +56,14 @@ class AppSidebar extends StatelessWidget {
       iconAsset: 'assets/patients-icon.png',
       route: AppRoutes.doctorPatients,
     ),
-    _SidebarItem(
-      label: 'New Script',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorNewPrescription,
-    ),
+    // New Script and Search Scripts are off the menu: writing a script starts
+    // from New Prescription on the Prescriptions screen, and that screen
+    // already lists and filters them. Both pages and their routes are still
+    // there — only the sidebar entries are gone.
     _SidebarItem(
       label: 'Prescriptions',
       iconAsset: 'assets/prescription-icon.png',
       route: AppRoutes.doctorPrescriptions,
-    ),
-    _SidebarItem(
-      label: 'Search Scripts',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorSearchScripts,
     ),
     _SidebarItem(
       label: 'Appointments',
