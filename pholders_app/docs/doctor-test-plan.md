@@ -8,6 +8,12 @@ verified against the live API yet: the backend fixes are merged to
 Test account: `claude.testdoc.integration@pholders.test` / `TestDoc!2026xY`
 (doctor id 3).
 
+Seeded for the cross-role stories:
+
+- Patient 16, `claude.patient.1791366420@pholders.test` / `TestPat!2026xY`
+- Appointment 30 with doctor 3 — paid (cash), accepted and completed, so it
+  satisfies the review precondition and can carry a prescription.
+
 ---
 
 ## What is integrated
@@ -129,13 +135,30 @@ Given patients have reviewed this doctor
 Then the dashboard shows the count, stars and average.
 And a doctor nobody has rated reads "No reviews yet", never 0.0 out of 5.
 
-**D16 — Found by cover**  *(needs the deploy)*
+**D16 — Found by cover**  *(needs the deploy **and** profileRoutes mounted)*
 Given a patient whose scheme is in the catalogue
 When they search with `coveredByMyMedicalAid`
 Then only doctors accepting that scheme are returned.
 And a patient whose scheme is not in the catalogue gets an unfiltered list
 with `medical_aid_filter_applied: false` — which must never be shown as
 "covered by your plan".
+
+---
+
+### Blocked beyond the deploy
+
+**A patient cannot set their medical aid at all.** `routes/profileRoutes.js`
+holds `/medical-aid`, its claims, invoices and card upload — and is never
+mounted in `server.js`. Nothing can write `medical_aid_schemes`, so the
+`coveredByMyMedicalAid` filter can never match anybody. `legalRoutes` and
+`supportRoutes` are unmounted too. Mounting them exposes a lot of surface
+that has never been served, so it is a decision rather than a fix.
+
+**Reviews had a second fault behind the first.** reviewController writes
+`review_submitted`, `review_update` and `review_delete`, none of which were
+in the audit_logs event_type CHECK constraint, so a review was inserted and
+then the audit log violated the constraint — a 500 whose message hid the
+Doctor.getById fault behind it. Fixed in `e01f02d`.
 
 ---
 
@@ -147,11 +170,11 @@ Then the doctor's row reads Dispensed, with the pharmacy and date beneath it,
 and the Dispensed filter stops being empty.
 There is deliberately no control — pharmacies dispense, doctors display.
 
-**This cannot run today.** A pharmacy cannot be activated: signup issues a
-`signup` OTP by email, `verify-otp` is the only thing that sets
-`status = 'active'`, and `resend-verification` issues an `email_verification`
-OTP that `verify-otp` rejects. A pharmacy whose signup email never arrived is
-stuck. Either fix that, or register one with a mailbox the team controls.
+Activation was blocked and is now fixed in `c4b6bef`: resend issues the OTP
+purpose the account actually needs, and verify-email activates rather than
+telling a pharmacy it can log in and then refusing it. Awaiting the deploy
+like everything else. A signup OTP still only arrives by email, so register
+the test pharmacy with a mailbox the team controls.
 
 ---
 
