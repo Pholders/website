@@ -147,12 +147,17 @@ with `medical_aid_filter_applied: false` — which must never be shown as
 
 ### Blocked beyond the deploy
 
-**A patient cannot set their medical aid at all.** `routes/profileRoutes.js`
-holds `/medical-aid`, its claims, invoices and card upload — and is never
-mounted in `server.js`. Nothing can write `medical_aid_schemes`, so the
-`coveredByMyMedicalAid` filter can never match anybody. `legalRoutes` and
-`supportRoutes` are unmounted too. Mounting them exposes a lot of surface
-that has never been served, so it is a decision rather than a fix.
+**A patient could not set their medical aid at all** — `profileRoutes`,
+`legalRoutes` and `supportRoutes` were written but never mounted, so 46
+routes 404'd and nothing could write `medical_aid_schemes`. Mounted in
+`35c65fe` at `/api/profile`, `/api/legal` and `/api/support`, the prefixes
+their controllers document.
+
+Worth a look after the deploy, since none of these routes have ever been
+served: set a patient's medical aid with `PUT /api/profile/medical-aid`, then
+run D16. The rest of that surface — 2FA, account freeze, audit export, device
+management, linked services, support tickets — is now reachable for the first
+time and has had no live exercise at all.
 
 **Reviews had a second fault behind the first.** reviewController writes
 `review_submitted`, `review_update` and `review_delete`, none of which were
