@@ -7,6 +7,7 @@ import '../../features/doctor/appointments/data/appointments_repository.dart';
 import '../../features/doctor/prescriptions/data/prescriptions_repository.dart';
 import '../../features/doctor/reviews/data/reviews_repository.dart';
 import '../../features/pharmacy/dispensing_queue/data/dispensing_repository.dart';
+import '../../features/pharmacy/orders/data/orders_repository.dart';
 import '../auth/token_storage.dart';
 import '../network/api_client.dart';
 
@@ -58,5 +59,9 @@ Future<void> setupServiceLocator() async {
 
   sl.registerLazySingleton<DispensingRepository>(
     () => DispensingRepository(sl<ApiClient>()),
+  );
+
+  sl.registerLazySingleton<OrdersRepository>(
+    () => OrdersRepository(sl<ApiClient>()),
   );
 }

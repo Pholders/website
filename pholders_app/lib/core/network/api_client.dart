@@ -63,6 +63,16 @@ class ApiClient {
     return _send(() => _dio.post<dynamic>(path, data: body));
   }
 
+  /// Sends a PATCH and returns the decoded `data` object.
+  ///
+  /// The order state machine uses PATCH for its transitions.
+  Future<Map<String, dynamic>> patch(
+    String path, {
+    Map<String, dynamic>? body,
+  }) {
+    return _send(() => _dio.patch<dynamic>(path, data: body));
+  }
+
   /// Sends a PUT and returns the decoded `data` object.
   Future<Map<String, dynamic>> put(
     String path, {

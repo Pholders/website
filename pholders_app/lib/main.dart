@@ -21,6 +21,8 @@ import 'features/doctor/reviews/data/reviews_repository.dart';
 import 'features/doctor/reviews/redux/reviews_middleware.dart';
 import 'features/pharmacy/dispensing_queue/data/dispensing_repository.dart';
 import 'features/pharmacy/dispensing_queue/redux/dispensing_middleware.dart';
+import 'features/pharmacy/orders/data/orders_repository.dart';
+import 'features/pharmacy/orders/redux/orders_middleware.dart';
 import 'shared/theme/app_theme.dart';
 
 Future<void> main() async {
@@ -54,6 +56,9 @@ Future<void> main() async {
       ),
       ...createDispensingMiddleware(
         repository: sl<DispensingRepository>(),
+      ),
+      ...createPharmacyOrdersMiddleware(
+        repository: sl<OrdersRepository>(),
       ),
     ],
   );
