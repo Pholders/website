@@ -1,7 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:redux/redux.dart';
 
-/// Dispensing Queue — Shows scripts currently being processed.
-/// Filters: Accepted, In-Progress, Ready (the active dispensing pipeline).
+import '../../../../app/app_state.dart';
+import '../data/models/claimed_prescription.dart';
+import '../redux/dispensing_actions.dart';
+
+/// Dispensing Queue — scripts patients have sent to this pharmacy.
+///
+/// A prescription arrives here when the patient claims it, and leaves when it
+/// is dispensed. Those are the only two states the backend keeps, so the
+/// filters are Awaiting and Dispensed rather than a longer pipeline.
 class DispensingQueuePage extends StatefulWidget {
   const DispensingQueuePage({super.key});
 
@@ -16,56 +25,61 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
   static const Color _textDark = Color(0xFF1F2937);
   static const Color _textMuted = Color(0xFF6B7280);
 
-  final List<String> _tabs = ['All', 'Accepted', 'In-Progress', 'Ready'];
+  final List<String> _tabs = ['All', 'Awaiting', 'Dispensed'];
 
-  final List<_QueueItem> _queue = [
-    _QueueItem(patient: 'Maria Wilson', medication: 'Panado', doctor: 'Dr Sara Smith', time: '08:20 AM', status: 'Accepted'),
-    _QueueItem(patient: 'Prince Mashumu', medication: 'Isotretinoin', doctor: 'Dr Sam Smith', time: '08:45 AM', status: 'In-Progress'),
-    _QueueItem(patient: 'John Doe', medication: 'Amoxicillin', doctor: 'Dr Sara Smith', time: '09:10 AM', status: 'In-Progress'),
-    _QueueItem(patient: 'Sarah Nkosi', medication: 'Metformin', doctor: 'Dr Sam Smith', time: '09:30 AM', status: 'Ready'),
-    _QueueItem(patient: 'David Moyo', medication: 'Atorvastatin', doctor: 'Dr Sara Smith', time: '09:55 AM', status: 'Accepted'),
-    _QueueItem(patient: 'Lisa Ndlovu', medication: 'Omeprazole', doctor: 'Dr Sam Smith', time: '10:15 AM', status: 'Accepted'),
-  ];
-
-  List<_QueueItem> get _filtered {
-    if (_selectedTab == 0) return _queue;
-    return _queue.where((q) => q.status == _tabs[_selectedTab]).toList();
+  List<_Row> _rows(_QueueViewModel vm) {
+    final awaiting = vm.awaiting.map((p) => _Row(p, dispensed: false));
+    final dispensed = vm.dispensed.map((p) => _Row(p, dispensed: true));
+    switch (_selectedTab) {
+      case 1:
+        return awaiting.toList();
+      case 2:
+        return dispensed.toList();
+      default:
+        return [...awaiting, ...dispensed];
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 16),
-            _buildTabs(),
-            const SizedBox(height: 4),
-            Expanded(child: _buildTable()),
-          ],
-        ),
-      ),
+    return StoreConnector<AppState, _QueueViewModel>(
+      converter: _QueueViewModel.fromStore,
+      onInit: (store) => store.dispatch(const LoadDispensingQueueAction()),
+      builder: (context, vm) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFE8F8F8),
+          body: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(vm),
+                const SizedBox(height: 16),
+                _buildTabs(),
+                const SizedBox(height: 4),
+                Expanded(child: _buildTable(vm)),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader() {
-    return const Row(
+  Widget _buildHeader(_QueueViewModel vm) {
+    return Row(
       children: [
-        Expanded(
+        const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Dispensing Queue', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: _textDark)),
               SizedBox(height: 4),
-              Text('Scripts currently being prepared', style: TextStyle(fontSize: 14, color: _textMuted)),
+              Text('Scripts patients have sent to this pharmacy', style: TextStyle(fontSize: 14, color: _textMuted)),
             ],
           ),
         ),
-        Text('${6} in queue', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted)),
+        Text('${vm.awaiting.length} in queue', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted)),
       ],
     );
   }
@@ -93,8 +107,8 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
     );
   }
 
-  Widget _buildTable() {
-    final data = _filtered;
+  Widget _buildTable(_QueueViewModel vm) {
+    final data = _rows(vm);
     return ClipRRect(
       borderRadius: BorderRadius.circular(25),
       child: Container(
@@ -113,19 +127,17 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
                       children: [
                         Expanded(flex: 3, child: Text('Patient', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
                         Expanded(flex: 3, child: Text('Medication', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
-                        Expanded(flex: 3, child: Text('Doctor', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
-                        Expanded(flex: 2, child: Text('Time', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
+                        // The claimed-prescriptions endpoint carries no
+                        // prescriber, and a pharmacy quotes the reference
+                        // anyway when querying a script.
+                        Expanded(flex: 3, child: Text('Reference', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
+                        Expanded(flex: 2, child: Text('Claimed', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
                         Expanded(flex: 2, child: Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
                         Expanded(flex: 2, child: Text('Action', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
                       ],
                     ),
                   ),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: data.length,
-                      itemBuilder: (_, i) => _buildRow(data[i]),
-                    ),
-                  ),
+                  Expanded(child: _buildBody(vm, data)),
                 ],
               ),
             ),
@@ -135,7 +147,48 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
     );
   }
 
-  Widget _buildRow(_QueueItem item) {
+  Widget _buildBody(_QueueViewModel vm, List<_Row> data) {
+    if (vm.isLoading && !vm.hasLoadedOnce) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: _teal),
+            SizedBox(height: 14),
+            // The API sleeps when idle, so a first load can take ~30s.
+            Text('Loading the queue...', style: TextStyle(fontSize: 13, color: _textMuted)),
+          ],
+        ),
+      );
+    }
+
+    if (vm.errorMessage != null && data.isEmpty) {
+      return _message(
+        icon: Icons.cloud_off_outlined,
+        title: vm.errorMessage!,
+        action: TextButton(onPressed: vm.onRefresh, child: const Text('Try again')),
+      );
+    }
+
+    if (data.isEmpty) {
+      return _message(
+        icon: Icons.inbox_outlined,
+        title: _selectedTab == 2
+            ? 'Nothing has been dispensed yet.'
+            : 'No scripts waiting.\nA prescription appears here once a patient sends it to you.',
+      );
+    }
+
+    return ListView.builder(
+      itemCount: data.length,
+      itemBuilder: (_, i) => _buildRow(vm, data[i]),
+    );
+  }
+
+  Widget _buildRow(_QueueViewModel vm, _Row row) {
+    final item = row.prescription;
+    final isBusy = vm.busyIds.contains(item.id);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6)))),
@@ -144,81 +197,88 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
           Expanded(flex: 3, child: Row(children: [
             Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0x33309CA3), border: Border.all(color: _teal, width: 1)), child: const Icon(Icons.person, size: 14, color: _teal)),
             const SizedBox(width: 10),
-            Expanded(child: Text(item.patient, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textDark), overflow: TextOverflow.ellipsis)),
+            Expanded(child: Text(item.patientName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textDark), overflow: TextOverflow.ellipsis)),
           ])),
-          Expanded(flex: 3, child: Text(item.medication, style: const TextStyle(fontSize: 13, color: _textDark))),
-          Expanded(flex: 3, child: Text(item.doctor, style: const TextStyle(fontSize: 13, color: _textDark))),
-          Expanded(flex: 2, child: Text(item.time, style: const TextStyle(fontSize: 13, color: _textMuted))),
-          Expanded(flex: 2, child: Row(children: [
-            _StatusDot(status: item.status),
-            const SizedBox(width: 4),
-            Tooltip(
-              message: 'Patient notified',
-              child: Container(
-                width: 16, height: 16,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x3334D399)),
-                child: const Icon(Icons.notifications_active, size: 9, color: Color(0xFF34D399)),
-              ),
-            ),
-          ])),
-          Expanded(flex: 2, child: InkWell(
-            onTap: () => _advanceStatus(item),
-            borderRadius: BorderRadius.circular(25),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(color: const Color(0xFF6DD0D8), borderRadius: BorderRadius.circular(25), border: Border.all(color: Colors.black.withValues(alpha: 0.1))),
-              child: Text(_actionLabel(item.status), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-            ),
-          )),
+          Expanded(flex: 3, child: Text(item.medicineSummary, style: const TextStyle(fontSize: 13, color: _textDark), overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 3, child: Text(item.number, style: const TextStyle(fontSize: 12, color: _textMuted), overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 2, child: Text(item.claimedTime, style: const TextStyle(fontSize: 13, color: _textMuted))),
+          Expanded(flex: 2, child: _StatusDot(status: row.dispensed ? 'Dispensed' : 'Awaiting')),
+          Expanded(
+            flex: 2,
+            child: row.dispensed
+                ? const Text('—', style: TextStyle(fontSize: 13, color: _textMuted))
+                : InkWell(
+                    onTap: isBusy ? null : () => _confirmDispense(vm, item),
+                    borderRadius: BorderRadius.circular(25),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: isBusy ? const Color(0xFFB9E4E8) : const Color(0xFF6DD0D8),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+                      ),
+                      child: Text(isBusy ? 'Working...' : 'Dispense', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                    ),
+                  ),
+          ),
         ],
       ),
     );
   }
 
-  String _actionLabel(String status) {
-    switch (status) {
-      case 'Accepted': return 'Process';
-      case 'In-Progress': return 'Mark Ready';
-      case 'Ready': return 'Dispense';
-      default: return 'View';
-    }
+  Widget _message({required IconData icon, required String title, Widget? action}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 36, color: const Color(0xFF9CA3AF)),
+            const SizedBox(height: 12),
+            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: _textMuted)),
+            if (action != null) ...[const SizedBox(height: 8), action],
+          ],
+        ),
+      ),
+    );
   }
 
-  void _advanceStatus(_QueueItem item) {
-    String? next;
-    switch (item.status) {
-      case 'Accepted': next = 'In-Progress'; break;
-      case 'In-Progress': next = 'Ready'; break;
-      case 'Ready': next = 'Dispensed'; break;
-    }
-    if (next == null) return;
-
-    showDialog(
+  /// Dispensing cannot be undone from here, so it is confirmed first and the
+  /// medicines are listed to check against what is being handed over.
+  void _confirmDispense(_QueueViewModel vm, ClaimedPrescription item) {
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Move to "$next"?', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        content: Text('${item.patient} — ${item.medication}\nPatient will be notified.', style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+        title: const Text('Dispense this prescription?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${item.patientName} — ${item.number}', style: const TextStyle(fontSize: 14, color: _textDark)),
+            const SizedBox(height: 10),
+            if (item.medicines.isEmpty)
+              const Text('No medicines are listed on this script.', style: TextStyle(fontSize: 13, color: _textMuted))
+            else
+              ...item.medicines.map(
+                (m) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('• ${m.name}${m.detail.isEmpty ? '' : ' — ${m.detail}'}', style: const TextStyle(fontSize: 13, color: _textMuted)),
+                ),
+              ),
+            const SizedBox(height: 10),
+            const Text('This marks the script as collected and cannot be undone.', style: TextStyle(fontSize: 12, color: _textMuted)),
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280)))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: _textMuted))),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              setState(() {
-                if (next == 'Dispensed') {
-                  _queue.remove(item);
-                } else {
-                  item.status = next!;
-                }
-              });
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('✓ ${item.patient} — $next'),
-                backgroundColor: _teal,
-                behavior: SnackBarBehavior.floating,
-              ));
+              vm.onDispense(item.id);
             },
             style: ElevatedButton.styleFrom(backgroundColor: _teal, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-            child: const Text('Confirm'),
+            child: const Text('Dispense'),
           ),
         ],
       ),
@@ -232,9 +292,8 @@ class _StatusDot extends StatelessWidget {
 
   Color get _color {
     switch (status) {
-      case 'Accepted': return const Color(0xFF3B82F6);
-      case 'In-Progress': return const Color(0xFFF97316);
-      case 'Ready': return const Color(0xFF34D399);
+      case 'Awaiting': return const Color(0xFFF97316);
+      case 'Dispensed': return const Color(0xFF34D399);
       default: return const Color(0xFF9CA3AF);
     }
   }
@@ -244,17 +303,51 @@ class _StatusDot extends StatelessWidget {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: _color)),
       const SizedBox(width: 6),
-      Text(status, style: TextStyle(fontSize: 12, color: _color)),
+      Flexible(child: Text(status, style: TextStyle(fontSize: 12, color: _color), overflow: TextOverflow.ellipsis)),
     ]);
   }
 }
 
-class _QueueItem {
+/// One table row: a prescription, and which side of the queue it sits on.
+class _Row {
+  const _Row(this.prescription, {required this.dispensed});
+  final ClaimedPrescription prescription;
+  final bool dispensed;
+}
 
-  _QueueItem({required this.patient, required this.medication, required this.doctor, required this.time, required this.status});
-  final String patient;
-  final String medication;
-  final String doctor;
-  final String time;
-  String status;
+class _QueueViewModel {
+  const _QueueViewModel({
+    required this.awaiting,
+    required this.dispensed,
+    required this.isLoading,
+    required this.hasLoadedOnce,
+    required this.busyIds,
+    required this.onDispense,
+    required this.onRefresh,
+    this.errorMessage,
+  });
+
+  factory _QueueViewModel.fromStore(Store<AppState> store) {
+    final state = store.state.dispensingState;
+    return _QueueViewModel(
+      awaiting: state.awaiting,
+      dispensed: state.dispensed,
+      isLoading: state.isLoading,
+      hasLoadedOnce: state.hasLoadedOnce,
+      busyIds: state.busyIds,
+      errorMessage: state.errorMessage,
+      onDispense: (id) =>
+          store.dispatch(DispensePrescriptionAction(prescriptionId: id)),
+      onRefresh: () => store.dispatch(const LoadDispensingQueueAction()),
+    );
+  }
+
+  final List<ClaimedPrescription> awaiting;
+  final List<ClaimedPrescription> dispensed;
+  final bool isLoading;
+  final bool hasLoadedOnce;
+  final Set<int> busyIds;
+  final String? errorMessage;
+  final void Function(int prescriptionId) onDispense;
+  final VoidCallback onRefresh;
 }
