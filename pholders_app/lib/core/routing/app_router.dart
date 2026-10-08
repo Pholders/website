@@ -47,6 +47,7 @@ import '../../features/doctor/settings/presentation/security_settings.dart';
 import '../../features/doctor/settings/presentation/preferences_settings.dart';
 import '../../features/doctor/settings/presentation/integrations_settings.dart';
 import '../../features/doctor/settings/presentation/login_activity.dart';
+import '../../features/public/presentation/qr_prescription_page.dart';
 import '../../features/doctor/settings/presentation/support_legal_settings.dart';
 import '../../shared/pages/linked_services_page.dart';
 
@@ -93,6 +94,15 @@ GoRouter createRouter(Store<AppState> store) {
       GoRoute(
         path: AppRoutes.landing,
         builder: (context, state) => const LandingPage(),
+      ),
+      // Public: opened by scanning a prescription QR or following its link.
+      // Outside the shell and outside the guard, which only covers /doctor
+      // and /pharmacy — whoever holds the link holds the prescription.
+      GoRoute(
+        path: AppRoutes.prescriptionQr,
+        builder: (context, state) => QrPrescriptionPage(
+          token: state.pathParameters['token'] ?? '',
+        ),
       ),
       GoRoute(
         path: AppRoutes.login,

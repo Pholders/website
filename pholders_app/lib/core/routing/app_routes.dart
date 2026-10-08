@@ -46,6 +46,11 @@ class AppRoutes {
   static const String doctorSickNotes = '/doctor/sick-notes';
   static const String doctorAppointments = '/doctor/appointments';
   static const String doctorBilling = '/doctor/billing';
+  /// Public: the page a prescription QR code opens. The backend builds the
+  /// link as `${FRONTEND_URL}/prescriptions/qr/<token>`, so this path is
+  /// fixed by what it mints.
+  static const String prescriptionQr = '/prescriptions/qr/:token';
+
   static const String doctorSettings = '/doctor/settings';
   static const String doctorSettingsProfile = '/doctor/settings/profile';
   static const String doctorSettingsProfessional =
