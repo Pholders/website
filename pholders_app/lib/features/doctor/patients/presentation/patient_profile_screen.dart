@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../data/doctor_patient.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient, PatientStatus;
 import 'package:pholders_app/features/doctor/patients/presentation/medication_screen.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescriptions_screen.dart';
@@ -271,7 +273,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Mrs ${widget.patient.name}',
+                  widget.patient.name,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -281,7 +283,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${widget.patient.name.toLowerCase().replaceAll(' ', '')}@gmail.com',
+                  widget.patient.email ?? 'No email on file',
                   style: const TextStyle(color: AppProfileColors.teal, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
