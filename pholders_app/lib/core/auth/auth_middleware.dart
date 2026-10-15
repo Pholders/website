@@ -225,6 +225,26 @@ List<Middleware<AppState>> createAuthMiddleware({
     }
   }
 
+  Future<void> uploadProfileImage(
+    Store<AppState> store,
+    UploadDoctorProfileImageAction action,
+  ) async {
+    try {
+      await doctorAuth.uploadProfileImage(
+        bytes: action.bytes,
+        filename: action.filename,
+        contentType: action.contentType,
+      );
+      // Re-read the profile rather than patching the URL in: the server owns
+      // the stored value, and this keeps one path for how a Doctor reaches
+      // the store.
+      final doctor = await doctorAuth.fetchProfile();
+      store.dispatch(DoctorProfileLoadedAction(doctor: doctor));
+    } on ApiException catch (e) {
+      store.dispatch(UploadDoctorProfileImageFailedAction(errorMessage: e.message));
+    }
+  }
+
   Future<void> handleLogout(Store<AppState> store) async {
     final wasDoctor = store.state.authState.isDoctor;
     final wasPharmacy = store.state.authState.role == AppConstants.rolePharmacy;
@@ -259,6 +279,8 @@ List<Middleware<AppState>> createAuthMiddleware({
       loadMedicalAidCatalogue(store);
     } else if (action is UpdateDoctorProfileAction) {
       updateProfile(store, action);
+    } else if (action is UploadDoctorProfileImageAction) {
+      uploadProfileImage(store, action);
     } else if (action is RequestVerificationOtpAction) {
       requestOtp(store, action);
     } else if (action is VerifyEmailRequestAction) {

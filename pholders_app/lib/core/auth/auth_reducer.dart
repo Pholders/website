@@ -61,6 +61,14 @@ AuthState authReducer(AuthState state, dynamic action) {
     return state.copyWith(isLoading: false, errorMessage: action.errorMessage);
   }
 
+  if (action is UploadDoctorProfileImageAction) {
+    return state.copyWith(isLoading: true, clearError: true);
+  }
+
+  if (action is UploadDoctorProfileImageFailedAction) {
+    return state.copyWith(isLoading: false, errorMessage: action.errorMessage);
+  }
+
   if (action is MedicalAidCatalogueLoadedAction) {
     return state.copyWith(medicalAidCatalogue: action.schemes);
   }
