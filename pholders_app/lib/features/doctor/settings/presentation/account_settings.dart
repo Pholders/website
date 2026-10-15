@@ -4,6 +4,7 @@ import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
 import '../../../../core/auth/auth_actions.dart';
+import '../../../../core/network/secure_url.dart';
 import '../../../auth/data/models/doctor.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -285,7 +286,9 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
     return StoreConnector<AppState, _ProfileViewModel>(
       converter: _ProfileViewModel.fromStore,
       builder: (context, vm) {
-        final url = vm.doctor?.profileImage;
+        // A stored URL can say http:// even though the host only serves
+        // HTTPS; the browser will not load that on an HTTPS page.
+        final url = secureImageUrl(vm.doctor?.profileImage);
         return Column(
           children: [
             ClipRRect(
