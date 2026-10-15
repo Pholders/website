@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/app_state.dart';
 import '../../core/auth/auth_actions.dart';
+import '../../core/network/secure_url.dart';
 import '../../core/routing/app_routes.dart';
 import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
@@ -263,26 +264,15 @@ class AppSidebar extends StatelessWidget {
 
           // ── Doctor profile ───────────────────────────────────────────────
           if (!isIconOnly)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  // Doctor photo
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey.shade200,
-                      image: const DecorationImage(
-                        image: AssetImage('assets/doctors.png'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  // The signed-in doctor's own photo.
+                  _SidebarPhoto(),
+                  SizedBox(height: 8),
                   // Name bar — the signed-in user, and logout.
-                  const _SignedInUserBar(),
+                  _SignedInUserBar(),
                 ],
               ),
             ),
@@ -292,6 +282,44 @@ class AppSidebar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The signed-in doctor's own photo, under the membership card.
+///
+/// Falls back to the stock illustration before a profile has loaded, when no
+/// photo has been uploaded, and when one fails to load — a broken image where
+/// a face belongs is worse than the placeholder.
+class _SidebarPhoto extends StatelessWidget {
+  const _SidebarPhoto();
+
+  static const _placeholder = 'assets/doctors.png';
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, String?>(
+      // A stored URL can say http:// even though the host only serves HTTPS.
+      converter: (store) => secureImageUrl(store.state.authState.doctor?.profileImage),
+      builder: (context, url) {
+        return Container(
+          width: 100,
+          height: 100,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey.shade200,
+          ),
+          child: url == null || url.isEmpty
+              ? Image.asset(_placeholder, fit: BoxFit.cover)
+              : Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, _, __) =>
+                      Image.asset(_placeholder, fit: BoxFit.cover),
+                ),
+        );
+      },
     );
   }
 }
