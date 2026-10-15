@@ -4,6 +4,8 @@
 /// All actions are plain Dart objects — no logic inside them.
 library;
 
+import 'dart:typed_data';
+
 import '../../features/auth/data/models/doctor.dart';
 
 /// Dispatched once at startup so the middleware can restore a stored session.
@@ -244,5 +246,28 @@ class UpdateDoctorProfileAction {
 class UpdateDoctorProfileFailedAction {
 
   const UpdateDoctorProfileFailedAction({required this.errorMessage});
+  final String errorMessage;
+}
+
+/// Replaces the signed-in doctor's profile photo.
+///
+/// The bytes are carried rather than a path because this runs on the web,
+/// where a picked file has no filesystem path to re-read.
+class UploadDoctorProfileImageAction {
+  const UploadDoctorProfileImageAction({
+    required this.bytes,
+    required this.filename,
+    required this.contentType,
+  });
+
+  final Uint8List bytes;
+  final String filename;
+
+  /// A real image type — the server refuses `application/octet-stream`.
+  final String contentType;
+}
+
+class UploadDoctorProfileImageFailedAction {
+  const UploadDoctorProfileImageFailedAction({required this.errorMessage});
   final String errorMessage;
 }

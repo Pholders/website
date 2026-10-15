@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import 'models/doctor.dart';
@@ -154,6 +158,43 @@ class DoctorAuthRepository {
         .whereType<Map<String, dynamic>>()
         .map(MedicalAidScheme.fromJson)
         .toList();
+  }
+
+  /// Replaces the signed-in doctor's profile photo.
+  ///
+  /// `PUT /users/doctor/profile/image`, multipart, field `image`. The server
+  /// accepts JPEG, PNG and WEBP up to 5MB and answers with the URL the image
+  /// is now served from; it also deletes whatever image it replaced.
+  ///
+  /// [contentType] has to be a real image type: Dio defaults a multipart part
+  /// to `application/octet-stream`, which the server rejects out of hand.
+  Future<String> uploadProfileImage({
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+  }) async {
+    final slash = contentType.indexOf('/');
+    final media = slash > 0
+        ? DioMediaType(contentType.substring(0, slash), contentType.substring(slash + 1))
+        : DioMediaType('image', 'jpeg');
+
+    final form = FormData.fromMap({
+      'image': MultipartFile.fromBytes(bytes, filename: filename, contentType: media),
+    });
+
+    final data = await _api.putMultipart(
+      '/users/doctor/profile/image',
+      formData: form,
+    );
+
+    final url = data['profile_image'];
+    if (url is! String || url.isEmpty) {
+      throw const ApiException(
+        message: 'The image was uploaded but the server did not say where it lives.',
+        kind: ApiErrorKind.badResponse,
+      );
+    }
+    return url;
   }
 
   Future<Doctor> updateProfile({

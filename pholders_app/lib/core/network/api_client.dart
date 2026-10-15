@@ -81,6 +81,20 @@ class ApiClient {
     return _send(() => _dio.put<dynamic>(path, data: body));
   }
 
+  /// Sends a PUT carrying a file, as `multipart/form-data`.
+  ///
+  /// Separate from [put] because the body is [FormData] rather than a JSON
+  /// map: Dio writes the boundary and content type itself, and the JSON
+  /// encoder would turn the bytes into nonsense. Everything else — the bearer
+  /// token, envelope unwrapping, error mapping and the 401 hook — is shared,
+  /// because it goes through the same [_send].
+  Future<Map<String, dynamic>> putMultipart(
+    String path, {
+    required FormData formData,
+  }) {
+    return _send(() => _dio.put<dynamic>(path, data: formData));
+  }
+
   Future<Map<String, dynamic>> _send(
     Future<Response<dynamic>> Function() request,
   ) async {

@@ -4,6 +4,7 @@ import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
 import '../../../../core/auth/auth_actions.dart';
+import '../../../../core/network/secure_url.dart';
 import '../../../auth/data/models/doctor.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -112,24 +113,7 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
               flex: 9,
               child: Column(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(110),
-                    child: Image.asset(
-                      'assets/doctors.png',
-                      width: 190,
-                      height: 180,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SettingsButton(
-  'Upload photo',
-  onTap: () async {
-    await FilePicker.platform.pickFiles(
-      type: FileType.image,
-    );
-  },
-),
+                  const _ProfilePhoto(),
                   const SizedBox(height: 10),
                   const Align(
                     alignment: Alignment.centerLeft,
@@ -230,6 +214,121 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
       default:
         break;
     }
+  }
+}
+
+/// The doctor's photo, and the control that replaces it.
+///
+/// The picked bytes go straight to `PUT /users/doctor/profile/image`; the
+/// server stores them, deletes whatever it replaced, and answers with the URL
+/// the image is now served from. Nothing is held on the client.
+class _ProfilePhoto extends StatefulWidget {
+  const _ProfilePhoto();
+
+  @override
+  State<_ProfilePhoto> createState() => _ProfilePhotoState();
+}
+
+class _ProfilePhotoState extends State<_ProfilePhoto> {
+  /// What the server accepts. Checked here too, so an obvious mistake is
+  /// answered immediately instead of after a round trip.
+  static const _accepted = <String, String>{
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'webp': 'image/webp',
+  };
+  static const _maxBytes = 5 * 1024 * 1024;
+
+  String? _problem;
+
+  Future<void> _pick() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: _accepted.keys.toList(),
+      // The web has no path to read back from, so ask for the bytes.
+      withData: true,
+    );
+    final file = result?.files.singleOrNull;
+    if (file == null) return;
+
+    final bytes = file.bytes;
+    if (bytes == null) {
+      setState(() => _problem = 'That file could not be read. Try another one.');
+      return;
+    }
+
+    final extension = (file.extension ?? '').toLowerCase();
+    final contentType = _accepted[extension];
+    if (contentType == null) {
+      setState(() => _problem = 'Choose a JPEG, PNG or WEBP image.');
+      return;
+    }
+    if (bytes.lengthInBytes > _maxBytes) {
+      final mb = (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1);
+      setState(() => _problem = 'That image is ${mb}MB. The limit is 5MB.');
+      return;
+    }
+
+    setState(() => _problem = null);
+    if (!mounted) return;
+    StoreProvider.of<AppState>(context).dispatch(
+      UploadDoctorProfileImageAction(
+        bytes: bytes,
+        filename: file.name,
+        contentType: contentType,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, _ProfileViewModel>(
+      converter: _ProfileViewModel.fromStore,
+      builder: (context, vm) {
+        // A stored URL can say http:// even though the host only serves
+        // HTTPS; the browser will not load that on an HTTPS page.
+        final url = secureImageUrl(vm.doctor?.profileImage);
+        return Column(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(110),
+              child: SizedBox(
+                width: 190,
+                height: 180,
+                child: url == null || url.isEmpty
+                    ? Image.asset('assets/doctors.png', fit: BoxFit.cover)
+                    : Image.network(
+                        url,
+                        fit: BoxFit.cover,
+                        // A photo that will not load should not leave a broken
+                        // box where the doctor's face belongs.
+                        errorBuilder: (context, _, __) =>
+                            Image.asset('assets/doctors.png', fit: BoxFit.cover),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SettingsButton(
+              vm.isSaving ? 'Uploading…' : 'Upload photo',
+              icon: Icons.photo_camera_outlined,
+              onTap: vm.isSaving ? null : _pick,
+            ),
+            if (_problem != null) ...[
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _problem!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111)),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
   }
 }
 
