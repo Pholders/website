@@ -15,7 +15,9 @@ class PatientListPage extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (context) => PatientProfileScreen(
-                patient: patient,
+                // The detail screens still type against the older shape, so
+                // the real record is converted at this one boundary.
+                patient: Patient.fromDoctorPatient(patient),
                 onBack: () => Navigator.pop(context),
               ),
             ),
