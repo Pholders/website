@@ -145,10 +145,50 @@ void main() {
     expect(list.single.initials, 'UP');
   });
 
+  liveShapeTest();
+
   test('initials come from the first two names', () {
     final list = patientsFromAppointments([
       appointment(id: 1, patientId: 7, name: 'thandi naledi mokoena', date: DateTime(2026, 5, 1)),
     ], now: now);
     expect(list.single.initials, 'TN');
+  });
+}
+
+/// The exact shape the live API returned on 16 October for a real booking,
+/// so a change to the response is caught here rather than on the screen.
+void liveShapeTest() {
+  test('a real booking from the live API becomes one patient row', () {
+    final live = Appointment.fromJson(const {
+      'id': 41,
+      'patientId': 18,
+      'patientName': 'Naledi Khumalo',
+      'patientEmail': 'pt.check@pholders.test',
+      'patientPhone': '0845551234',
+      'appointmentDate': '2026-10-19T00:00:00.000Z',
+      'timePeriod': 'morning',
+      'timeSlot': '10:00',
+      'reason': 'Persistent cough for two weeks',
+      'consultationFee': '450.00',
+      'status': 'pending_payment',
+      'doctorAccepted': false,
+      'action': 'Ready to create prescription',
+    });
+
+    final patients =
+        patientsFromAppointments([live], now: DateTime(2026, 10, 16));
+
+    expect(patients, hasLength(1));
+    final patient = patients.single;
+    expect(patient.id, 18);
+    expect(patient.name, 'Naledi Khumalo');
+    expect(patient.email, 'pt.check@pholders.test');
+    expect(patient.phone, '0845551234');
+    expect(patient.visits, 1);
+    expect(patient.lastReason, 'Persistent cough for two weeks');
+    expect(patient.initials, 'NK');
+    // Booked but not yet consulted, and the visit is still ahead.
+    expect(patient.hasCompletedVisit, isFalse);
+    expect(patient.nextVisit, isNotNull);
   });
 }
