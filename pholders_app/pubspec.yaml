@@ -1,10 +1,10 @@
 name: pholders_app
 description: PHolders - Healthcare platform for Doctors and Pharmacies.
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -23,6 +23,12 @@ dependencies:
 
   # HTTP client for REST API
   dio: ^5.4.0
+
+  # Realtime (Socket.IO) client for order events
+  socket_io_client: ^2.0.3
+
+  # Locale-aware formatting (currency, dates)
+  intl: ^0.19.0
 
   # Secure token storage
   flutter_secure_storage: ^9.0.0

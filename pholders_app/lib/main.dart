@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:redux/redux.dart';
 
 import 'app/app_reducer.dart';
 import 'app/app_state.dart';
+import 'core/auth/auth_persistence_middleware.dart';
 import 'core/di/service_locator.dart';
 import 'core/routing/app_router.dart';
 import 'shared/theme/app_theme.dart';
@@ -18,11 +20,17 @@ Future<void> main() async {
   // 1. Set up dependency injection
   await setupServiceLocator();
 
-  // 2. Create the Redux store with the root reducer and initial state
+  // 2. Create the Redux store with the root reducer, initial state, and middleware
   final store = Store<AppState>(
     appReducer,
     initialState: AppState.initial(),
+    middleware: [
+      authPersistenceMiddleware(sl<FlutterSecureStorage>()),
+    ],
   );
+
+  // 3. Expose the store so non-widget code (interceptors, gateways) can dispatch
+  sl.registerSingleton<Store<AppState>>(store);
 
   runApp(PholdersApp(store: store));
 }

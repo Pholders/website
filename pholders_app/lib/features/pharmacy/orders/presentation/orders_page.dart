@@ -1,56 +1,131 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
 
-/// Pharmacy Orders page matching the Figma design.
-///
-/// Shows a filterable table of orders with status tabs
-/// (All, New, Processing, Ready, Out for Delivery, Completed, Cancelled)
-/// and a "New Order" button.
-class OrdersPage extends StatefulWidget {
+import '../../../../app/app_state.dart';
+import '../../../../core/api/api_exception.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/realtime/realtime_gateway.dart';
+import '../../../../core/routing/app_routes.dart';
+import '../data/order_workflow_api.dart';
+
+class OrdersPage extends StatelessWidget {
   const OrdersPage({super.key});
 
   @override
-  State<OrdersPage> createState() => _OrdersPageState();
+  Widget build(BuildContext context) =>
+      const PharmacyOrderListPage(title: 'Orders');
 }
 
-class _OrdersPageState extends State<OrdersPage> {
-  int _selectedTab = 0;
+class PharmacyOrderListPage extends StatefulWidget {
+  final String title;
+  final String? initialStatus;
 
-  // ─── Colors ──────────────────────────────────────────────────────────────
-  static const Color _teal = Color(0xFF309CA3);
-  static const Color _textDark = Color(0xFF1F2937);
-  static const Color _textMuted = Color(0xFF6B7280);
-  static const Color _cardBorder = Color(0xFFD1F5F5);
-  static const Color _pendingOrange = Color(0xFFFBBF24);
-  static const Color _processingBlue = Color(0xFF3B82F6);
+  const PharmacyOrderListPage({
+    super.key,
+    this.title = 'Orders',
+    this.initialStatus,
+  });
 
-  final List<String> _tabs = [
-    'All',
-    'New',
-    'Processing',
-    'Ready',
-    'Out for Delivery',
-    'Completed',
-    'Cancelled',
-  ];
+  @override
+  State<PharmacyOrderListPage> createState() => _PharmacyOrderListPageState();
+}
 
-  // Mock data
-  final List<_OrderData> _orders = List.generate(
-    13,
-    (i) => _OrderData(
-      orderId: '#10234',
-      patient: 'Prince Mashumu',
-      items: '2 Items',
-      total: 'R450',
-      payment: 'Pending',
-      status: 'Processing',
-    ),
-  );
+class _PharmacyOrderListPageState extends State<PharmacyOrderListPage> {
+  static const _textDark = Color(0xFF1F2937);
+  static const _textMuted = Color(0xFF6B7280);
+  static const _pendingOrange = Color(0xFFFBBF24);
+  static const _processingBlue = Color(0xFF3B82F6);
+  static const _limit = 20;
 
-  List<_OrderData> get _filteredOrders {
-    final tab = _tabs[_selectedTab];
-    if (tab == 'All') return _orders;
-    return _orders.where((o) => o.status == tab).toList();
+  final _api = OrderWorkflowApi(sl<Dio>());
+  final _searchController = TextEditingController();
+  final _realtime = sl<RealtimeGateway>();
+  List<OrderJson> _orders = const [];
+  List<String> _statuses = const [];
+  String? _selectedStatus;
+  String? _error;
+  String? _connectedToken;
+  int _offset = 0;
+  int _total = 0;
+  bool _loading = true;
+  Timer? _searchDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedStatus = widget.initialStatus;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final token = StoreProvider.of<AppState>(context).state.authState.token;
+    if (token != null && token != _connectedToken) {
+      _connectedToken = token;
+      _realtime.connect(
+        token,
+        onOrderEvent: (_, __) => _loadOrders(),
+        onReconnect: _loadOrders,
+      );
+      _loadStatusesAndOrders();
+    }
+  }
+
+  Future<void> _loadStatusesAndOrders() async {
+    try {
+      final data = await _api.fetchStatuses();
+      final statuses = (data['statuses'] as List? ?? const [])
+          .whereType<String>()
+          .toList(growable: false);
+      if (mounted) {
+        setState(() => _statuses = statuses);
+      }
+    } catch (_) {
+      // Queue loading remains available if status metadata is unavailable.
+    }
+    await _loadOrders();
+  }
+
+  Future<void> _loadOrders({bool reset = false}) async {
+    if (reset) _offset = 0;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      final page = await _api.fetchPharmacyQueue(
+        status: _selectedStatus,
+        search: _searchController.text,
+        limit: _limit,
+        offset: _offset,
+      );
+      if (!mounted) return;
+      setState(() {
+        _orders = page.orders;
+        _offset = page.offset;
+        _total = page.total;
+      });
+    } on DioException catch (error) {
+      if (mounted) setState(() => _error = ApiException.fromDio(error).message);
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    _realtime.disconnect();
+    super.dispose();
   }
 
   @override
@@ -64,167 +139,226 @@ class _OrdersPageState extends State<OrdersPage> {
           children: [
             _buildHeader(),
             const SizedBox(height: 16),
-            _buildTabs(),
-            const SizedBox(height: 4),
+            TextField(
+              controller: _searchController,
+              onChanged: (_) {
+                _searchDebounce?.cancel();
+                _searchDebounce = Timer(
+                  const Duration(milliseconds: 350),
+                  () => _loadOrders(reset: true),
+                );
+              },
+              decoration: InputDecoration(
+                hintText: 'Search order ID, prescription number, or patient',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  tooltip: 'Clear search',
+                  onPressed: () {
+                    _searchController.clear();
+                    _loadOrders(reset: true);
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_statuses.isNotEmpty)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _statusChip(null, 'All'),
+                    for (final status in _statuses)
+                      _statusChip(status, _label(status)),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
             Expanded(child: _buildTable()),
+            _buildPagination(),
           ],
         ),
       ),
     );
   }
 
-  // ─── Header ──────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Orders',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: _textDark,
-                ),
-              ),
+              Text(widget.title,
+                  style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: _textDark)),
               SizedBox(height: 4),
-              Text(
-                'Manage customer orders and deliveries',
-                style: TextStyle(fontSize: 14, color: _textMuted),
+              Text('Manage customer orders and deliveries',
+                  style: TextStyle(fontSize: 14, color: _textMuted)),
+            ],
+          ),
+        ),
+        InkWell(
+          borderRadius: BorderRadius.circular(100),
+          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Orders are created by patients. Pharmacy-side order creation is not available.',
+              ),
+            ),
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF309CA3),
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset('assets/plus-icon.png',
+                    width: 18, height: 18, color: Colors.black),
+                const SizedBox(width: 8),
+                const Text('New Order',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _statusChip(String? status, String label) {
+    final selected = status == _selectedStatus;
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: InkWell(
+        onTap: () {
+          setState(() => _selectedStatus = status);
+          _loadOrders(reset: true);
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? Colors.black : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: selected ? Colors.white : _textMuted)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTable() {
+    if (_loading && _orders.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _loadOrders(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_orders.isEmpty) return const Center(child: Text('No orders found.'));
+    return RefreshIndicator(
+      onRefresh: () => _loadOrders(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(25),
+        child: Container(
+          margin: const EdgeInsets.only(top: 8),
+          color: Colors.white,
+          child: Row(
+            children: [
+              Container(width: 11, color: const Color(0xFF6DD0D8)),
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 14),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Color(0xFFE5E7EB)),
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          Expanded(flex: 2, child: _ColHeader('Order ID')),
+                          Expanded(flex: 3, child: _ColHeader('Patient')),
+                          Expanded(flex: 2, child: _ColHeader('Items')),
+                          Expanded(flex: 2, child: _ColHeader('Total')),
+                          Expanded(flex: 2, child: _ColHeader('Payment')),
+                          Expanded(flex: 2, child: _ColHeader('Status')),
+                          Expanded(flex: 2, child: _ColHeader('Action')),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: _orders.length,
+                        itemBuilder: (context, index) =>
+                            _buildRow(_orders[index]),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        _buildNewOrderButton(),
-      ],
-    );
-  }
-
-  Widget _buildNewOrderButton() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF309CA3),
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Image.asset('assets/plus-icon.png', width: 18, height: 18, color: Colors.black),
-          const SizedBox(width: 8),
-          const Text(
-            'New Order',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  // ─── Tabs ────────────────────────────────────────────────────────────────
-  Widget _buildTabs() {
-    return Row(
-      children: [
-        ...List.generate(_tabs.length, (index) {
-          final isActive = _selectedTab == index;
-          return Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: InkWell(
-              onTap: () => setState(() => _selectedTab = index),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isActive ? Colors.black : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _tabs[index],
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: isActive ? Colors.white : _textMuted,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-        const Spacer(),
-        Text(
-          'Total: 140',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted),
-        ),
-      ],
+  Widget _buildRow(OrderJson order) {
+    final id = _string(order, ['id', 'order_id', 'orderId']);
+    final patient = _map(order['patient']);
+    final patientName = _string(
+      patient,
+      ['name', 'full_name', 'fullName'],
+      fallback: _string(order, ['patient_name', 'patientName']),
     );
-  }
-
-  // ─── Table ───────────────────────────────────────────────────────────────
-  Widget _buildTable() {
-    final data = _filteredOrders;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(25),
-      child: Container(
-        margin: const EdgeInsets.only(top: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Row(
-          children: [
-            Container(width: 11, color: const Color(0xFF6DD0D8)),
-            Expanded(
-              child: Column(
-                children: [
-                  // Table header
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    decoration: const BoxDecoration(
-                      border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
-                    ),
-                    child: const Row(
-                      children: [
-                        Expanded(flex: 2, child: _ColHeader('Order ID')),
-                        Expanded(flex: 3, child: _ColHeader('Patient')),
-                        Expanded(flex: 2, child: _ColHeader('Items')),
-                        Expanded(flex: 2, child: _ColHeader('Total')),
-                        Expanded(flex: 2, child: _ColHeader('Payment')),
-                        Expanded(flex: 2, child: _ColHeader('Status')),
-                        Expanded(flex: 2, child: _ColHeader('Action')),
-                      ],
-                    ),
-                  ),
-                  // Table rows
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: data.length,
-                      itemBuilder: (context, index) => _buildRow(data[index]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRow(_OrderData order) {
+    final items = _list(
+        order['items'] ?? order['medicines'] ?? order['prescription_items']);
+    final status = _string(order, ['status'], fallback: 'unknown');
+    final total =
+        _string(order, ['total_amount', 'total', 'amount'], fallback: '-');
+    final payment = _label(_string(order, ['payment_type'], fallback: '-'));
     return InkWell(
-      onTap: () {
-        context.go('/pharmacy/orders/ord-${order.orderId.hashCode.abs()}');
-      },
+      onTap: id.isEmpty
+          ? null
+          : () => context.go(AppRoutes.pharmacyOrderDetail
+              .replaceFirst(':orderId', Uri.encodeComponent(id))),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         decoration: const BoxDecoration(
@@ -232,110 +366,58 @@ class _OrdersPageState extends State<OrdersPage> {
         ),
         child: Row(
           children: [
-            // Order ID
             Expanded(
-              flex: 2,
-              child: Text(
-                order.orderId,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: _textDark,
-                ),
-              ),
-            ),
-            // Patient
+                flex: 2,
+                child: Text('#$id',
+                    style: const TextStyle(fontSize: 13, color: _textDark))),
             Expanded(
-              flex: 3,
-              child: Text(
-                order.patient,
-                style: const TextStyle(fontSize: 13, color: _textDark),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            // Items
+                flex: 3,
+                child: Text(patientName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, color: _textDark))),
             Expanded(
-              flex: 2,
-              child: Text(
-                order.items,
-                style: TextStyle(fontSize: 13, color: _textMuted),
-              ),
-            ),
-            // Total
+                flex: 2,
+                child: Text('${items.length} Items',
+                    style: const TextStyle(fontSize: 13, color: _textMuted))),
             Expanded(
-              flex: 2,
-              child: Text(
-                order.total,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: _textDark,
-                ),
-              ),
-            ),
-            // Payment
+                flex: 2,
+                child: Text(total,
+                    style: const TextStyle(fontSize: 13, color: _textDark))),
+            Expanded(
+                flex: 2,
+                child: Text(payment,
+                    style: const TextStyle(fontSize: 12, color: _textMuted))),
             Expanded(
               flex: 2,
               child: Row(
                 children: [
                   Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _pendingOrange,
-                    ),
-                  ),
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: status == 'pending'
+                              ? _pendingOrange
+                              : _processingBlue)),
                   const SizedBox(width: 6),
-                  Text(
-                    order.payment,
-                    style: TextStyle(fontSize: 12, color: _textMuted),
-                  ),
+                  Flexible(
+                      child: Text(_label(status),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12, color: _textMuted))),
                 ],
               ),
             ),
-            // Status
-            Expanded(
-              flex: 2,
-              child: Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _processingBlue,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    order.status,
-                    style: TextStyle(fontSize: 12, color: _textMuted),
-                  ),
-                ],
-              ),
-            ),
-            // Action
             Expanded(
               flex: 2,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6DD0D8),
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-                  ),
-                  child: const Text(
-                    'Mark Ready',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                child: TextButton(
+                  onPressed: id.isEmpty
+                      ? null
+                      : () => context.go(AppRoutes.pharmacyOrderDetail
+                          .replaceFirst(':orderId', Uri.encodeComponent(id))),
+                  child: const Text('View'),
                 ),
               ),
             ),
@@ -344,43 +426,76 @@ class _OrdersPageState extends State<OrdersPage> {
       ),
     );
   }
-}
 
-// ─── Helper widgets ──────────────────────────────────────────────────────────
-
-class _ColHeader extends StatelessWidget {
-  final String text;
-  const _ColHeader(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF6B7280),
-      ),
+  Widget _buildPagination() {
+    final nextOffset = _offset + _limit;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text('Total: $_total'),
+        const SizedBox(width: 12),
+        IconButton(
+          tooltip: 'Previous page',
+          onPressed: _offset == 0 || _loading
+              ? null
+              : () {
+                  _offset = (_offset - _limit).clamp(0, _total).toInt();
+                  _loadOrders();
+                },
+          icon: const Icon(Icons.chevron_left),
+        ),
+        Text('${_total == 0 ? 0 : _offset + 1}-'
+            '${(_offset + _orders.length).clamp(0, _total)}'),
+        IconButton(
+          tooltip: 'Next page',
+          onPressed: nextOffset >= _total || _loading
+              ? null
+              : () {
+                  _offset = nextOffset;
+                  _loadOrders();
+                },
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
     );
   }
 }
 
-// ─── Data model ──────────────────────────────────────────────────────────────
+class _ColHeader extends StatelessWidget {
+  const _ColHeader(this.text);
 
-class _OrderData {
-  final String orderId;
-  final String patient;
-  final String items;
-  final String total;
-  final String payment;
-  final String status;
+  final String text;
 
-  const _OrderData({
-    required this.orderId,
-    required this.patient,
-    required this.items,
-    required this.total,
-    required this.payment,
-    required this.status,
-  });
+  @override
+  Widget build(BuildContext context) => Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF6B7280),
+        ),
+      );
 }
+
+String _label(String value) => value
+    .split('_')
+    .map((part) =>
+        part.isEmpty ? part : '${part[0].toUpperCase()}${part.substring(1)}')
+    .join(' ');
+
+String _string(Map<String, dynamic> value, List<String> keys,
+    {String fallback = ''}) {
+  for (final key in keys) {
+    final item = value[key];
+    if (item != null && '$item'.isNotEmpty) return '$item';
+  }
+  return fallback;
+}
+
+Map<String, dynamic> _map(dynamic value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return value.map((key, value) => MapEntry('$key', value));
+  return <String, dynamic>{};
+}
+
+List<dynamic> _list(dynamic value) => value is List ? value : const [];

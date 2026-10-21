@@ -5,6 +5,32 @@ import '../../../../shared/theme/app_theme.dart';
 /// Asset path for the PHolders logo image.
 const String kPholdersIconPath = 'assets/PHolders-icon.png';
 
+class AuthFieldPair extends StatelessWidget {
+  const AuthFieldPair({super.key, required this.first, required this.second});
+
+  final Widget first;
+  final Widget second;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 420) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [first, const SizedBox(height: 8), second],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: first),
+              const SizedBox(width: 10),
+              Expanded(child: second),
+            ],
+          );
+        },
+      );
+}
+
 /// Reusable text field for all auth screens.
 class AuthTextField extends StatelessWidget {
   final TextEditingController controller;

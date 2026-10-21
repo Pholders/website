@@ -1,13 +1,15 @@
 ﻿import 'package:flutter/material.dart';
 
-/// DispensingQueuePage — placeholder until Figma design is implemented.
+import '../../orders/presentation/orders_page.dart';
+
 class DispensingQueuePage extends StatelessWidget {
   const DispensingQueuePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(child: Text('DispensingQueuePage')),
+    return const PharmacyOrderListPage(
+      title: 'Dispensing Queue',
+      initialStatus: 'preparing',
     );
   }
 }
