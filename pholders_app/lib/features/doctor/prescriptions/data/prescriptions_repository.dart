@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../../core/auth/token_storage.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
@@ -180,6 +182,21 @@ class PrescriptionsRepository {
     await _api.post(
       '/prescriptions/$prescriptionId/revoke',
       body: {'revokeReason': reason},
+    );
+  }
+
+  /// The prescription as a PDF — the same document the patient receives.
+  ///
+  /// Both endpoints were patient-only until the prescriber was added to them,
+  /// and each still refuses a prescription written by a different doctor.
+  ///
+  /// [forPrinting] asks for the inline copy. The bytes are identical; the
+  /// difference is the disposition header, which only matters to a browser
+  /// following the URL directly. Using both keeps the doctor on the same two
+  /// endpoints the patient exercises, so neither can rot unnoticed.
+  Future<Uint8List> fetchPdf(int prescriptionId, {bool forPrinting = false}) {
+    return _api.getBytes(
+      '/prescriptions/$prescriptionId/${forPrinting ? 'print' : 'download'}',
     );
   }
 }

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:pholders_app/core/routing/app_routes.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
 import 'package:pholders_app/features/doctor/patients/presentation/medication_details_screen.dart';
 
@@ -263,11 +266,6 @@ class _MedicationScreenState extends State<MedicationScreen> {
                       fontWeight: FontWeight.w700,
                       color: MedColors.textPrimary)),
               const Spacer(),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Edit',
-                    style: TextStyle(color: MedColors.teal, fontSize: 13)),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -336,7 +334,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
               const SizedBox(width: 12),
               // Prescribe button
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => context.go(AppRoutes.doctorPrescriptions),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: MedColors.teal,
                   shape: RoundedRectangleBorder(

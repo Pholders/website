@@ -1,8 +1,11 @@
-﻿import 'package:flutter/material.dart';
-import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patient_scope.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescriptions_screen.dart';
 
 /// PatientPrescriptionsPage — displays the prescriptions for a patient.
+///
+/// The patient comes from the id in the address, resolved against the
+/// doctor's own list. It used to be a fixed, invented record.
 class PatientPrescriptionsPage extends StatelessWidget {
 
   const PatientPrescriptionsPage({super.key, required this.patientId});
@@ -10,20 +13,11 @@ class PatientPrescriptionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock patient data for demonstration
-    final mockPatient = Patient(
-      id: patientId,
-      name: 'Maria Wilson',
-      condition: 'Acne Treatment',
-      lastActivity: '2 hours ago',
-      status: PatientStatus.stable,
-      priority: 'Low',
-      category: PatientCategory.outpatient,
-      avatarInitials: 'MW',
-    );
-
     return Scaffold(
-      body: PrescriptionsScreen(patient: mockPatient),
+      body: PatientScope(
+        patientId: patientId,
+        builder: (context, patient) => PrescriptionsScreen(patient: patient),
+      ),
     );
   }
 }

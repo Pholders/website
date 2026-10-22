@@ -1403,7 +1403,9 @@ class _UploadDocumentDialogState extends State<_UploadDocumentDialog> {
                             fontSize: 13,
                             color: DocColors.textSecondary)),
                     TextButton(
-                      onPressed: () {},
+                      // Documents belong to the patient's own record, which
+                      // a doctor reads in a later phase and never writes.
+                      onPressed: null,
                       style: TextButton.styleFrom(
                           foregroundColor: DocColors.teal,
                           padding: EdgeInsets.zero,

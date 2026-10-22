@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../../shared/constants/app_constants.dart';
@@ -93,6 +96,51 @@ class ApiClient {
     required FormData formData,
   }) {
     return _send(() => _dio.put<dynamic>(path, data: formData));
+  }
+
+  /// Fetches a binary document — a PDF, rather than the usual JSON envelope.
+  ///
+  /// Separate from [get] because [_send] expects `{ success, message, data }`
+  /// and would reject a stream of bytes as an unexpected response. Only the
+  /// success path differs: a refusal still arrives as the usual envelope, so
+  /// it is decoded here and raised as an [ApiException] like any other call.
+  Future<Uint8List> getBytes(String path) async {
+    final Response<List<int>> response;
+    try {
+      response = await _dio.get<List<int>>(
+        path,
+        options: Options(responseType: ResponseType.bytes),
+      );
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+
+    final status = response.statusCode ?? 0;
+    final bytes = response.data;
+
+    if (status >= 200 && status < 300 && bytes != null && bytes.isNotEmpty) {
+      return Uint8List.fromList(bytes);
+    }
+
+    if (status == 401 || status == 403) onUnauthorized?.call();
+
+    var message = 'The document could not be downloaded.';
+    if (bytes != null && bytes.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(utf8.decode(bytes));
+        if (decoded is Map && decoded['message'] is String) {
+          message = decoded['message'] as String;
+        }
+      } on FormatException {
+        // Not JSON either — keep the generic message.
+      }
+    }
+
+    throw ApiException(
+      message: message,
+      statusCode: response.statusCode,
+      kind: ApiErrorKind.http,
+    );
   }
 
   Future<Map<String, dynamic>> _send(

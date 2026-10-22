@@ -124,9 +124,9 @@ class _LoginActivityPageState extends State<LoginActivityPage> {
                     const Text('This login was from a new location.'),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: null,
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE2F6F7), foregroundColor: Colors.black, elevation: 0),
-                      child: const Text('Secure Account'),
+                      child: const Text('Secure Account — not in this phase'),
                     ),
                   ],
                 ),
@@ -134,9 +134,9 @@ class _LoginActivityPageState extends State<LoginActivityPage> {
             ),
                         const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {},
+              onPressed: null,
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE2F6F7), foregroundColor: Colors.black, elevation: 0, minimumSize: const Size.fromHeight(44)),
-              child: const Text('Report Suspicious Activity'),
+              child: const Text('Report Suspicious Activity — not in this phase'),
             ),
           ],
         ),

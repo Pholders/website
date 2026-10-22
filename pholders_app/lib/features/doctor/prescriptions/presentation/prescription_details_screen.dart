@@ -1,8 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
+
+import 'package:pholders_app/core/di/service_locator.dart';
+import 'package:pholders_app/core/network/api_exception.dart';
+import 'package:pholders_app/features/doctor/prescriptions/data/prescriptions_repository.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescriptions_screen.dart';
 
 // ─── Prescription Details Screen ──────────────────────────────────────────────
-class PrescriptionDetailsScreen extends StatelessWidget {
+class PrescriptionDetailsScreen extends StatefulWidget {
 
   const PrescriptionDetailsScreen({
     super.key,
@@ -11,6 +18,57 @@ class PrescriptionDetailsScreen extends StatelessWidget {
   });
   final Prescription prescription;
   final VoidCallback onBack;
+
+  @override
+  State<PrescriptionDetailsScreen> createState() =>
+      _PrescriptionDetailsScreenState();
+}
+
+class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
+  /// True while a PDF is being fetched, so the two buttons can be held shut
+  /// rather than firing a second request on an impatient double-click.
+  bool _busy = false;
+
+  Prescription get prescription => widget.prescription;
+
+  /// The sample rows carry ids like `RX001`, so there is nothing on the
+  /// server to fetch. Null disables the buttons instead of failing on tap.
+  int? get _serverId => int.tryParse(prescription.id);
+
+  Future<void> _withPdf(
+    Future<void> Function(Uint8List bytes) use, {
+    required bool forPrinting,
+  }) async {
+    final id = _serverId;
+    if (id == null || _busy) return;
+
+    setState(() => _busy = true);
+    try {
+      final bytes = await sl<PrescriptionsRepository>()
+          .fetchPdf(id, forPrinting: forPrinting);
+      if (!mounted) return;
+      await use(bytes);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _share() => _withPdf(
+        forPrinting: false,
+        (bytes) => Printing.sharePdf(
+          bytes: bytes,
+          filename: 'prescription-${prescription.dosage}.pdf',
+        ),
+      );
+
+  Future<void> _print() => _withPdf(
+        forPrinting: true,
+        (bytes) => Printing.layoutPdf(onLayout: (_) async => bytes),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +89,7 @@ class PrescriptionDetailsScreen extends StatelessWidget {
               children: [
                 // Back arrow + title
                 GestureDetector(
-                  onTap: onBack,
+                  onTap: widget.onBack,
                   child: Container(
                     width: 30,
                     height: 30,
@@ -74,24 +132,24 @@ class PrescriptionDetailsScreen extends StatelessWidget {
 
                 const SizedBox(width: 12),
 
-                // Share icon
+                // Share and print both fetch the real document from the
+                // server — the same PDF the patient gets, not a copy drawn
+                // here, so the two can never disagree.
+                //
+                // There is no edit button. A signed prescription may not be
+                // altered; revoking it is the only way back, and that lives
+                // on the row's menu in the list.
                 _IconBtn(
                   icon: Icons.share_outlined,
-                  onTap: () {},
+                  tooltip: 'Download a copy',
+                  onTap: _serverId == null || _busy ? null : _share,
                 ),
                 const SizedBox(width: 8),
 
-                // Print icon
                 _IconBtn(
                   icon: Icons.print_outlined,
-                  onTap: () {},
-                ),
-                const SizedBox(width: 8),
-
-                // Edit icon
-                _IconBtn(
-                  icon: Icons.edit_outlined,
-                  onTap: () {},
+                  tooltip: 'Print',
+                  onTap: _serverId == null || _busy ? null : _print,
                 ),
               ],
             ),
@@ -211,9 +269,13 @@ class _PxDetailField extends StatelessWidget {
 
 // ─── Icon button ──────────────────────────────────────────────────────────────
 class _IconBtn extends StatefulWidget {
-  const _IconBtn({required this.icon, required this.onTap});
+  const _IconBtn({required this.icon, required this.onTap, this.tooltip});
   final IconData icon;
-  final VoidCallback onTap;
+
+  /// Null disables the button: it greys out and stops responding, rather
+  /// than looking live and doing nothing when tapped.
+  final Future<void> Function()? onTap;
+  final String? tooltip;
 
   @override
   State<_IconBtn> createState() => _IconBtnState();
@@ -224,12 +286,14 @@ class _IconBtnState extends State<_IconBtn> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
+    final enabled = widget.onTap != null;
+
+    final button = MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = enabled),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: widget.onTap,
+        onTap: enabled ? () => widget.onTap!() : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.all(7),
@@ -240,9 +304,21 @@ class _IconBtnState extends State<_IconBtn> {
           ),
           child: Icon(widget.icon,
               size: 16,
-              color: _hovered ? RxColors.teal : RxColors.textSecondary),
+              color: !enabled
+                  ? RxColors.textSecondary.withValues(alpha: 0.4)
+                  : _hovered
+                      ? RxColors.teal
+                      : RxColors.textSecondary),
         ),
       ),
+    );
+
+    if (widget.tooltip == null) return button;
+    return Tooltip(
+      message: enabled
+          ? widget.tooltip!
+          : '${widget.tooltip!} — not available for sample data',
+      child: button,
     );
   }
 }

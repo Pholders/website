@@ -93,11 +93,6 @@ class _MedicationDetailsScreenState extends State<MedicationDetailsScreen> {
           const SizedBox(width: 16),
           Stack(
             children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none_rounded,
-                    color: MedColors.textPrimary),
-                onPressed: () {},
-              ),
               Positioned(
                 top: 8,
                 right: 8,
@@ -193,20 +188,6 @@ class _MedicationDetailsScreenState extends State<MedicationDetailsScreen> {
                 ),
               ),
               const Spacer(),
-              // Edit icon
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: MedColors.bg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: MedColors.border),
-                  ),
-                  child: const Icon(Icons.edit_outlined,
-                      size: 16, color: MedColors.textSecondary),
-                ),
-              ),
             ],
           ),
 

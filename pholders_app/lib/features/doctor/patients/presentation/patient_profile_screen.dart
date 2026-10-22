@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/doctor_patient.dart';
-import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient, PatientStatus;
+import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
 import 'package:pholders_app/features/doctor/patients/presentation/medication_screen.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescriptions_screen.dart';
 import 'package:pholders_app/features/doctor/appointments/presentation/appointments_screen.dart';
@@ -25,7 +24,6 @@ class PatientProfileScreen extends StatefulWidget {
 
 class _PatientProfileScreenState extends State<PatientProfileScreen> {
   int _tabIndex = 0;
-  int _visitTabIndex = 0;
 
   static const _profileTabs = [
     'Patient profile',
@@ -34,37 +32,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     'Appointments',
     'Documents',
     'History',
-  ];
-
-  static const _visitTabs = [
-    'Future visits (2)',
-    'Past Visits (15)',
-    'Planned Treatments',
-  ];
-
-  // Mock vitals
-  final _vitals = [
-    const _Vital(icon: Icons.favorite_rounded, label: 'Blood Pressure', value: '180/20', unit: 'mmHg', status: 'In the norm', isNorm: true),
-    const _Vital(icon: Icons.monitor_heart_outlined, label: 'Heart Rate', value: '120', unit: 'bpm', status: 'Above the norm', isNorm: false),
-    const _Vital(icon: Icons.accessibility_new_rounded, label: 'Body Weight', value: '74', unit: 'kg', status: 'In the norm', isNorm: true),
-    const _Vital(icon: Icons.water_drop_outlined, label: 'Cholesterol', value: '130', unit: 'mg/dl', status: 'Above the norm', isNorm: false),
-  ];
-
-  // Mock visits
-  final _visits = [
-    const _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
-    const _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
-    const _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
-  ];
-
-  // Mock timeline
-  final _timeline = [
-    const _TimelineItem(date: 'Dec 2024', label: 'Pre-diabetic'),
-    const _TimelineItem(date: 'Jan 2024', label: 'Type 2'),
-    const _TimelineItem(date: 'Dec 2023', label: 'Chronic thyroid disorder'),
-    const _TimelineItem(date: 'Jul 2022', label: 'Angina Pectoris'),
-    const _TimelineItem(date: 'Jun 2021', label: 'Chronic Flu'),
-    const _TimelineItem(date: 'Jun 2021', label: 'Chronic Flu'),
   ];
 
   @override
@@ -96,13 +63,17 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     const SizedBox(height: 20),
                     _buildProfileCard(),
                     const SizedBox(height: 20),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 3, child: _buildVisitsCard()),
-                        const SizedBox(width: 20),
-                        Expanded(flex: 2, child: _buildTimelineCard()),
-                      ],
+                    // A scheduled-visits list and a diagnosis timeline used to
+                    // sit here, both filled with invented entries — three
+                    // identical diabetes appointments, and a history running
+                    // back to 2021 — shown against whichever real patient had
+                    // been opened.
+                    const _RecordNotice(
+                      title: 'Past and planned visits',
+                      detail: 'Their bookings with you are under the '
+                          'Appointments tab. A full visit history across every '
+                          'doctor is part of the patient’s own record, which is '
+                          'a later phase.',
                     ),
                   ] else if (_tabIndex == 1) ...[
                     const SizedBox(height: 20),
@@ -189,10 +160,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           const SizedBox(width: 16),
           Stack(
             children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none_rounded, color: AppProfileColors.textPrimary),
-                onPressed: () {},
-              ),
               Positioned(
                 top: 8, right: 8,
                 child: Container(
@@ -287,15 +254,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   style: const TextStyle(color: AppProfileColors.teal, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
-                OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppProfileColors.teal),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-                  ),
-                  child: const Text('Edit', style: TextStyle(color: AppProfileColors.teal)),
-                ),
               ],
             ),
           ),
@@ -307,40 +265,36 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Info grid
-                const Wrap(
+                // Only what a booking actually tells us. Gender, age, blood
+                // group, department and a bed number used to be printed here
+                // as fixed values, so every real patient read as a 32-year-old
+                // woman in Cardiology on bed #00125.
+                Wrap(
                   spacing: 32,
                   runSpacing: 16,
-                  children: const [
-                    _InfoField(label: 'Gender', value: 'Female'),
-                    _InfoField(label: 'Age', value: '32'),
-                    _InfoField(label: 'Blood', value: '0'),
-                    _InfoField(label: 'Status', value: 'Active'),
-                    _InfoField(label: 'Department', value: 'Cardiology'),
-                    _InfoField(label: 'Registered Date', value: '15/02/2026'),
-                    _InfoField(label: 'Appointment', value: '32'),
-                    _InfoField(label: 'Bed No.', value: '#00125'),
+                  children: [
+                    _InfoField(
+                        label: 'Email',
+                        value: widget.patient.email ?? 'Not given'),
+                    _InfoField(
+                        label: 'Phone',
+                        value: widget.patient.phone ?? 'Not given'),
+                    _InfoField(
+                        label: 'Last visit',
+                        value: widget.patient.lastActivity),
+                    _InfoField(
+                        label: 'Reason', value: widget.patient.condition),
                   ],
                 ),
 
                 const SizedBox(height: 20),
 
-                // Vitals label
-                const Text('Vitals',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppProfileColors.textSecondary)),
-                const SizedBox(height: 12),
-
-                // Vitals row
-                Row(
-                  children: _vitals.map((v) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _VitalCard(vital: v),
-                    ),
-                  )).toList(),
+                const _RecordNotice(
+                  title: 'No clinical record here',
+                  detail: 'Vitals, blood group and ward details belong to the '
+                      'patient’s own record, which they share with a doctor in '
+                      'a later phase. This page shows what their bookings with '
+                      'you say, and nothing more.',
                 ),
               ],
             ),
@@ -350,118 +304,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 
-  // ── Visits card ──────────────────────────────────────────────────────────────
-  Widget _buildVisitsCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppProfileColors.border),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Visit tabs
-          Row(
-            children: List.generate(_visitTabs.length, (i) {
-              final active = i == _visitTabIndex;
-              return GestureDetector(
-                onTap: () => setState(() => _visitTabIndex = i),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: active ? AppProfileColors.teal : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    _visitTabs[i],
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                      color: active ? AppProfileColors.teal : AppProfileColors.textSecondary,
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
 
-          const SizedBox(height: 16),
-
-          // Date header
-          const Row(
-            children: [
-              Icon(Icons.calendar_today_outlined,
-                  size: 14, color: AppProfileColors.textSecondary),
-              SizedBox(width: 6),
-              Text('Today, 21 Feb 2026',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: AppProfileColors.textSecondary,
-                      fontWeight: FontWeight.w500)),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Visit rows
-          ..._visits.asMap().entries.map((e) {
-            final isFirst = e.key == 0;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _VisitRow(visit: e.value, highlight: isFirst),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  // ── Timeline card ────────────────────────────────────────────────────────────
-  Widget _buildTimelineCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppProfileColors.border),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.calendar_month_outlined,
-                  size: 18, color: AppProfileColors.teal),
-              const SizedBox(width: 8),
-              const Text('Timeline',
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppProfileColors.textPrimary)),
-              const Spacer(),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Edit',
-                    style: TextStyle(color: AppProfileColors.teal, fontSize: 12)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ..._timeline.asMap().entries.map((e) {
-            final isLast = e.key == _timeline.length - 1;
-            return _TimelineRow(item: e.value, isLast: isLast);
-          }),
-        ],
-      ),
-    );
-  }
 }
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
@@ -481,44 +324,6 @@ class AppProfileColors {
 }
 
 // ─── Data classes ─────────────────────────────────────────────────────────────
-class _Vital {
-  const _Vital({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.unit,
-    required this.status,
-    required this.isNorm,
-  });
-  final IconData icon;
-  final String label;
-  final String value;
-  final String unit;
-  final String status;
-  final bool isNorm;
-}
-
-class _Visit {
-  const _Visit({
-    required this.time,
-    required this.date,
-    required this.service,
-    required this.doctor,
-    required this.status,
-  });
-  final String time;
-  final String date;
-  final String service;
-  final String doctor;
-  final String status;
-}
-
-class _TimelineItem {
-  const _TimelineItem({required this.date, required this.label});
-  final String date;
-  final String label;
-}
-
 // ─── Info field ───────────────────────────────────────────────────────────────
 class _InfoField extends StatelessWidget {
   const _InfoField({required this.label, required this.value});
@@ -549,230 +354,54 @@ class _InfoField extends StatelessWidget {
   }
 }
 
-// ─── Vital card ───────────────────────────────────────────────────────────────
-class _VitalCard extends StatelessWidget {
-  const _VitalCard({required this.vital});
-  final _Vital vital;
+// ─── Record notice ────────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    final color = vital.isNorm ? AppProfileColors.normGreen : AppProfileColors.aboveRed;
-    final bg = vital.isNorm ? AppProfileColors.normBg : AppProfileColors.aboveBg;
+/// Stands where invented clinical data used to be drawn, and says plainly
+/// that there is nothing here rather than filling the space with a number.
+class _RecordNotice extends StatelessWidget {
+  const _RecordNotice({required this.title, required this.detail});
 
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(vital.icon, size: 18, color: color),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(vital.label,
-              style: const TextStyle(
-                  fontSize: 10,
-                  color: AppProfileColors.textSecondary)),
-          const SizedBox(height: 2),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                    text: vital.value,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppProfileColors.textPrimary)),
-                TextSpan(
-                    text: ' ${vital.unit}',
-                    style: const TextStyle(
-                        fontSize: 10,
-                        color: AppProfileColors.textSecondary)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(vital.status,
-              style: TextStyle(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Visit row ────────────────────────────────────────────────────────────────
-class _VisitRow extends StatelessWidget {
-  const _VisitRow({required this.visit, required this.highlight});
-  final _Visit visit;
-  final bool highlight;
+  final String title;
+  final String detail;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: highlight
-            ? AppProfileColors.purple.withValues(alpha: 0.08)
-            : AppProfileColors.bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(
-            color: highlight ? AppProfileColors.purple : AppProfileColors.teal,
-            width: 3,
-          ),
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppProfileColors.border),
       ),
-      child: Row(
-        children: [
-          // Time + date
-          SizedBox(
-            width: 90,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(visit.time,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppProfileColors.textPrimary)),
-                Text(visit.date,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppProfileColors.textSecondary)),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Service
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Service',
-                    style: TextStyle(
-                        fontSize: 10, color: AppProfileColors.textSecondary)),
-                Text(visit.service,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppProfileColors.textPrimary)),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Doctor
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Doctor',
-                    style: TextStyle(
-                        fontSize: 10, color: AppProfileColors.textSecondary)),
-                Text(visit.doctor,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppProfileColors.textPrimary)),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Status badge
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Status',
-                  style: TextStyle(
-                      fontSize: 10, color: AppProfileColors.textSecondary)),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppProfileColors.scheduledBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text('Scheduled',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppProfileColors.teal)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Timeline row ─────────────────────────────────────────────────────────────
-class _TimelineRow extends StatelessWidget {
-  const _TimelineRow({required this.item, required this.isLast});
-  final _TimelineItem item;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date label
-          SizedBox(
-            width: 60,
-            child: Text(item.date,
-                style: const TextStyle(
-                    fontSize: 10, color: AppProfileColors.textSecondary)),
-          ),
-
-          // Dot + line
-          Column(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                margin: const EdgeInsets.only(top: 2),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppProfileColors.teal,
-                ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: AppProfileColors.border,
+          const Icon(Icons.info_outline_rounded,
+              size: 18, color: AppProfileColors.textSecondary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppProfileColors.textPrimary,
                   ),
                 ),
-            ],
-          ),
-
-          const SizedBox(width: 12),
-
-          // Label
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(item.label,
+                const SizedBox(height: 5),
+                Text(
+                  detail,
                   style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppProfileColors.textPrimary)),
+                    fontSize: 13,
+                    height: 1.5,
+                    color: AppProfileColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

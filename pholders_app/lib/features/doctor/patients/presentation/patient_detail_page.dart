@@ -1,8 +1,11 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patient_profile_screen.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patient_scope.dart';
 
 /// PatientDetailPage — displays the detailed profile of a patient.
+///
+/// The patient comes from the id in the address, resolved against the
+/// doctor's own list. It used to be a fixed, invented record.
 class PatientDetailPage extends StatelessWidget {
 
   const PatientDetailPage({super.key, required this.patientId});
@@ -10,22 +13,13 @@ class PatientDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock patient data for demonstration
-    final mockPatient = Patient(
-      id: patientId,
-      name: 'Maria Wilson',
-      condition: 'Acne Treatment',
-      lastActivity: '2 hours ago',
-      status: PatientStatus.stable,
-      priority: 'Low',
-      category: PatientCategory.outpatient,
-      avatarInitials: 'MW',
-    );
-
     return Scaffold(
-      body: PatientProfileScreen(
-        patient: mockPatient,
-        onBack: () => Navigator.pop(context),
+      body: PatientScope(
+        patientId: patientId,
+        builder: (context, patient) => PatientProfileScreen(
+          patient: patient,
+          onBack: () => Navigator.pop(context),
+        ),
       ),
     );
   }
