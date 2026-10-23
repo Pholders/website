@@ -429,13 +429,24 @@ class _ProfileFormState extends State<_ProfileForm> {
         ),
         const SizedBox(height: 26),
         const SettingsSectionTitle('Additional Information', muted: true),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
+        // There are no columns behind any of these four on the doctor record,
+        // so nothing typed here could ever be saved. They are shown disabled
+        // rather than accepting a value and losing it on the next reload,
+        // which is the harder fault to spot.
+        const Text(
+          'Not stored yet — these four are part of the design but have '
+          'nowhere to be saved, so they are switched off for now.',
+          style: TextStyle(fontSize: 13, color: Color(0xFF8A9E9E)),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             const Expanded(
                 child: _Field(
                     label: 'Date of Birth',
                     hint: 'Select Date',
+                    readOnly: true,
                     icon: Icons.calendar_month)),
             const SizedBox(width: 22),
             Expanded(
@@ -448,6 +459,7 @@ class _ProfileFormState extends State<_ProfileForm> {
                     ),
                   const SizedBox(height: 5),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: const Color(0xFFEAF8F8),
@@ -464,7 +476,7 @@ class _ProfileFormState extends State<_ProfileForm> {
                     DropdownMenuItem(value: 'other', child: Text('Other'),),
                     DropdownMenuItem(value: 'prefer_not_to_say', child: Text('Prefer not to say'),),
                   ],
-                  onChanged: (value) {},
+                  onChanged: null,
               ),
             ],
           ),
@@ -483,6 +495,7 @@ class _ProfileFormState extends State<_ProfileForm> {
       ),
       const SizedBox(height: 5),
       DropdownButtonFormField<String>(
+        isExpanded: true,
         decoration: InputDecoration(
           filled: true,
           fillColor: const Color(0xFFEAF8F8),
@@ -501,13 +514,13 @@ class _ProfileFormState extends State<_ProfileForm> {
           DropdownMenuItem(value: 'Eswatini',child: Text('Eswatini'),),
           DropdownMenuItem(value: 'Other',child: Text('Other'),),
         ],
-        onChanged: (value) {},
+        onChanged: null,
       ),
     ],
   ),
 ),
             const SizedBox(width: 22),
-            Expanded(child: _Field(label: 'ID Number', hint: '0123456789012', inputFormatters: [FilteringTextInputFormatter.digitsOnly,LengthLimitingTextInputFormatter(13)],)),
+            Expanded(child: _Field(label: 'ID Number', hint: '0123456789012', readOnly: true, inputFormatters: [FilteringTextInputFormatter.digitsOnly,LengthLimitingTextInputFormatter(13)],)),
           ],
         ),
         const SizedBox(height: 26),
@@ -790,6 +803,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
       ),
       const SizedBox(height: 5),
       DropdownButtonFormField<String>(
+        isExpanded: true,
         decoration: InputDecoration(
           filled: true,
           fillColor: const Color(0xFFEAF8F8),
@@ -860,6 +874,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
       ),
       const SizedBox(height: 5),
       DropdownButtonFormField<String>(
+        isExpanded: true,
         decoration: InputDecoration(
           filled: true,
           fillColor: const Color(0xFFEAF8F8),

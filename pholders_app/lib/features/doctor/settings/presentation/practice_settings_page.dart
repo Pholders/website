@@ -62,6 +62,7 @@ class PracticeSettingsPage extends StatelessWidget {
                                   ),
                                   SizedBox(height: 5),
                                   DropdownButtonFormField<String>(
+                                    isExpanded: true,
                                     decoration: InputDecoration(
                                       filled: true,
                                       fillColor: Color(0xFFEAF8F8),

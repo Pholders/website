@@ -767,6 +767,7 @@ class _PrescriptionFormDialogState
                       color: RxColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<RxStatus>(
+                isExpanded: true,
                 initialValue: _status,
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.symmetric(

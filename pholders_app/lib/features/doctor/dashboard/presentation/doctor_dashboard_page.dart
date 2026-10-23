@@ -1385,6 +1385,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: type,
                   decoration: const InputDecoration(labelText: 'Care type'),
                   items: const [
@@ -1405,6 +1406,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                       setDialogState(() => type = value ?? type),
                 ),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: priority,
                   decoration: const InputDecoration(labelText: 'Priority'),
                   items: const [
@@ -1475,6 +1477,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                   decoration: const InputDecoration(labelText: 'Condition'),
                 ),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: priority,
                   decoration: const InputDecoration(labelText: 'Priority'),
                   items: const [
