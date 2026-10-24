@@ -48,7 +48,39 @@
   <script type="module">
     let loader = null;
 
-    window.pholdersRemoveBackground = async function (bytes, mimeType) {
+    /**
+     * Shrinks a photo so its longest edge is at most maxEdge, and returns it
+     * as a JPEG blob. Smaller photos are handed back untouched.
+     *
+     * A cut-out comes back as PNG, which is lossless, so a phone photo of
+     * 2688x4032 turns into twenty or thirty megabytes - past the server's
+     * 5MB limit, even though the JPEG that went in was only a few. Shrinking
+     * first keeps the result small and makes the model faster, and a profile
+     * picture is displayed a couple of hundred pixels wide anyway.
+     *
+     * createImageBitmap is told to honour EXIF orientation, or photos taken
+     * in portrait arrive on their side.
+     */
+    async function shrink(blob, maxEdge) {
+      const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+      const longest = Math.max(bitmap.width, bitmap.height);
+      if (longest <= maxEdge) return blob;
+
+      const scale = maxEdge / longest;
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+
+      return new Promise((resolve) =>
+        canvas.toBlob((out) => resolve(out || blob), 'image/jpeg', 0.92));
+    }
+
+    window.pholdersRemoveBackground = async function (bytes, mimeType, maxEdge) {
       if (!loader) {
         // Pinned, and to a version the registry actually lists — an exact
         // version that does not exist fails silently here, and the photo
@@ -56,10 +88,11 @@
         loader = import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
       }
       const { removeBackground } = await loader;
-      const blob = await removeBackground(
-        new Blob([bytes], { type: mimeType }),
-        { model: 'small', output: { format: 'image/png' } },
-      );
+      const source = await shrink(new Blob([bytes], { type: mimeType }), maxEdge || 1024);
+      const blob = await removeBackground(source, {
+        model: 'small',
+        output: { format: 'image/png' },
+      });
       return new Uint8Array(await blob.arrayBuffer());
     };
   </script>

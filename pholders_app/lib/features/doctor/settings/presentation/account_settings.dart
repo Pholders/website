@@ -290,6 +290,14 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
     // with its background rather than the upload failing.
     final cutout = await removeBackground(bytes, contentType);
     if (!mounted) return;
+
+    // The check above was on the photo as picked. A cut-out is a PNG, which
+    // is lossless and can be far larger than the JPEG it came from, so the
+    // result has to be measured again before it is sent. Without this an
+    // 11-megapixel photo sailed past the check and was refused by the server.
+    final tooBig = cutout != null && cutout.lengthInBytes > _maxBytes;
+    final send = (cutout == null || tooBig) ? bytes : cutout;
+
     setState(() {
       _removingBackground = false;
       // Said out loud. Falling back silently is what made a photo that kept
@@ -298,14 +306,18 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
       _note = cutout == null
           ? 'The background could not be removed, so the photo went up as it '
               'is. It usually means the tool could not be reached.'
-          : null;
+          : tooBig
+              ? 'The photo kept its background: without it the file came out '
+                  'too large to store. A smaller photo will work.'
+              : null;
     });
 
+    final asCutout = identical(send, cutout);
     StoreProvider.of<AppState>(context).dispatch(
       UploadDoctorProfileImageAction(
-        bytes: cutout ?? bytes,
-        filename: cutout == null ? file.name : '${_stem(file.name)}.png',
-        contentType: cutout == null ? contentType : 'image/png',
+        bytes: send,
+        filename: asCutout ? '${_stem(file.name)}.png' : file.name,
+        contentType: asCutout ? 'image/png' : contentType,
       ),
     );
   }

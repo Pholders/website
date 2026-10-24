@@ -14,7 +14,11 @@ external JSFunction? get _remover;
 /// blocked, the tab ran out of memory, the photo defeated the model. The
 /// caller uploads the original in each case, so none of them costs the
 /// doctor their upload.
-Future<Uint8List?> removeBackground(Uint8List bytes, String mimeType) async {
+Future<Uint8List?> removeBackground(
+  Uint8List bytes,
+  String mimeType, {
+  required int maxEdge,
+}) async {
   final remover = _remover;
   if (remover == null) return null;
 
@@ -23,6 +27,7 @@ Future<Uint8List?> removeBackground(Uint8List bytes, String mimeType) async {
       null,
       bytes.toJS,
       mimeType.toJS,
+      maxEdge.toJS,
     ) as JSPromise<JSUint8Array>?;
     if (result == null) return null;
 
