@@ -50,7 +50,10 @@
 
     window.pholdersRemoveBackground = async function (bytes, mimeType) {
       if (!loader) {
-        loader = import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm');
+        // Pinned, and to a version the registry actually lists — an exact
+        // version that does not exist fails silently here, and the photo
+        // just keeps its background with nothing to say why.
+        loader = import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
       }
       const { removeBackground } = await loader;
       const blob = await removeBackground(

@@ -248,6 +248,10 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
   /// CDN — so this is worth saying rather than appearing to have hung.
   bool _removingBackground = false;
 
+  /// Something that went differently but is not an error, such as the photo
+  /// going up with its background still on.
+  String? _note;
+
   Future<void> _pick() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -286,7 +290,16 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
     // with its background rather than the upload failing.
     final cutout = await removeBackground(bytes, contentType);
     if (!mounted) return;
-    setState(() => _removingBackground = false);
+    setState(() {
+      _removingBackground = false;
+      // Said out loud. Falling back silently is what made a photo that kept
+      // its background indistinguishable from the feature not being built,
+      // and left no way to tell which without reading the code.
+      _note = cutout == null
+          ? 'The background could not be removed, so the photo went up as it '
+              'is. It usually means the tool could not be reached.'
+          : null;
+    });
 
     StoreProvider.of<AppState>(context).dispatch(
       UploadDoctorProfileImageAction(
@@ -359,6 +372,17 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
                   _problem!,
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111)),
+                ),
+              ),
+            ],
+            if (_note != null && _problem == null) ...[
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _note!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF9A7B22)),
                 ),
               ),
             ],
