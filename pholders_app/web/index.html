@@ -31,6 +31,35 @@
 
   <title>pholders_app</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Cutting the background out of a doctor's profile photo.
+
+    This runs in the browser, on the machine of whoever is uploading, because
+    it cannot run on our server: one removal peaks at about 1GB of memory and
+    the API container has 512MB, so the process was being killed part-way
+    through every upload and taking the whole API down with it.
+
+    Loaded as a module and resolved lazily, so a slow or unreachable CDN
+    delays nothing at startup. The Flutter side treats a missing or failed
+    remover as "upload the photo as it is", so the worst case is a photo with
+    its background still on rather than a failed upload.
+  -->
+  <script type="module">
+    let loader = null;
+
+    window.pholdersRemoveBackground = async function (bytes, mimeType) {
+      if (!loader) {
+        loader = import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm');
+      }
+      const { removeBackground } = await loader;
+      const blob = await removeBackground(
+        new Blob([bytes], { type: mimeType }),
+        { model: 'small', output: { format: 'image/png' } },
+      );
+      return new Uint8Array(await blob.arrayBuffer());
+    };
+  </script>
 </head>
 <body>
   <!--

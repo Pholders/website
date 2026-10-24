@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
 import '../../../../shared/widgets/settings_sidebar.dart';
+import '../../../../core/images/background_removal.dart';
 import '../../../../core/routing/app_routes.dart';
 
 class AccountSettings extends StatelessWidget {
@@ -242,6 +243,11 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
 
   String? _problem;
 
+  /// True while the background is being cut out in the browser. The first
+  /// photo of a session is slow — the library and its model come down from a
+  /// CDN — so this is worth saying rather than appearing to have hung.
+  bool _removingBackground = false;
+
   Future<void> _pick() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -270,15 +276,30 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
       return;
     }
 
-    setState(() => _problem = null);
+    setState(() {
+      _problem = null;
+      _removingBackground = true;
+    });
+
+    // Done here rather than on the server, which has nowhere near the memory
+    // for it. A null answer means it could not be done — the photo goes up
+    // with its background rather than the upload failing.
+    final cutout = await removeBackground(bytes, contentType);
     if (!mounted) return;
+    setState(() => _removingBackground = false);
+
     StoreProvider.of<AppState>(context).dispatch(
       UploadDoctorProfileImageAction(
-        bytes: bytes,
-        filename: file.name,
-        contentType: contentType,
+        bytes: cutout ?? bytes,
+        filename: cutout == null ? file.name : '${_stem(file.name)}.png',
+        contentType: cutout == null ? contentType : 'image/png',
       ),
     );
+  }
+
+  static String _stem(String filename) {
+    final dot = filename.lastIndexOf('.');
+    return dot <= 0 ? filename : filename.substring(0, dot);
   }
 
   @override
@@ -310,10 +331,26 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
             ),
             const SizedBox(height: 12),
             SettingsButton(
-              vm.isSaving ? 'Uploading…' : 'Upload photo',
+              _removingBackground
+                  ? 'Removing background…'
+                  : vm.isSaving
+                      ? 'Uploading…'
+                      : 'Upload photo',
               icon: Icons.photo_camera_outlined,
-              onTap: vm.isSaving ? null : _pick,
+              onTap: _removingBackground || vm.isSaving ? null : _pick,
             ),
+            if (_removingBackground) ...[
+              const SizedBox(height: 6),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'The first photo takes a while — the tool downloads itself '
+                  'once, then it is quick.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8A9E9E)),
+                ),
+              ),
+            ],
             if (_problem != null) ...[
               const SizedBox(height: 6),
               Padding(
