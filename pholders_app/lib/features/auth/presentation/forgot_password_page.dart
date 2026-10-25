@@ -36,8 +36,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         child: Column(
           children: [
             // ── Navbar ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.only(top: 20, left: 60, right: 60),
+            const Padding(
+              padding: EdgeInsets.only(top: 20, left: 60, right: 60),
               child: PublicNavbar(
                 actionLabel: 'Login',
                 actionRoute: AppRoutes.login,

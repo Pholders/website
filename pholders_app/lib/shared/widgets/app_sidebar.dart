@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/app_state.dart';
+import '../../core/auth/auth_actions.dart';
+import '../../core/network/secure_url.dart';
 import '../../core/routing/app_routes.dart';
 import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
 
 /// A navigation item definition for the sidebar.
 class _SidebarItem {
-  final String label;
-  final String iconAsset;
-  final String route;
 
   const _SidebarItem({
     required this.label,
     required this.iconAsset,
     required this.route,
   });
+  final String label;
+  final String iconAsset;
+  final String route;
 }
 
 /// The left-side navigation panel matching the Figma design.
@@ -23,10 +27,6 @@ class _SidebarItem {
 /// Light mint background, PHolders logo at top, nav items with teal active
 /// indicator, "Activate Membership" card, and doctor profile at bottom.
 class AppSidebar extends StatelessWidget {
-  final String role;
-  final bool collapsed;
-  /// When true the sidebar shows icons only (used on settings pages to save space).
-  final bool settingsMode;
 
   const AppSidebar({
     super.key,
@@ -34,6 +34,10 @@ class AppSidebar extends StatelessWidget {
     required this.collapsed,
     this.settingsMode = false,
   });
+  final String role;
+  final bool collapsed;
+  /// When true the sidebar shows icons only (used on settings pages to save space).
+  final bool settingsMode;
 
   // ─── Colors matching Figma ───────────────────────────────────────────────
   static const Color _bgColor = Color(0xFFFFFFFF);
@@ -53,20 +57,14 @@ class AppSidebar extends StatelessWidget {
       iconAsset: 'assets/patients-icon.png',
       route: AppRoutes.doctorPatients,
     ),
-    _SidebarItem(
-      label: 'New Script',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorNewPrescription,
-    ),
+    // New Script and Search Scripts are off the menu: writing a script starts
+    // from New Prescription on the Prescriptions screen, and that screen
+    // already lists and filters them. Both pages and their routes are still
+    // there — only the sidebar entries are gone.
     _SidebarItem(
       label: 'Prescriptions',
       iconAsset: 'assets/prescription-icon.png',
       route: AppRoutes.doctorPrescriptions,
-    ),
-    _SidebarItem(
-      label: 'Search Scripts',
-      iconAsset: 'assets/prescription-icon.png',
-      route: AppRoutes.doctorSearchScripts,
     ),
     _SidebarItem(
       label: 'Appointments',
@@ -266,50 +264,15 @@ class AppSidebar extends StatelessWidget {
 
           // ── Doctor profile ───────────────────────────────────────────────
           if (!isIconOnly)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  // Doctor photo
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey.shade200,
-                      image: const DecorationImage(
-                        image: AssetImage('assets/doctors.png'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Name bar
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9F5F5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Dr. Sam Smith',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _textColor,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.logout_outlined,
-                            size: 18, color: _textColor),
-                      ],
-                    ),
-                  ),
+                  // The signed-in doctor's own photo.
+                  _SidebarPhoto(),
+                  SizedBox(height: 8),
+                  // Name bar — the signed-in user, and logout.
+                  _SignedInUserBar(),
                 ],
               ),
             ),
@@ -323,17 +286,55 @@ class AppSidebar extends StatelessWidget {
   }
 }
 
+/// The signed-in doctor's own photo, under the membership card.
+///
+/// Falls back to the stock illustration before a profile has loaded, when no
+/// photo has been uploaded, and when one fails to load — a broken image where
+/// a face belongs is worse than the placeholder.
+class _SidebarPhoto extends StatelessWidget {
+  const _SidebarPhoto();
+
+  static const _placeholder = 'assets/doctors.png';
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, String?>(
+      // A stored URL can say http:// even though the host only serves HTTPS.
+      converter: (store) => secureImageUrl(store.state.authState.doctor?.profileImage),
+      builder: (context, url) {
+        return Container(
+          width: 100,
+          height: 100,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey.shade200,
+          ),
+          child: url == null || url.isEmpty
+              ? Image.asset(_placeholder, fit: BoxFit.cover)
+              : Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, _, __) =>
+                      Image.asset(_placeholder, fit: BoxFit.cover),
+                ),
+        );
+      },
+    );
+  }
+}
+
 /// A single sidebar navigation tile matching Figma design.
 class _SidebarTile extends StatelessWidget {
-  final _SidebarItem item;
-  final bool isActive;
-  final bool collapsed;
 
   const _SidebarTile({
     required this.item,
     required this.isActive,
     required this.collapsed,
   });
+  final _SidebarItem item;
+  final bool isActive;
+  final bool collapsed;
 
   @override
   Widget build(BuildContext context) {
@@ -403,6 +404,67 @@ class _SidebarTile extends StatelessWidget {
                 ),
         ),
       ),
+    );
+  }
+}
+
+/// Shows who is signed in and logs them out when tapped.
+///
+/// Reads the name from the Redux store rather than hardcoding it, so it
+/// reflects the account that actually authenticated.
+class _SignedInUserBar extends StatelessWidget {
+  const _SignedInUserBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, String>(
+      converter: (store) {
+        final auth = store.state.authState;
+        // Prefer the full profile once it has loaded — it carries the proper
+        // first/last name rather than whatever the login summary returned.
+        if (auth.isDoctor) {
+          return auth.doctor?.displayName ??
+              (auth.userName == null ? 'Doctor' : 'Dr ${auth.userName}');
+        }
+        return auth.userName ?? 'Account';
+      },
+      builder: (context, displayName) {
+        return Material(
+          color: const Color(0xFFD9F5F5),
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              // The router guard sends the user to /login once the store
+              // reports no session, so no explicit navigation is needed.
+              StoreProvider.of<AppState>(context).dispatch(const LogoutAction());
+            },
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      displayName,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppSidebar._textColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.logout_outlined,
+                      size: 18, color: AppSidebar._textColor),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

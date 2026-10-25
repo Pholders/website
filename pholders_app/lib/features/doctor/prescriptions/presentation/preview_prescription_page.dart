@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../core/routing/app_routes.dart';
 
 /// Preview Prescription page — Doctor reviews script before publishing.
 class PreviewPrescriptionPage extends StatelessWidget {
@@ -8,8 +6,8 @@ class PreviewPrescriptionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
+    return const Scaffold(
+      backgroundColor: Color(0xFFE8F8F8),
       body: Center(
         child: Text('Preview Prescription — To be implemented'),
       ),

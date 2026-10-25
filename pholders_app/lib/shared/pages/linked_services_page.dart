@@ -82,12 +82,12 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(25),
-          border: Border(
+          border: const Border(
             bottom: BorderSide(width: 10, color: _tealBorder),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 24,
               offset: const Offset(0, 14),
             ),
@@ -106,18 +106,18 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
                   const Divider(height: 1, color: Color(0xFFE5E7EB)),
                   const SizedBox(height: 14),
                   _buildSection('Medical Aid', [
-                    _ServiceItem(
+                    const _ServiceItem(
                       id: 'discovery',
                       name: 'Discovery',
                       subtitle: 'Last synced 2 hours ago',
                       iconAsset: 'assets/discovery-icon.png',
                     ),
-                    _ServiceItem(
+                    const _ServiceItem(
                       id: 'bonitas',
                       name: 'Bonitas',
                       iconAsset: 'assets/bonitas-icon.png',
                     ),
-                    _ServiceItem(
+                    const _ServiceItem(
                       id: 'momentum',
                       name: 'Momentum',
                       iconAsset: 'assets/momentum-icon.png',
@@ -125,13 +125,13 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
                   ]),
                   const SizedBox(height: 12),
                   _buildSection('Calendar', [
-                    _ServiceItem(
+                    const _ServiceItem(
                       id: 'google_calendar',
                       name: 'Google Calendar',
                       subtitle: 'Last synced 5 minutes ago',
                       iconAsset: 'assets/google-calender-icon.png',
                     ),
-                    _ServiceItem(
+                    const _ServiceItem(
                       id: 'outlook_calendar',
                       name: 'Outlook Calendar',
                       subtitle: 'Last synced 5 minutes ago',
@@ -140,7 +140,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
                   ]),
                   const SizedBox(height: 12),
                   _buildSection('Payments', [
-                    _ServiceItem(
+                    const _ServiceItem(
                       id: 'paypal',
                       name: 'PayPal',
                       subtitle: 'Last synced 4 hours ago',
@@ -149,7 +149,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
                   ]),
                   const SizedBox(height: 12),
                   _buildSection('Communication', [
-                    _ServiceItem(
+                    const _ServiceItem(
                       id: 'whatsapp',
                       name: 'WhatsApp Notifications',
                       iconAsset: 'assets/whatsapp-icon.png',
@@ -358,10 +358,6 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
 // ─── Data model ──────────────────────────────────────────────────────────────
 
 class _ServiceItem {
-  final String id;
-  final String name;
-  final String? subtitle;
-  final String iconAsset;
 
   const _ServiceItem({
     required this.id,
@@ -369,4 +365,8 @@ class _ServiceItem {
     this.subtitle,
     required this.iconAsset,
   });
+  final String id;
+  final String name;
+  final String? subtitle;
+  final String iconAsset;
 }

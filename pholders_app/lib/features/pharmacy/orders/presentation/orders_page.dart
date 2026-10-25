@@ -1,474 +1,399 @@
-import 'dart:async';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
+import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
-import '../../../../core/api/api_exception.dart';
-import '../../../../core/di/service_locator.dart';
-import '../../../../core/realtime/realtime_gateway.dart';
-import '../../../../core/routing/app_routes.dart';
-import '../data/order_workflow_api.dart';
+import '../data/models/pharmacy_order.dart';
+import '../redux/orders_actions.dart';
 
-class OrdersPage extends StatelessWidget {
+class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      const PharmacyOrderListPage(title: 'Orders');
+  State<OrdersPage> createState() => _OrdersPageState();
 }
 
-class PharmacyOrderListPage extends StatefulWidget {
-  final String title;
-  final String? initialStatus;
+class _OrdersPageState extends State<OrdersPage> {
+  static const Color _teal = Color(0xFF309CA3);
+  static const Color _textDark = Color(0xFF1F2937);
+  static const Color _textMuted = Color(0xFF6B7280);
+  static const Color _pendingOrange = Color(0xFFFBBF24);
+  static const Color _processingBlue = Color(0xFF3B82F6);
+  static const Color _readyGreen = Color(0xFF34D399);
+  static const Color _doneGrey = Color(0xFF9CA3AF);
 
-  const PharmacyOrderListPage({
-    super.key,
-    this.title = 'Orders',
-    this.initialStatus,
-  });
+  static const List<String> _tabs = [
+    'All',
+    'New',
+    'Processing',
+    'Ready',
+    'Completed',
+    'Cancelled',
+  ];
 
-  @override
-  State<PharmacyOrderListPage> createState() => _PharmacyOrderListPageState();
-}
+  static const Map<String, List<OrderStatus>> _tabStatuses = {
+    'New': [OrderStatus.pending],
+    'Processing': [
+      OrderStatus.accepted,
+      OrderStatus.awaitingClaim,
+      OrderStatus.claimApproved,
+      OrderStatus.claimRejected,
+      OrderStatus.preparing,
+    ],
+    'Ready': [OrderStatus.ready],
+    'Completed': [OrderStatus.pickedUp],
+    'Cancelled': [OrderStatus.cancelled, OrderStatus.rejected],
+  };
 
-class _PharmacyOrderListPageState extends State<PharmacyOrderListPage> {
-  static const _textDark = Color(0xFF1F2937);
-  static const _textMuted = Color(0xFF6B7280);
-  static const _pendingOrange = Color(0xFFFBBF24);
-  static const _processingBlue = Color(0xFF3B82F6);
-  static const _limit = 20;
+  int _selectedTab = 0;
 
-  final _api = OrderWorkflowApi(sl<Dio>());
-  final _searchController = TextEditingController();
-  final _realtime = sl<RealtimeGateway>();
-  List<OrderJson> _orders = const [];
-  List<String> _statuses = const [];
-  String? _selectedStatus;
-  String? _error;
-  String? _connectedToken;
-  int _offset = 0;
-  int _total = 0;
-  bool _loading = true;
-  Timer? _searchDebounce;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedStatus = widget.initialStatus;
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final token = StoreProvider.of<AppState>(context).state.authState.token;
-    if (token != null && token != _connectedToken) {
-      _connectedToken = token;
-      _realtime.connect(
-        token,
-        onOrderEvent: (_, __) => _loadOrders(),
-        onReconnect: _loadOrders,
-      );
-      _loadStatusesAndOrders();
-    }
-  }
-
-  Future<void> _loadStatusesAndOrders() async {
-    try {
-      final data = await _api.fetchStatuses();
-      final statuses = (data['statuses'] as List? ?? const [])
-          .whereType<String>()
-          .toList(growable: false);
-      if (mounted) {
-        setState(() => _statuses = statuses);
-      }
-    } catch (_) {
-      // Queue loading remains available if status metadata is unavailable.
-    }
-    await _loadOrders();
-  }
-
-  Future<void> _loadOrders({bool reset = false}) async {
-    if (reset) _offset = 0;
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-    try {
-      final page = await _api.fetchPharmacyQueue(
-        status: _selectedStatus,
-        search: _searchController.text,
-        limit: _limit,
-        offset: _offset,
-      );
-      if (!mounted) return;
-      setState(() {
-        _orders = page.orders;
-        _offset = page.offset;
-        _total = page.total;
-      });
-    } on DioException catch (error) {
-      if (mounted) setState(() => _error = ApiException.fromDio(error).message);
-    } catch (error) {
-      if (mounted) setState(() => _error = '$error');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchDebounce?.cancel();
-    _searchController.dispose();
-    _realtime.disconnect();
-    super.dispose();
+  List<PharmacyOrder> _filtered(List<PharmacyOrder> orders) {
+    final tab = _tabs[_selectedTab];
+    if (tab == 'All') return orders;
+    final statuses = _tabStatuses[tab] ?? const [];
+    return orders.where((order) => statuses.contains(order.status)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _searchController,
-              onChanged: (_) {
-                _searchDebounce?.cancel();
-                _searchDebounce = Timer(
-                  const Duration(milliseconds: 350),
-                  () => _loadOrders(reset: true),
-                );
-              },
-              decoration: InputDecoration(
-                hintText: 'Search order ID, prescription number, or patient',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  tooltip: 'Clear search',
-                  onPressed: () {
-                    _searchController.clear();
-                    _loadOrders(reset: true);
-                  },
-                  icon: const Icon(Icons.close),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (_statuses.isNotEmpty)
+    return StoreConnector<AppState, _OrdersViewModel>(
+      converter: _OrdersViewModel.fromStore,
+      onInit: (store) => store.dispatch(const LoadPharmacyOrdersAction()),
+      builder: (context, vm) => Scaffold(
+        backgroundColor: const Color(0xFFE8F8F8),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(vm),
+              const SizedBox(height: 16),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _statusChip(null, 'All'),
-                    for (final status in _statuses)
-                      _statusChip(status, _label(status)),
-                  ],
-                ),
+                child: _buildTabs(),
               ),
-            const SizedBox(height: 8),
-            Expanded(child: _buildTable()),
-            _buildPagination(),
-          ],
+              const SizedBox(height: 4),
+              Expanded(child: _buildTable(vm)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(_OrdersViewModel vm) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
+        const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.title,
-                  style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: _textDark)),
+              Text(
+                'Orders',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: _textDark,
+                ),
+              ),
               SizedBox(height: 4),
-              Text('Manage customer orders and deliveries',
-                  style: TextStyle(fontSize: 14, color: _textMuted)),
+              Text(
+                'Orders patients have placed with this pharmacy',
+                style: TextStyle(fontSize: 14, color: _textMuted),
+              ),
             ],
           ),
         ),
-        InkWell(
-          borderRadius: BorderRadius.circular(100),
-          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Orders are created by patients. Pharmacy-side order creation is not available.',
-              ),
-            ),
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF309CA3),
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset('assets/plus-icon.png',
-                    width: 18, height: 18, color: Colors.black),
-                const SizedBox(width: 8),
-                const Text('New Order',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white)),
-              ],
-            ),
-          ),
+        const SizedBox(width: 12),
+        TextButton.icon(
+          onPressed: vm.isLoading ? null : vm.onRefresh,
+          icon: const Icon(Icons.refresh),
+          label: Text(vm.isLoading ? 'Refreshing' : 'Refresh'),
         ),
       ],
     );
   }
 
-  Widget _statusChip(String? status, String label) {
-    final selected = status == _selectedStatus;
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: InkWell(
-        onTap: () {
-          setState(() => _selectedStatus = status);
-          _loadOrders(reset: true);
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? Colors.black : Colors.transparent,
+  Widget _buildTabs() {
+    return Row(
+      children: List.generate(_tabs.length, (index) {
+        final active = _selectedTab == index;
+        return Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: InkWell(
+            onTap: () => setState(() => _selectedTab = index),
             borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(label,
-              style: TextStyle(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              decoration: BoxDecoration(
+                color: active ? Colors.black : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                _tabs[index],
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: selected ? Colors.white : _textMuted)),
-        ),
-      ),
+                  color: active ? Colors.white : _textMuted,
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 
-  Widget _buildTable() {
-    if (_loading && _orders.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+  Widget _buildTable(_OrdersViewModel vm) {
+    final orders = _filtered(vm.orders);
+    if (vm.isLoading && !vm.hasLoadedOnce) {
+      return const Center(child: CircularProgressIndicator(color: _teal));
     }
-    if (_error != null) {
+    if (vm.errorMessage != null && orders.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, textAlign: TextAlign.center),
+            Text(vm.errorMessage!, textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () => _loadOrders(),
+            TextButton.icon(
+              onPressed: vm.onRefresh,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: const Text('Try again'),
             ),
           ],
         ),
       );
     }
-    if (_orders.isEmpty) return const Center(child: Text('No orders found.'));
-    return RefreshIndicator(
-      onRefresh: () => _loadOrders(),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
-        child: Container(
-          margin: const EdgeInsets.only(top: 8),
-          color: Colors.white,
-          child: Row(
-            children: [
-              Container(width: 11, color: const Color(0xFF6DD0D8)),
-              Expanded(
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 14),
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: Color(0xFFE5E7EB)),
-                        ),
-                      ),
-                      child: const Row(
-                        children: [
-                          Expanded(flex: 2, child: _ColHeader('Order ID')),
-                          Expanded(flex: 3, child: _ColHeader('Patient')),
-                          Expanded(flex: 2, child: _ColHeader('Items')),
-                          Expanded(flex: 2, child: _ColHeader('Total')),
-                          Expanded(flex: 2, child: _ColHeader('Payment')),
-                          Expanded(flex: 2, child: _ColHeader('Status')),
-                          Expanded(flex: 2, child: _ColHeader('Action')),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: _orders.length,
-                        itemBuilder: (context, index) =>
-                            _buildRow(_orders[index]),
-                      ),
-                    ),
-                  ],
+    if (orders.isEmpty) {
+      return Center(
+        child: Text(
+          _selectedTab == 0
+              ? 'No orders yet. An order appears here when a patient asks you to fill a script.'
+              : 'Nothing in ${_tabs[_selectedTab]}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: _textMuted),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        color: Colors.white,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: 1120,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 2, child: _ColumnHeader('Order ID')),
+                      Expanded(flex: 3, child: _ColumnHeader('Patient')),
+                      Expanded(flex: 3, child: _ColumnHeader('Script')),
+                      Expanded(flex: 2, child: _ColumnHeader('Total')),
+                      Expanded(flex: 2, child: _ColumnHeader('Payment')),
+                      Expanded(flex: 2, child: _ColumnHeader('Status')),
+                      Expanded(flex: 3, child: _ColumnHeader('Action')),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: orders.length,
+                    itemBuilder: (context, index) => _buildRow(vm, orders[index]),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildRow(OrderJson order) {
-    final id = _string(order, ['id', 'order_id', 'orderId']);
-    final patient = _map(order['patient']);
-    final patientName = _string(
-      patient,
-      ['name', 'full_name', 'fullName'],
-      fallback: _string(order, ['patient_name', 'patientName']),
-    );
-    final items = _list(
-        order['items'] ?? order['medicines'] ?? order['prescription_items']);
-    final status = _string(order, ['status'], fallback: 'unknown');
-    final total =
-        _string(order, ['total_amount', 'total', 'amount'], fallback: '-');
-    final payment = _label(_string(order, ['payment_type'], fallback: '-'));
+  Widget _buildRow(_OrdersViewModel vm, PharmacyOrder order) {
+    final busy = vm.busyIds.contains(order.id);
     return InkWell(
-      onTap: id.isEmpty
-          ? null
-          : () => context.go(AppRoutes.pharmacyOrderDetail
-              .replaceFirst(':orderId', Uri.encodeComponent(id))),
+      onTap: () => context.go('/pharmacy/orders/${order.id}'),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
         ),
         child: Row(
           children: [
+            Expanded(flex: 2, child: Text(order.reference)),
             Expanded(
-                flex: 2,
-                child: Text('#$id',
-                    style: const TextStyle(fontSize: 13, color: _textDark))),
+              flex: 3,
+              child: Text(
+                order.patientName ?? 'Unknown patient',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             Expanded(
-                flex: 3,
-                child: Text(patientName,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13, color: _textDark))),
-            Expanded(
-                flex: 2,
-                child: Text('${items.length} Items',
-                    style: const TextStyle(fontSize: 13, color: _textMuted))),
-            Expanded(
-                flex: 2,
-                child: Text(total,
-                    style: const TextStyle(fontSize: 13, color: _textDark))),
-            Expanded(
-                flex: 2,
-                child: Text(payment,
-                    style: const TextStyle(fontSize: 12, color: _textMuted))),
+              flex: 3,
+              child: Text(
+                order.prescriptionNumber ?? 'Not provided',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Expanded(flex: 2, child: Text(order.totalLabel)),
             Expanded(
               flex: 2,
-              child: Row(
-                children: [
-                  Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: status == 'pending'
-                              ? _pendingOrange
-                              : _processingBlue)),
-                  const SizedBox(width: 6),
-                  Flexible(
-                      child: Text(_label(status),
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 12, color: _textMuted))),
-                ],
+              child: _StatusDot(
+                color: order.isMedicalAid ? _processingBlue : _pendingOrange,
+                label: order.isMedicalAid ? 'Medical aid' : 'Self-pay',
               ),
             ),
             Expanded(
               flex: 2,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: id.isEmpty
-                      ? null
-                      : () => context.go(AppRoutes.pharmacyOrderDetail
-                          .replaceFirst(':orderId', Uri.encodeComponent(id))),
-                  child: const Text('View'),
-                ),
+              child: _StatusDot(
+                color: _statusColour(order.status),
+                label: order.status.label,
               ),
             ),
+            Expanded(flex: 3, child: _buildAction(vm, order, busy)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPagination() {
-    final nextOffset = _offset + _limit;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text('Total: $_total'),
-        const SizedBox(width: 12),
-        IconButton(
-          tooltip: 'Previous page',
-          onPressed: _offset == 0 || _loading
-              ? null
-              : () {
-                  _offset = (_offset - _limit).clamp(0, _total).toInt();
-                  _loadOrders();
-                },
-          icon: const Icon(Icons.chevron_left),
-        ),
-        Text('${_total == 0 ? 0 : _offset + 1}-'
-            '${(_offset + _orders.length).clamp(0, _total)}'),
-        IconButton(
-          tooltip: 'Next page',
-          onPressed: nextOffset >= _total || _loading
-              ? null
-              : () {
-                  _offset = nextOffset;
-                  _loadOrders();
-                },
-          icon: const Icon(Icons.chevron_right),
-        ),
-      ],
+  Color _statusColour(OrderStatus status) {
+    if (status == OrderStatus.pending) return _pendingOrange;
+    if (status == OrderStatus.ready) return _readyGreen;
+    if (status.isTerminal) return _doneGrey;
+    return _processingBlue;
+  }
+
+  Widget _buildAction(_OrdersViewModel vm, PharmacyOrder order, bool busy) {
+    if (busy) return const _ActionPill(label: 'Working...', enabled: false);
+    if (order.status == OrderStatus.pending) {
+      return Wrap(
+        spacing: 6,
+        children: [
+          _ActionPill(label: 'Accept', onTap: () => _confirmAccept(vm, order)),
+          _ActionPill(
+            label: 'Decline',
+            danger: true,
+            onTap: () => _confirmReject(vm, order),
+          ),
+        ],
+      );
+    }
+    final next = order.nextStatus;
+    if (next == null) {
+      return Text(
+        order.status == OrderStatus.awaitingClaim
+            ? 'Awaiting the medical aid'
+            : 'No action',
+        style: const TextStyle(fontSize: 12, color: _textMuted),
+      );
+    }
+    return _ActionPill(
+      label: switch (next) {
+        OrderStatus.preparing => 'Start preparing',
+        OrderStatus.ready => 'Mark ready',
+        OrderStatus.pickedUp => 'Collected',
+        _ => next.label,
+      },
+      onTap: () => vm.onSetStatus(order.id, next),
     );
+  }
+
+  Future<void> _confirmAccept(
+    _OrdersViewModel vm,
+    PharmacyOrder order,
+  ) async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Accept this order?'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Total (optional)',
+            prefixText: 'R ',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Accept'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value == null) return;
+    final total = value.isEmpty ? null : double.tryParse(value);
+    if (value.isNotEmpty && total == null) {
+      _showMessage('Enter a valid total amount.');
+      return;
+    }
+    vm.onAccept(order.id, total);
+  }
+
+  Future<void> _confirmReject(
+    _OrdersViewModel vm,
+    PharmacyOrder order,
+  ) async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Decline this order?'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Reason'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Decline'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null) return;
+    if (reason.isEmpty) {
+      _showMessage('Enter a reason for declining the order.');
+      return;
+    }
+    vm.onReject(order.id, reason);
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
-class _ColHeader extends StatelessWidget {
-  const _ColHeader(this.text);
-
-  final String text;
+class _ColumnHeader extends StatelessWidget {
+  const _ColumnHeader(this.label);
+  final String label;
 
   @override
   Widget build(BuildContext context) => Text(
-        text,
+        label,
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -477,25 +402,115 @@ class _ColHeader extends StatelessWidget {
       );
 }
 
-String _label(String value) => value
-    .split('_')
-    .map((part) =>
-        part.isEmpty ? part : '${part[0].toUpperCase()}${part.substring(1)}')
-    .join(' ');
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.color, required this.label});
+  final Color color;
+  final String label;
 
-String _string(Map<String, dynamic> value, List<String> keys,
-    {String fallback = ''}) {
-  for (final key in keys) {
-    final item = value[key];
-    if (item != null && '$item'.isNotEmpty) return '$item';
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
+          ),
+        ],
+      );
+}
+
+class _ActionPill extends StatelessWidget {
+  const _ActionPill({
+    required this.label,
+    this.onTap,
+    this.danger = false,
+    this.enabled = true,
+  });
+  final String label;
+  final VoidCallback? onTap;
+  final bool danger;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = enabled && onTap != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: !active
+              ? const Color(0xFFE5E7EB)
+              : danger
+                  ? const Color(0xFFFEE2E2)
+                  : const Color(0xFF6DD0D8),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: !active
+                ? const Color(0xFF6B7280)
+                : danger
+                    ? const Color(0xFFB91C1C)
+                    : Colors.white,
+          ),
+        ),
+      ),
+    );
   }
-  return fallback;
 }
 
-Map<String, dynamic> _map(dynamic value) {
-  if (value is Map<String, dynamic>) return value;
-  if (value is Map) return value.map((key, value) => MapEntry('$key', value));
-  return <String, dynamic>{};
-}
+class _OrdersViewModel {
+  const _OrdersViewModel({
+    required this.orders,
+    required this.isLoading,
+    required this.hasLoadedOnce,
+    required this.busyIds,
+    required this.onAccept,
+    required this.onReject,
+    required this.onSetStatus,
+    required this.onRefresh,
+    this.errorMessage,
+  });
 
-List<dynamic> _list(dynamic value) => value is List ? value : const [];
+  factory _OrdersViewModel.fromStore(Store<AppState> store) {
+    final state = store.state.pharmacyOrdersState;
+    return _OrdersViewModel(
+      orders: state.orders,
+      isLoading: state.isLoading,
+      hasLoadedOnce: state.hasLoadedOnce,
+      busyIds: state.busyIds,
+      errorMessage: state.errorMessage,
+      onAccept: (id, total) => store.dispatch(
+        AcceptOrderAction(orderId: id, totalAmount: total),
+      ),
+      onReject: (id, reason) =>
+          store.dispatch(RejectOrderAction(orderId: id, reason: reason)),
+      onSetStatus: (id, status) =>
+          store.dispatch(SetOrderStatusAction(orderId: id, status: status)),
+      onRefresh: () => store.dispatch(const LoadPharmacyOrdersAction()),
+    );
+  }
+
+  final List<PharmacyOrder> orders;
+  final bool isLoading;
+  final bool hasLoadedOnce;
+  final Set<int> busyIds;
+  final String? errorMessage;
+  final void Function(int orderId, double? totalAmount) onAccept;
+  final void Function(int orderId, String reason) onReject;
+  final void Function(int orderId, OrderStatus status) onSetStatus;
+  final VoidCallback onRefresh;
+}

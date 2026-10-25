@@ -2,13 +2,13 @@
 
 /// PrescriptionDetailPage — placeholder until Figma design is implemented.
 class PrescriptionDetailPage extends StatelessWidget {
-  final String prescriptionId;
 
   const PrescriptionDetailPage({super.key, required this.prescriptionId});
+  final String prescriptionId;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       body: Center(child: Text('PrescriptionDetailPage')),
     );
   }

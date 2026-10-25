@@ -12,14 +12,14 @@ import 'pharmacy_sidebar.dart';
 /// Renders the sidebar on the left and top navbar + content on the right.
 /// The sidebar spans full height (logo is inside the sidebar per Figma).
 class ShellLayout extends StatefulWidget {
-  final String role;
-  final Widget child;
 
   const ShellLayout({
     super.key,
     required this.role,
     required this.child,
   });
+  final String role;
+  final Widget child;
 
   @override
   State<ShellLayout> createState() => _ShellLayoutState();

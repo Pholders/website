@@ -1,20 +1,32 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
+import 'dart:html' as html;
+import 'dart:typed_data';
 
 import '../../../../core/routing/app_routes.dart';
+import '../data/prescription_sample_data.dart';
+import 'prescription_document_pdf.dart';
 
 /// Pharmacy Prescription Detail page matching the Figma design.
 ///
 /// Shows full prescription information including patient info,
 /// prescription details, instructions, doctor info, and digital signature.
-class PharmacyPrescriptionDetailPage extends StatelessWidget {
-  final String prescriptionId;
+class PharmacyPrescriptionDetailPage extends StatefulWidget {
 
   const PharmacyPrescriptionDetailPage({
     super.key,
     required this.prescriptionId,
   });
+  final String prescriptionId;
 
+  @override
+  State<PharmacyPrescriptionDetailPage> createState() =>
+      _PharmacyPrescriptionDetailPageState();
+}
+
+class _PharmacyPrescriptionDetailPageState
+    extends State<PharmacyPrescriptionDetailPage> {
   // ─── Colors ──────────────────────────────────────────────────────────────
   static const Color _teal = Color(0xFF309CA3);
   static const Color _tealBorder = Color(0xFF6DD0D8);
@@ -23,6 +35,8 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
   static const Color _textMuted = Color(0xFF6B7280);
   static const Color _fieldBg = Color(0xFFE8F8F8);
   static const Color _bgLight = Color(0x33309CA3);
+
+  String _currentStatus = 'New';
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +183,24 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
                     _buildField('ID', '12345678900'),
                     _buildField('Date of Birth', '01 Mar 1998'),
                     const SizedBox(height: 28),
+                    _buildSectionTitle('Medical Aid Details'),
+                    const SizedBox(height: 12),
+                    _buildField('Medical Aid', 'Discovery Health'),
+                    _buildField('Plan', 'KeyCare Plus'),
+                    _buildField('Member No.', 'DH-90012345'),
+                    _buildField('Dependent', 'Principal Member'),
+                    const SizedBox(height: 28),
+                    _buildSectionTitle('Collection & Delivery'),
+                    const SizedBox(height: 12),
+                    _buildField('Preference', 'In-Store Collection'),
+                    _buildField('Pharmacy', 'Pholders Pharmacy — Sandton'),
+                    _buildField('Generic Sub.', 'Allowed on all products'),
+                    const SizedBox(height: 28),
+                    _buildSectionTitle('Payment Status'),
+                    const SizedBox(height: 12),
+                    _buildField('Method', 'Medical Aid'),
+                    _buildField('Status', 'Covered — R0 co-pay'),
+                    const SizedBox(height: 28),
                     _buildSectionTitle('Prescription Details'),
                     const SizedBox(height: 12),
                     _buildField('Medication', 'Panado'),
@@ -227,35 +259,39 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        Text(
+        const Text(
           '> Maria Wilson',
-          style: TextStyle(fontSize: 14, color: _textMuted),
+          style: const TextStyle(fontSize: 14, color: _textMuted),
         ),
         const Spacer(),
-        // Accept button
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: _tealBorder,
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-          ),
-          child: const Text(
-            'Accept',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+        // Action button — changes based on current status
+        InkWell(
+          onTap: _currentStatus != 'Dispensed' ? _handleAction : null,
+          borderRadius: BorderRadius.circular(25),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: _currentStatus != 'Dispensed' ? _tealBorder : const Color(0xFFE5E7EB),
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+            ),
+            child: Text(
+              _actionLabel,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _currentStatus != 'Dispensed' ? Colors.white : const Color(0xFF6B7280),
+              ),
             ),
           ),
         ),
         const SizedBox(width: 12),
         // Action icons
-        _IconBtn(assetPath: 'assets/printer-icon.png'),
+        _IconBtn(assetPath: 'assets/printer-icon.png', onTap: _printPrescriptionPdf),
         const SizedBox(width: 8),
-        _IconBtn(assetPath: 'assets/share-icon.png'),
+        const _IconBtn(assetPath: 'assets/share-icon.png'),
         const SizedBox(width: 8),
-        _IconBtn(assetPath: 'assets/call-icon.png'),
+        const _IconBtn(assetPath: 'assets/call-icon.png'),
       ],
     );
   }
@@ -269,9 +305,9 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Digitally signed by',
-                style: TextStyle(fontSize: 12, color: _textMuted),
+                style: const TextStyle(fontSize: 12, color: _textMuted),
               ),
               const SizedBox(height: 2),
               const Text(
@@ -283,9 +319,9 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
+              const Text(
                 'HPCSA:',
-                style: TextStyle(fontSize: 12, color: _textMuted),
+                style: const TextStyle(fontSize: 12, color: _textMuted),
               ),
               const Text(
                 'MP1234567',
@@ -326,9 +362,9 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
           ),
         ),
         // Signature stamp image placeholder
-        Text(
+        const Text(
           '01 Mar 2026',
-          style: TextStyle(fontSize: 13, color: _textMuted),
+          style: const TextStyle(fontSize: 13, color: _textMuted),
         ),
       ],
     );
@@ -357,7 +393,7 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: TextStyle(fontSize: 13, color: _textMuted),
+              style: const TextStyle(fontSize: 13, color: _textMuted),
             ),
           ),
           const SizedBox(width: 16),
@@ -422,9 +458,9 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
+        const Text(
           'Digital Preview',
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
         const SizedBox(height: 12),
         // Signature box
@@ -443,16 +479,126 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Text(
+        const Text(
           'Digitally signed on 25 Mar 2026',
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
         const SizedBox(height: 2),
-        Text(
+        const Text(
           'Verification Status',
-          style: TextStyle(fontSize: 12, color: _textMuted),
+          style: const TextStyle(fontSize: 12, color: _textMuted),
         ),
       ],
+    );
+  }
+
+  // ─── Claim / Status Progression ────────────────────────────────────────────
+
+  String get _actionLabel {
+    switch (_currentStatus) {
+      case 'New':
+        return 'Accept';
+      case 'Accepted':
+        return 'Process';
+      case 'In-Progress':
+        return 'Dispense';
+      case 'Ready':
+        return 'Complete';
+      case 'Dispensed':
+        return 'Done';
+      default:
+        return 'Accept';
+    }
+  }
+
+  String? get _nextStatus {
+    switch (_currentStatus) {
+      case 'New':
+        return 'Accepted';
+      case 'Accepted':
+        return 'In-Progress';
+      case 'In-Progress':
+        return 'Ready';
+      case 'Ready':
+        return 'Dispensed';
+      default:
+        return null;
+    }
+  }
+
+  void _handleAction() {
+    final next = _nextStatus;
+    if (next == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          _currentStatus == 'New' ? 'Claim Prescription?' : 'Update Status?',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          _currentStatus == 'New'
+              ? 'Claiming this prescription will lock it to your pharmacy. No other pharmacy can claim it.'
+              : 'Move prescription status to "$next"? The patient will be notified.',
+          style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() => _currentStatus = next);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('✓ Patient notified — Script status: $next'),
+                  backgroundColor: const Color(0xFF309CA3),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF309CA3),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(_actionLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _printPrescriptionPdf() async {
+    final document = samplePrescriptionDocument(
+      prescriptionId: widget.prescriptionId,
+      currentStatus: _currentStatus,
+    );
+    final Uint8List pdfBytes = await PrescriptionDocumentPdf.build(document);
+    final blob = html.Blob([pdfBytes], 'application/pdf');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..target = '_blank'
+      ..click();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Prescription PDF opened'),
+        backgroundColor: Color(0xFF309CA3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 10)).then((_) {
+        html.Url.revokeObjectUrl(url);
+      }),
     );
   }
 }
@@ -460,21 +606,26 @@ class PharmacyPrescriptionDetailPage extends StatelessWidget {
 // ─── Helper widgets ──────────────────────────────────────────────────────────
 
 class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.assetPath, this.onTap});
   final String assetPath;
-  const _IconBtn({required this.assetPath});
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: const Color(0x33309CA3),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(7),
-        child: Image.asset(assetPath, width: 16, height: 16),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(100),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: const Color(0x33309CA3),
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(7),
+          child: Image.asset(assetPath, width: 16, height: 16),
+        ),
       ),
     );
   }

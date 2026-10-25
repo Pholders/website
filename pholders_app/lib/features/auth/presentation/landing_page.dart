@@ -81,8 +81,8 @@ class _LandingPageState extends State<LandingPage> {
 // ─── Desktop hero ─────────────────────────────────────────────────────────────
 
 class _DesktopHero extends StatelessWidget {
-  final Size screenSize;
   const _DesktopHero({required this.screenSize});
+  final Size screenSize;
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +186,7 @@ class _DesktopHero extends StatelessWidget {
                     // Get Started button — below the knees of the doctors image
                     Positioned(
                       bottom: availableHeight * 0.15,
-                      child: _GetStartedButton(),
+                      child: const _GetStartedButton(),
                     ),
                   ],
                 ),

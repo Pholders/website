@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_state.dart';
 import '../../../core/auth/auth_actions.dart';
 import '../../../core/routing/app_routes.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/public_navbar.dart';
 import 'widgets/auth_widgets.dart';
@@ -27,6 +28,7 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePassword = true;
+  String _role = AppConstants.roleDoctor;
 
   @override
   void dispose() {
@@ -38,102 +40,15 @@ class _LoginPageState extends State<LoginPage> {
   void _submit(BuildContext context) {
     if (!_formKey.currentState!.validate()) return;
 
-    // ── DEV ONLY: Show role picker instead of real auth ──────────────────────
-    // TODO: Remove this dialog and use real LoginRequestAction once backend is ready.
-    _showDevRolePicker(context);
-  }
-
-  void _showDevRolePicker(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF309CA3).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.developer_mode,
-                  color: Color(0xFF309CA3),
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Dev Mode — Choose Role',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Backend is under construction.\nPick a role to test the screens.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.black45),
-              ),
-              const SizedBox(height: 28),
-              Row(
-                children: [
-                  Expanded(
-                    child: _DevRoleButton(
-                      icon: Icons.medical_services_outlined,
-                      label: 'Doctor',
-                      color: const Color(0xFF309CA3),
-                      onTap: () {
-                        Navigator.of(ctx).pop();
-                        _loginAs(context, 'doctor');
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _DevRoleButton(
-                      icon: Icons.local_pharmacy_outlined,
-                      label: 'Pharmacy',
-                      color: const Color(0xFF6C63FF),
-                      onTap: () {
-                        Navigator.of(ctx).pop();
-                        _loginAs(context, 'pharmacy');
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _loginAs(BuildContext context, String role) {
-    // Dispatch a fake successful login so the Redux store is in the right state.
+    // The router's auth guard navigates to the right dashboard once the store
+    // reports an authenticated session, so there is no context.go() here.
     StoreProvider.of<AppState>(context).dispatch(
-      LoginSuccessAction(
-        token: 'dev-token-${DateTime.now().millisecondsSinceEpoch}',
-        role: role,
-        userName: _emailController.text.trim().split('@').first,
+      LoginRequestAction(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        role: _role,
       ),
     );
-
-    // Navigate to the appropriate dashboard.
-    if (role == 'doctor') {
-      context.go(AppRoutes.doctorDashboard);
-    } else {
-      context.go(AppRoutes.pharmacyDashboard);
-    }
   }
 
   @override
@@ -160,7 +75,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
 
           // Shared public navbar — Signup button on the right
-          Positioned(
+          const Positioned(
             top: 36,
             left: 77,
             right: 77,
@@ -249,6 +164,8 @@ class _LoginPageState extends State<LoginPage> {
           child: Center(
             child: _LoginForm(
               formKey: _formKey,
+              role: _role,
+              onRoleChanged: (r) => setState(() => _role = r),
               emailController: _emailController,
               passwordController: _passwordController,
               rememberMe: _rememberMe,
@@ -273,6 +190,8 @@ class _LoginPageState extends State<LoginPage> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
         child: _LoginForm(
           formKey: _formKey,
+          role: _role,
+          onRoleChanged: (r) => setState(() => _role = r),
           emailController: _emailController,
           passwordController: _passwordController,
           rememberMe: _rememberMe,
@@ -293,19 +212,11 @@ class _LoginPageState extends State<LoginPage> {
 // ─── Login form ───────────────────────────────────────────────────────────────
 
 class _LoginForm extends StatelessWidget {
-  final GlobalKey<FormState> formKey;
-  final TextEditingController emailController;
-  final TextEditingController passwordController;
-  final bool rememberMe;
-  final bool obscurePassword;
-  final ValueChanged<bool?> onRememberMeChanged;
-  final VoidCallback onTogglePassword;
-  final VoidCallback onSubmit;
-  final VoidCallback onForgotPassword;
-  final VoidCallback onSignUp;
 
   const _LoginForm({
     required this.formKey,
+    required this.role,
+    required this.onRoleChanged,
     required this.emailController,
     required this.passwordController,
     required this.rememberMe,
@@ -316,6 +227,18 @@ class _LoginForm extends StatelessWidget {
     required this.onForgotPassword,
     required this.onSignUp,
   });
+  final GlobalKey<FormState> formKey;
+  final String role;
+  final ValueChanged<String> onRoleChanged;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final bool rememberMe;
+  final bool obscurePassword;
+  final ValueChanged<bool?> onRememberMeChanged;
+  final VoidCallback onTogglePassword;
+  final VoidCallback onSubmit;
+  final VoidCallback onForgotPassword;
+  final VoidCallback onSignUp;
 
   @override
   Widget build(BuildContext context) {
@@ -375,6 +298,11 @@ class _LoginForm extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
+
+                // Doctors and pharmacies authenticate against different
+                // endpoints, so the account type has to be chosen up front.
+                _RoleSelector(selected: role, onChanged: onRoleChanged),
+                const SizedBox(height: 20),
 
                 AuthTextField(
                   controller: emailController,
@@ -494,50 +422,101 @@ class _LoginForm extends StatelessWidget {
 }
 
 class _LoginViewModel {
-  final bool isLoading;
-  final String? errorMessage;
 
   const _LoginViewModel({
     required this.isLoading,
     this.errorMessage,
   });
+  final bool isLoading;
+  final String? errorMessage;
 }
 
-// ─── Dev role picker button ───────────────────────────────────────────────────
+// ─── Account type selector ────────────────────────────────────────────────────
 
-class _DevRoleButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
+class _RoleSelector extends StatelessWidget {
+  const _RoleSelector({required this.selected, required this.onChanged});
 
-  const _DevRoleButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
+  final String selected;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Row(
+        children: [
+          _RoleTab(
+            label: 'Doctor',
+            icon: Icons.medical_services_outlined,
+            isSelected: selected == AppConstants.roleDoctor,
+            onTap: () => onChanged(AppConstants.roleDoctor),
+          ),
+          _RoleTab(
+            label: 'Pharmacy',
+            icon: Icons.local_pharmacy_outlined,
+            isSelected: selected == AppConstants.rolePharmacy,
+            onTap: () => onChanged(AppConstants.rolePharmacy),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoleTab extends StatelessWidget {
+  const _RoleTab({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 36, color: color),
-              const SizedBox(height: 10),
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppTheme.primary : Colors.black45,
+              ),
+              const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: color,
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? AppTheme.primary : Colors.black45,
                 ),
               ),
             ],

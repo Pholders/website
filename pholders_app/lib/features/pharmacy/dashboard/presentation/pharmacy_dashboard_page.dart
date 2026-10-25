@@ -1,4 +1,8 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+
+import '../../../../app/app_state.dart';
+import '../../../../shared/utils/greeting.dart';
 
 /// Pharmacy Dashboard matching the Figma design (node 1610:357).
 ///
@@ -51,9 +55,9 @@ class PharmacyDashboardPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        const Row(
           children: [
-            const Text(
+            Text(
               'Saturday, 14th March',
               style: TextStyle(
                 fontSize: 11,
@@ -61,21 +65,31 @@ class PharmacyDashboardPage extends StatelessWidget {
                 fontFamily: 'Sora',
               ),
             ),
-            const SizedBox(width: 6),
-            Icon(Icons.refresh, size: 14, color: _textMuted),
+            SizedBox(width: 6),
+            const Icon(Icons.refresh, size: 14, color: _textMuted),
           ],
         ),
         const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Good Morning Sam',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: _textDark,
-                fontFamily: 'Sora',
+            Flexible(
+              child: StoreConnector<AppState, String?>(
+                converter: (store) => store.state.authState.userName,
+                builder: (context, userName) {
+                  final name = userName?.trim() ?? '';
+                  return Text(
+                    '${timeOfDayGreeting()} ${name.isEmpty ? 'there' : name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: _textDark,
+                      fontFamily: 'Sora',
+                    ),
+                  );
+                },
               ),
             ),
             _buildScanQrButton(),
@@ -395,7 +409,7 @@ class PharmacyDashboardPage extends StatelessWidget {
                                       Container(
                                         width: 8,
                                         height: 8,
-                                        decoration: BoxDecoration(
+                                        decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: _statusDotTeal,
                                         ),
@@ -696,8 +710,8 @@ class PharmacyDashboardPage extends StatelessWidget {
 // ─── Helper Widgets ──────────────────────────────────────────────────────────
 
 class _HeaderText extends StatelessWidget {
-  final String text;
   const _HeaderText(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {

@@ -1,0 +1,277 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
+import 'models/doctor.dart';
+import 'models/doctor_activity.dart';
+
+/// The result of a successful doctor login: a JWT plus the signed-in doctor.
+class DoctorSession {
+  const DoctorSession({required this.token, required this.doctor});
+
+  final String token;
+  final Doctor doctor;
+}
+
+/// All doctor authentication calls.
+///
+/// The endpoint contracts here were verified against the live API and the
+/// backend controllers, NOT against `docs/api/roles/DOCTOR_ENDPOINTS.md`,
+/// which is out of date in several places (see the notes on each method).
+class DoctorAuthRepository {
+  const DoctorAuthRepository(this._api);
+
+  final ApiClient _api;
+
+  /// Registers a new doctor.
+  ///
+  /// Every parameter is required by the backend — it rejects the request with
+  /// a 400 listing all of them if any is missing.
+  ///
+  /// [clinicAddress] must be a place name the Open-Meteo geocoder recognises
+  /// (e.g. "Johannesburg"). A full street address fails geocoding and the
+  /// whole signup is rejected with a 400. See [isGeocodingFailure].
+  Future<Doctor> signup({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String password,
+    required String hpcsaNumber,
+    required String specialization,
+    required int experience,
+    required String clinicName,
+    required String city,
+    required String province,
+    required String clinicAddress,
+  }) async {
+    final data = await _api.post(
+      '/users/doctor/signup',
+      body: {
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'phone': phone,
+        'password': password,
+        'hpcsa_number': hpcsaNumber,
+        'specialization': specialization,
+        'experience': experience,
+        'clinic_name': clinicName,
+        'city': city,
+        'province': province,
+        'clinic_address': clinicAddress,
+      },
+    );
+
+    final doctor = data['doctor'];
+    if (doctor is! Map<String, dynamic>) {
+      throw const ApiException(
+        message: 'Registration succeeded but the server returned no profile.',
+        kind: ApiErrorKind.badResponse,
+      );
+    }
+    return Doctor.fromJson(doctor);
+  }
+
+  /// Signs a doctor in and returns their session.
+  ///
+  /// Despite what the API docs claim, this endpoint does **not** issue an OTP
+  /// challenge — it returns the JWT directly in `data.token`. There is no
+  /// second step, and email verification is not enforced at login.
+  Future<DoctorSession> login({
+    required String email,
+    required String password,
+  }) async {
+    final data = await _api.post(
+      '/users/doctor/login',
+      body: {'email': email, 'password': password},
+    );
+
+    final token = data['token'];
+    if (token is! String || token.isEmpty) {
+      throw const ApiException(
+        message: 'Sign in succeeded but the server returned no token.',
+        kind: ApiErrorKind.badResponse,
+      );
+    }
+
+    return DoctorSession(token: token, doctor: Doctor.fromJson(data));
+  }
+
+  /// Activates an account with the OTP emailed after signup.
+  ///
+  /// The field is `otp_code`, not `otp` as the docs state, and it is keyed by
+  /// email rather than by a session id.
+  Future<void> verifyEmail({
+    required String email,
+    required String otpCode,
+  }) async {
+    await _api.post(
+      '/users/doctor/verify-email',
+      body: {'email': email, 'otp_code': otpCode},
+    );
+  }
+
+  /// Requests a fresh activation code, returning it when the backend hands it
+  /// back rather than emailing it.
+  ///
+  /// Rate-limited to one code per 60 seconds (429 otherwise). The response is
+  /// deliberately generic — it does not reveal whether the account exists.
+  ///
+  /// While the server runs with `NODE_ENV=development` it includes the code in
+  /// the response as `data.verification_code`; in production that field is
+  /// absent and the code only arrives by email.
+  Future<String?> resendVerification({required String email}) async {
+    final data = await _api.post(
+      '/users/doctor/resend-verification',
+      body: {'email': email},
+    );
+    final code = data['verification_code'];
+    return code is String && code.isNotEmpty ? code : null;
+  }
+
+  /// Fetches the full profile of the signed-in doctor.
+  Future<Doctor> fetchProfile() async {
+    final data = await _api.get('/users/doctor/profile');
+    return Doctor.fromJson(data);
+  }
+
+  /// Updates the signed-in doctor's profile.
+  ///
+  /// The endpoint is a passthrough that strips `id`, `email`, `hpcsa_number`,
+  /// `password_hash` and `created_at` before writing, so email and HPCSA
+  /// number cannot be changed here however they are sent.
+  ///
+  /// Only non-null values are sent, so a partial edit does not blank the
+  /// fields it left alone.
+  /// The medical aid schemes a doctor can say they accept.
+  ///
+  /// Comes from a catalogue rather than free text so that a patient's own
+  /// scheme — which is free text — can be matched against it.
+  Future<List<MedicalAidScheme>> fetchMedicalAidCatalogue() async {
+    final data = await _api.get('/users/medical-aids');
+    final list = data['schemes'];
+    if (list is! List) return const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(MedicalAidScheme.fromJson)
+        .toList();
+  }
+
+  /// Replaces the signed-in doctor's profile photo.
+  ///
+  /// `PUT /users/doctor/profile/image`, multipart, field `image`. The server
+  /// accepts JPEG, PNG and WEBP up to 5MB and answers with the URL the image
+  /// is now served from; it also deletes whatever image it replaced.
+  ///
+  /// [contentType] has to be a real image type: Dio defaults a multipart part
+  /// to `application/octet-stream`, which the server rejects out of hand.
+  Future<String> uploadProfileImage({
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+  }) async {
+    final slash = contentType.indexOf('/');
+    final media = slash > 0
+        ? DioMediaType(contentType.substring(0, slash), contentType.substring(slash + 1))
+        : DioMediaType('image', 'jpeg');
+
+    final form = FormData.fromMap({
+      'image': MultipartFile.fromBytes(bytes, filename: filename, contentType: media),
+    });
+
+    final data = await _api.putMultipart(
+      '/users/doctor/profile/image',
+      formData: form,
+    );
+
+    final url = data['profile_image'];
+    if (url is! String || url.isEmpty) {
+      throw const ApiException(
+        message: 'The image was uploaded but the server did not say where it lives.',
+        kind: ApiErrorKind.badResponse,
+      );
+    }
+    return url;
+  }
+
+  Future<Doctor> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? specialization,
+    int? experience,
+    String? clinicName,
+    String? clinicAddress,
+    String? city,
+    String? province,
+    String? zipCode,
+    String? qualification,
+    String? bio,
+    double? consultationFee,
+    List<int>? medicalAidIds,
+    Map<String, List<String>>? availability,
+  }) async {
+    final data = await _api.put(
+      '/users/doctor/profile',
+      body: {
+        if (firstName != null) 'first_name': firstName,
+        if (lastName != null) 'last_name': lastName,
+        if (phone != null) 'phone': phone,
+        if (specialization != null) 'specialization': specialization,
+        if (experience != null) 'experience': experience,
+        if (clinicName != null) 'clinic_name': clinicName,
+        if (clinicAddress != null) 'clinic_address': clinicAddress,
+        if (city != null) 'city': city,
+        if (province != null) 'province': province,
+        if (zipCode != null) 'zip_code': zipCode,
+        if (qualification != null) 'qualification': qualification,
+        if (bio != null) 'bio': bio,
+        if (consultationFee != null) 'consultation_fee': consultationFee,
+        // An empty list is a real choice — "I accept none" — so this is sent
+        // whenever it is non-null, unlike the fields above which are omitted
+        // to avoid blanking what the doctor did not edit.
+        if (medicalAidIds != null) 'medicalAids': medicalAidIds,
+        // Sent whole: a day with an empty list means closed, which a merge
+        // could never express.
+        if (availability != null) 'availability': availability,
+      },
+    );
+    return Doctor.fromJson(data);
+  }
+
+  /// Lists the doctor's active sessions.
+  Future<List<ActiveSession>> fetchSessions() async {
+    final data = await _api.get('/users/doctor/sessions');
+    final list = data['sessions'];
+    if (list is! List) return const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(ActiveSession.fromJson)
+        .toList();
+  }
+
+  /// Lists recent security events on the doctor's account.
+  Future<List<DoctorActivity>> fetchActivityLog() async {
+    final data = await _api.get('/users/doctor/activity-log');
+    final list = data['activities'];
+    if (list is! List) return const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(DoctorActivity.fromJson)
+        .toList();
+  }
+
+  /// Revokes the current session server-side. Safe to ignore failures — the
+  /// client clears its own token regardless.
+  Future<void> logout() async {
+    await _api.post('/users/doctor/logout');
+  }
+
+  /// True when a signup failed because the address could not be geocoded,
+  /// so the UI can point at the address field specifically.
+  static bool isGeocodingFailure(ApiException e) =>
+      e.statusCode == 400 && e.message.toLowerCase().contains('geocode');
+}

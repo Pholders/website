@@ -33,13 +33,6 @@ class AuthFieldPair extends StatelessWidget {
 
 /// Reusable text field for all auth screens.
 class AuthTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData icon;
-  final bool obscureText;
-  final Widget? suffixIcon;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
 
   const AuthTextField({
     super.key,
@@ -51,6 +44,13 @@ class AuthTextField extends StatelessWidget {
     this.keyboardType,
     this.validator,
   });
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final bool obscureText;
+  final Widget? suffixIcon;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
 
   @override
   Widget build(BuildContext context) {
@@ -94,9 +94,6 @@ class AuthTextField extends StatelessWidget {
 
 /// Gradient submit button used across all auth screens.
 class AuthSubmitButton extends StatelessWidget {
-  final String label;
-  final bool isLoading;
-  final VoidCallback onPressed;
 
   const AuthSubmitButton({
     super.key,
@@ -104,6 +101,9 @@ class AuthSubmitButton extends StatelessWidget {
     required this.isLoading,
     required this.onPressed,
   });
+  final String label;
+  final bool isLoading;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -145,8 +145,8 @@ class AuthSubmitButton extends StatelessWidget {
 /// Displays the actual PHolders-icon.png asset, sized to fit the navbar.
 /// The "P" letter box has been removed in favour of the real brand image.
 class PholdersLogoMark extends StatelessWidget {
-  final double size;
   const PholdersLogoMark({super.key, this.size = 40});
+  final double size;
 
   @override
   Widget build(BuildContext context) {

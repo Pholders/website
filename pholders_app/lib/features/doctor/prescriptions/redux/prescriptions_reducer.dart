@@ -1,0 +1,119 @@
+import '../../../../core/auth/auth_actions.dart';
+import 'prescriptions_actions.dart';
+import 'prescriptions_state.dart';
+
+/// Pure reducer for the prescriptions slice.
+PrescriptionsState prescriptionsReducer(
+  PrescriptionsState state,
+  dynamic action,
+) {
+  if (action is LoadPrescriptionsAction) {
+    return state.copyWith(isLoading: true, clearError: true);
+  }
+
+  if (action is PrescriptionsLoadedAction) {
+    return state.copyWith(
+      prescriptions: action.prescriptions,
+      isLoading: false,
+      hasLoadedOnce: true,
+      busyIds: const {},
+      clearError: true,
+    );
+  }
+
+  if (action is PrescriptionsLoadFailedAction) {
+    return state.copyWith(
+      isLoading: false,
+      hasLoadedOnce: true,
+      errorMessage: action.errorMessage,
+    );
+  }
+
+  if (action is CreatePrescriptionAction) {
+    return state.copyWith(
+      isCreating: true,
+      clearError: true,
+      clearCreated: true,
+    );
+  }
+
+  if (action is PrescriptionCreatedAction) {
+    return state.copyWith(
+      isCreating: false,
+      lastCreatedId: action.prescriptionId,
+      clearError: true,
+    );
+  }
+
+  if (action is CreatePrescriptionFailedAction) {
+    return state.copyWith(
+      isCreating: false,
+      errorMessage: action.errorMessage,
+    );
+  }
+
+  if (action is CheckInteractionsAction) {
+    // Drop any previous report so the dialog cannot show a stale result while
+    // the new check is still running.
+    return state.copyWith(
+      isCheckingInteractions: true,
+      clearReport: true,
+      clearError: true,
+    );
+  }
+
+  if (action is InteractionsCheckedAction) {
+    return state.copyWith(
+      isCheckingInteractions: false,
+      safetyReport: action.report,
+      clearError: true,
+    );
+  }
+
+  if (action is InteractionsCheckFailedAction) {
+    return state.copyWith(
+      isCheckingInteractions: false,
+      errorMessage: action.errorMessage,
+    );
+  }
+
+  if (action is ClearInteractionsReportAction) {
+    return state.copyWith(clearReport: true, clearError: true);
+  }
+
+  if (action is SignPrescriptionAction) {
+    return state.copyWith(
+      busyIds: {...state.busyIds, action.prescriptionId},
+      clearError: true,
+    );
+  }
+
+  if (action is PrescriptionSignedAction) {
+    return state.copyWith(signingReceipt: action.receipt);
+  }
+
+  if (action is ClearSigningReceiptAction) {
+    return state.copyWith(clearReceipt: true);
+  }
+
+  if (action is RevokePrescriptionAction) {
+    return state.copyWith(
+      busyIds: {...state.busyIds, action.prescriptionId},
+      clearError: true,
+    );
+  }
+
+  if (action is PrescriptionActionFailedAction) {
+    return state.copyWith(
+      busyIds: {...state.busyIds}..remove(action.prescriptionId),
+      errorMessage: action.errorMessage,
+    );
+  }
+
+  // Never carry one doctor's prescriptions into the next session.
+  if (action is LogoutAction || action is SessionExpiredAction) {
+    return PrescriptionsState.initial();
+  }
+
+  return state;
+}

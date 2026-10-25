@@ -1,26 +1,107 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-class LoginActivityPage extends StatelessWidget {
+import '../../../../shared/widgets/settings_sidebar.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_exception.dart';
+import '../../../../core/routing/app_routes.dart';
+import '../../../auth/data/doctor_auth_repository.dart';
+import '../../../auth/data/models/doctor_activity.dart';
+
+class LoginActivityPage extends StatefulWidget {
   const LoginActivityPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Login Activity', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+  State<LoginActivityPage> createState() => _LoginActivityPageState();
+}
 
-            _activityEntry('April 13, 10:30', 'Johannesburg', 'Chrome - Windows', 'Successful', Icons.check_circle, Colors.teal),
-            const Divider(),
-            _activityEntry('April 12, 22:10', 'Unknown Location', 'Unknown', 'Failed Login', Icons.error, Colors.red),
+class _LoginActivityPageState extends State<LoginActivityPage> {
+  // Read-only screen, so it reads the repository directly rather than adding
+  // a store slice nothing else would use.
+  late Future<List<DoctorActivity>> _activity;
+
+  @override
+  void initState() {
+    super.initState();
+    _activity = sl<DoctorAuthRepository>().fetchActivityLog();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'login_activity',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Login Activity', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+
+            FutureBuilder<List<DoctorActivity>>(
+              future: _activity,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (snapshot.hasError) {
+                  final e = snapshot.error;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      e is ApiException
+                          ? e.message
+                          : 'Could not load your account activity.',
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
+                  );
+                }
+                final entries = snapshot.data ?? const <DoctorActivity>[];
+                if (entries.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Text('No account activity recorded yet.'),
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < entries.length; i++) ...[
+                      if (i > 0) const Divider(),
+                      _activityEntry(
+                        entries[i].formattedTime,
+                        entries[i].ipAddress ?? 'Unknown location',
+                        entries[i].label,
+                        entries[i].succeeded ? 'Successful' : 'Failed',
+                        entries[i].succeeded
+                            ? Icons.check_circle
+                            : Icons.error,
+                        entries[i].succeeded ? Colors.teal : Colors.red,
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 16),
 
             // Suspicious activity card
@@ -51,7 +132,7 @@ class LoginActivityPage extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+                        const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {},
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE2F6F7), foregroundColor: Colors.black, elevation: 0, minimumSize: const Size.fromHeight(44)),
@@ -60,7 +141,63 @@ class LoginActivityPage extends StatelessWidget {
           ],
         ),
       ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 
   Widget _activityEntry(String date, String location, String device, String status, IconData icon, Color iconColor) {

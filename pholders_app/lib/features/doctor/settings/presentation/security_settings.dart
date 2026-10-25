@@ -2,7 +2,15 @@
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_exception.dart';
+import '../../../auth/data/doctor_auth_repository.dart';
+import '../../../auth/data/models/doctor_activity.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../../shared/widgets/settings_shell.dart';
+import '../../../../shared/widgets/settings_sidebar.dart';
+import '../../../../core/routing/app_routes.dart';
 
 class SecuritySettingsPage extends StatelessWidget {
   const SecuritySettingsPage({super.key, this.initialTab = 0});
@@ -20,6 +28,58 @@ class SecuritySettingsPage extends StatelessWidget {
         return const _SecuritySettings();
     }
   }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 class _SecuritySettings extends StatelessWidget {
@@ -27,9 +87,23 @@ class _SecuritySettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Security Settings',
-      children: const [
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'security_settings',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Security Settings',
+                children: const [
         _Section(
           title: 'Password & Authentication',
           children: [
@@ -58,7 +132,7 @@ class _SecuritySettings extends StatelessWidget {
           ],
         ),
         _DividerGap(),
-        _Section(
+                _Section(
           title: 'Security Alerts',
           children: [
             _SwitchLine('Login Alerts'),
@@ -68,51 +142,247 @@ class _SecuritySettings extends StatelessWidget {
           ],
         ),
       ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 
-class _DeviceManagement extends StatelessWidget {
+class _DeviceManagement extends StatefulWidget {
   const _DeviceManagement();
 
   @override
+  State<_DeviceManagement> createState() => _DeviceManagementState();
+}
+
+class _DeviceManagementState extends State<_DeviceManagement> {
+  // Read-only, so it reads the repository directly rather than adding a store
+  // slice nothing else would use.
+  late Future<List<ActiveSession>> _sessions;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessions = sl<DoctorAuthRepository>().fetchSessions();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Device Management',
-      children: [
-        const SettingsSectionTitle('Current Device'),
-        const SizedBox(height: 16),
-        const Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.check_circle_outline, size: 32, color: Colors.black),
-            SizedBox(width: 12),
-            Column(
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'device_management',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Device Management',
+                children: [
+        FutureBuilder<List<ActiveSession>>(
+          future: _sessions,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError) {
+              final e = snapshot.error;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  e is ApiException
+                      ? e.message
+                      : 'Could not load your signed-in devices.',
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+              );
+            }
+
+            final sessions = snapshot.data ?? const <ActiveSession>[];
+            if (sessions.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Text('No active sessions.'),
+              );
+            }
+
+            // The backend returns them most recently active first, so the
+            // first row is this device.
+            final current = sessions.first;
+            final others = sessions.skip(1).toList();
+
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Chrome - Windows', style: TextStyle(fontSize: 16)),
-                SizedBox(height: 18),
-                Text('Johannesburg', style: TextStyle(fontSize: 16)),
-                SizedBox(height: 8),
-                Text('Active Now', style: TextStyle(fontSize: 16)),
+                const SettingsSectionTitle('Current Device'),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.check_circle_outline,
+                        size: 32, color: Colors.black),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(current.device,
+                            style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 18),
+                        Text(current.ipAddress ?? 'Unknown location',
+                            style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 8),
+                        const Text('Active Now',
+                            style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                const SettingsDivider(),
+                const SizedBox(height: 12),
+                SettingsSectionTitle('Other Devices (${others.length})'),
+                const SizedBox(height: 10),
+                if (others.isEmpty)
+                  const Text('No other devices are signed in.')
+                else
+                  for (final session in others) ...[
+                    _DeviceRow(
+                      icon: Icons.laptop_mac,
+                      name: '${session.device} - '
+                          '${session.ipAddress ?? 'unknown'}',
+                    ),
+                    const SettingsDivider(),
+                    const SizedBox(height: 10),
+                  ],
               ],
-            ),
-          ],
+            );
+          },
         ),
-        const SizedBox(height: 28),
-        const SettingsDivider(),
-        const SizedBox(height: 12),
-        const SettingsSectionTitle('Other Devices'),
-        const SizedBox(height: 10),
-        const _DeviceRow(icon: Icons.phone_iphone, name: 'iPhone - Safari'),
-        const SettingsDivider(),
-        const SizedBox(height: 10),
-        const _DeviceRow(
-            icon: Icons.laptop_mac, name: 'MacBook - Durban - 3 days ago'),
-        const SizedBox(height: 14),
+                const SizedBox(height: 14),
         const SettingsFullWidthAction('Log out of all devices'),
       ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -121,9 +391,23 @@ class _LoginActivity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
-      title: 'Login Activity',
-      children: [
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F8F8),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Settings sidebar ──────────────────────────────────────────────
+          SettingsSidebar(
+            selectedItemId: 'login_activity',
+            onMenuItemSelected: (id) => _navigate(context, id),
+          ),
+          // ── Content area ────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SettingsContentCard(
+                title: 'Login Activity',
+                children: [
         const Padding(
           padding: EdgeInsets.only(left: 20),
           child: Column(
@@ -200,10 +484,67 @@ class _LoginActivity extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         const SettingsDivider(),
-        const SizedBox(height: 14),
+                const SizedBox(height: 14),
         const SettingsFullWidthAction('Report Suspicious Activity'),
       ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigate(BuildContext context, String id) {
+    switch (id) {
+      case 'profile':
+        context.go(AppRoutes.doctorSettingsProfile);
+        break;
+      case 'professional':
+        context.go(AppRoutes.doctorSettingsProfessional);
+        break;
+      case 'fees_setup':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
+        break;
+      case 'practice_settings':
+        context.go(AppRoutes.doctorSettingsPractice);
+        break;
+      case 'notification_settings':
+        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.doctorNotifications);
+        break;
+      case 'security_settings':
+        context.go(AppRoutes.doctorSettingsSecurity);
+        break;
+      case 'device_management':
+        context.go(AppRoutes.doctorSettingsDevices);
+        break;
+      case 'login_activity':
+        context.go(AppRoutes.doctorSettingsLoginActivity);
+        break;
+      case 'preferences_settings':
+        context.go(AppRoutes.doctorSettingsPreferences);
+        break;
+      case 'linked_services':
+        context.go(AppRoutes.doctorSettingsLinkedServices);
+        break;
+      case 'help_center':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
+        break;
+      case 'privacy_policy':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
+        break;
+      case 'terms_of_service':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
+        break;
+      case 'contact_support':
+        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
+        break;
+      default:
+        break;
+    }
   }
 }
 
