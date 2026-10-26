@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-
 class SettingsShell extends StatelessWidget {
   const SettingsShell({super.key, required this.child});
 
@@ -197,7 +196,8 @@ class SettingsInput extends StatefulWidget {
 class _SettingsInputState extends State<SettingsInput> {
   late final TextEditingController _localcontroller;
 
-  TextEditingController get _controller => widget.controller ?? _localcontroller;
+  TextEditingController get _controller =>
+      widget.controller ?? _localcontroller;
 
   @override
   void initState() {
@@ -248,10 +248,7 @@ class _SettingsInputState extends State<SettingsInput> {
                 ),
               ),
               inputFormatters: widget.inputFormatters,
-              style: const TextStyle(
-                fontSize: 15,
-                color:Color(0xFF7F8A8A)
-              ),
+              style: const TextStyle(fontSize: 15, color: Color(0xFF7F8A8A)),
             ),
           ),
           if (widget.trailing != null) widget.trailing!,
@@ -341,7 +338,11 @@ class SettingsButton extends StatelessWidget {
 }
 
 class TinySwitch extends StatefulWidget {
-  const TinySwitch({super.key, this.value = true, this.onChanged});
+  /// A switch without [onChanged] has nothing to save to, so it is shown
+  /// off and does not move. It used to default to on and flip freely, which
+  /// meant every setting in the app read as enabled whether it was or not,
+  /// and flicking one looked like it had taken effect.
+  const TinySwitch({super.key, this.value = false, this.onChanged});
 
   final bool value;
   final ValueChanged<bool>? onChanged;
@@ -353,6 +354,8 @@ class TinySwitch extends StatefulWidget {
 class _TinySwitchState extends State<TinySwitch> {
   late bool _value;
 
+  bool get _live => widget.onChanged != null;
+
   @override
   void initState() {
     super.initState();
@@ -360,27 +363,42 @@ class _TinySwitchState extends State<TinySwitch> {
   }
 
   @override
+  void didUpdateWidget(TinySwitch old) {
+    super.didUpdateWidget(old);
+    // Follow the value when it is driven from outside, or a saved setting
+    // arriving from the server would never show.
+    if (widget.value != old.value) _value = widget.value;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        setState(() => _value = !_value);
-        widget.onChanged?.call(_value);
-      },
-      child: Container(
-        width: 22,
-        height: 12,
-        alignment: _value ? Alignment.centerRight : Alignment.centerLeft,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: _value ? SettingsShell.success : const Color(0xFFD8D8D8),
-          borderRadius: BorderRadius.circular(12),
-        ),
+      onTap: !_live
+          ? null
+          : () {
+              setState(() => _value = !_value);
+              widget.onChanged!.call(_value);
+            },
+      child: Opacity(
+        // A dead switch is drawn faint, so it reads as unavailable rather
+        // than as off.
+        opacity: _live ? 1 : 0.45,
         child: Container(
-          width: 8,
-          height: 8,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
+          width: 22,
+          height: 12,
+          alignment: _value ? Alignment.centerRight : Alignment.centerLeft,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: _value ? SettingsShell.success : const Color(0xFFD8D8D8),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
           ),
         ),
       ),
@@ -389,7 +407,9 @@ class _TinySwitchState extends State<TinySwitch> {
 }
 
 class SmallCheck extends StatefulWidget {
-  const SmallCheck({super.key, this.checked = true, this.onChanged});
+  /// Like [TinySwitch]: without [onChanged] there is nowhere to save to, so
+  /// it shows unticked, faint, and does not respond.
+  const SmallCheck({super.key, this.checked = false, this.onChanged});
 
   final bool checked;
   final ValueChanged<bool>? onChanged;
@@ -401,6 +421,8 @@ class SmallCheck extends StatefulWidget {
 class _SmallCheckState extends State<SmallCheck> {
   late bool _checked;
 
+  bool get _live => widget.onChanged != null;
+
   @override
   void initState() {
     super.initState();
@@ -408,27 +430,44 @@ class _SmallCheckState extends State<SmallCheck> {
   }
 
   @override
+  void didUpdateWidget(SmallCheck old) {
+    super.didUpdateWidget(old);
+    if (widget.checked != old.checked) _checked = widget.checked;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        setState(() => _checked = !_checked);
-        widget.onChanged?.call(_checked);
-      },
-      child: Container(
-        width: 14,
-        height: 14,
-        margin: const EdgeInsets.only(right: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.black, width: 1.4),
-          borderRadius: BorderRadius.circular(2),
+    return Opacity(
+      opacity: _live ? 1 : 0.45,
+      child: GestureDetector(
+        onTap: !_live
+            ? null
+            : () {
+                setState(() => _checked = !_checked);
+                widget.onChanged!.call(_checked);
+              },
+        child: Container(
+          width: 14,
+          height: 14,
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black, width: 1.4),
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: _checked ? const Icon(Icons.check, size: 11) : null,
         ),
-        child: _checked ? const Icon(Icons.check, size: 11) : null,
       ),
     );
   }
 }
 
 class SettingsFullWidthAction extends StatelessWidget {
+  /// A button without [onTap] has nothing behind it, so it is drawn faint
+  /// and does nothing when pressed.
+  ///
+  /// It used to fall back to a snack bar reading "<label> tapped", which is
+  /// a note the author left for themselves being shown to doctors — and
+  /// worse, it made a button that does nothing look like one that worked.
   const SettingsFullWidthAction(this.label, {super.key, this.onTap});
 
   final String label;
@@ -436,28 +475,28 @@ class SettingsFullWidthAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap ??
-            () {
-              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                SnackBar(content: Text('$label tapped')),
-              );
-            },
-        child: Container(
-          height: 28,
-          width: double.infinity,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: SettingsShell.panelMint,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFFCFECEE)),
-          ),
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+    final live = onTap != null;
+
+    return Opacity(
+      opacity: live ? 1 : 0.45,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: onTap,
+          child: Container(
+            height: 28,
+            width: double.infinity,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: SettingsShell.panelMint,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFCFECEE)),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
           ),
         ),
       ),

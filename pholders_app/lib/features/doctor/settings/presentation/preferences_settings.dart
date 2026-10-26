@@ -1,5 +1,7 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 import 'package:flutter/material.dart';
+
+import '../../../../shared/widgets/settings_not_saved_banner.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
@@ -30,6 +32,11 @@ class PreferencesSettings extends StatelessWidget {
               child: SettingsContentCard(
                 title: 'Notifications',
                 children: const [
+                  SettingsNotSavedBanner(
+                    'Nothing here is saved yet. There are no notification '
+                    'settings on the server for a doctor, so these switches '
+                    'have nowhere to write to and are switched off.',
+                  ),
                   _Section(
                     title: 'Channels',
                     children: [

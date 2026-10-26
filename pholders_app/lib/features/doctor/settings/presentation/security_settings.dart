@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 
+import '../../../../shared/widgets/settings_not_saved_banner.dart';
+
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../auth/data/doctor_auth_repository.dart';
@@ -104,6 +106,13 @@ class _SecuritySettings extends StatelessWidget {
               child: SettingsContentCard(
                 title: 'Security Settings',
                 children: const [
+                  SettingsNotSavedBanner(
+                    'The switches and the sign-out button below are not '
+                    'connected to anything yet — the server has no endpoints '
+                    'for a password change, two-factor, biometrics or alerts. '
+                    'Device Management and Login Activity do work: those read '
+                    'real sign-ins from the server.',
+                  ),
         _Section(
           title: 'Password & Authentication',
           children: [
