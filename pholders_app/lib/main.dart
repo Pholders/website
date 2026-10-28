@@ -63,7 +63,7 @@ Future<void> main() async {
     ],
   );
 
-  // 3. Any 401/403 from the API means the JWT is gone or expired — drop the
+  // 3. A 401 from the API means the JWT is gone or expired — drop the
   //    session so the router sends the user back to sign in.
   sl<ApiClient>().onUnauthorized =
       () => store.dispatch(const SessionExpiredAction());

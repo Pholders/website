@@ -45,7 +45,12 @@ class ApiClient {
   final Dio _dio;
   final TokenStorage _tokenStorage;
 
-  /// Called when any request comes back 401/403, so the app can log out.
+  /// Called when any request comes back 401, so the app can log out.
+  ///
+  /// Not on 403: the backend sends 401 for every missing, expired or revoked
+  /// session, and 403 for "signed in, but not allowed this", such as a doctor
+  /// the patient has not given access to their record. Signing out on 403
+  /// threw the doctor out of the portal for an ordinary refusal.
   ///
   /// Set by the auth middleware at startup.
   void Function()? onUnauthorized;
@@ -122,7 +127,7 @@ class ApiClient {
       return Uint8List.fromList(bytes);
     }
 
-    if (status == 401 || status == 403) onUnauthorized?.call();
+    if (status == 401) onUnauthorized?.call();
 
     var message = 'The document could not be downloaded.';
     if (bytes != null && bytes.isNotEmpty) {
@@ -167,7 +172,7 @@ class ApiClient {
     final succeeded = body['success'] == true;
     if (!succeeded) {
       final statusCode = response.statusCode;
-      if (statusCode == 401 || statusCode == 403) {
+      if (statusCode == 401) {
         onUnauthorized?.call();
       }
       throw ApiException(
@@ -207,7 +212,7 @@ class ApiClient {
         );
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode;
-        if (statusCode == 401 || statusCode == 403) onUnauthorized?.call();
+        if (statusCode == 401) onUnauthorized?.call();
         final data = e.response?.data;
         return ApiException(
           message: data is Map<String, dynamic>

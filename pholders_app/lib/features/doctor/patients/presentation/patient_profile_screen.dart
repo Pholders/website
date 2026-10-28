@@ -6,6 +6,7 @@ import 'package:pholders_app/features/doctor/prescriptions/presentation/prescrip
 import 'package:pholders_app/features/doctor/appointments/presentation/appointments_screen.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/documents_screen.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/medical_history_screen.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patient_vitals_panel.dart';
 
 // ─── Patient Profile Screen ───────────────────────────────────────────────────
 class PatientProfileScreen extends StatefulWidget {
@@ -289,13 +290,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
                 const SizedBox(height: 20),
 
-                const _RecordNotice(
-                  title: 'No clinical record here',
-                  detail: 'Vitals, blood group and ward details belong to the '
-                      'patient’s own record, which they share with a doctor in '
-                      'a later phase. This page shows what their bookings with '
-                      'you say, and nothing more.',
-                ),
+                PatientVitalsPanel(patientId: widget.patient.id),
               ],
             ),
           ),
