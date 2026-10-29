@@ -88,6 +88,16 @@ class Appointment extends Equatable {
     return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
+  /// A visit that is over: completed, or its day has gone by. Drives the
+  /// Past visits tab; everything else is a future visit.
+  bool isPastAt(DateTime now) {
+    if (status == 'completed') return true;
+    final d = date?.toLocal();
+    if (d == null) return false;
+    return DateTime(d.year, d.month, d.day)
+        .isBefore(DateTime(now.year, now.month, now.day));
+  }
+
   /// Paid and not yet seen: the only state the server lets a doctor complete.
   bool get canComplete => status == 'scheduled' || status == 'rescheduled';
 

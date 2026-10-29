@@ -67,9 +67,23 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
               const SizedBox(height: 20),
 
               // ── Tab bar ────────────────────────────────────────────────────
-              _TabBar(
-                selectedIndex: _selectedTab,
-                onTabChanged: (i) => setState(() => _selectedTab = i),
+              StoreConnector<AppState, ({int future, int past})>(
+                distinct: true,
+                converter: (store) {
+                  final now = DateTime.now();
+                  final all = store.state.appointmentsState.appointments;
+                  final past = all.where((a) => a.isPastAt(now)).length;
+                  return (future: all.length - past, past: past);
+                },
+                builder: (context, counts) => _TabBar(
+                  labels: [
+                    'Future visits (${counts.future})',
+                    'Past visits (${counts.past})',
+                    'Planned Treatments',
+                  ],
+                  selectedIndex: _selectedTab,
+                  onTabChanged: (i) => setState(() => _selectedTab = i),
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -94,6 +108,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                           converter: _AppointmentsViewModel.fromStore,
                           builder: (context, vm) => _AppointmentsBody(
                             vm: vm,
+                            tab: _selectedTab,
                             onRetry: () => StoreProvider.of<AppState>(context)
                                 .dispatch(const LoadAppointmentsAction()),
                           ),
@@ -115,13 +130,18 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
 class _TabBar extends StatelessWidget {
 
-  const _TabBar({required this.selectedIndex, required this.onTabChanged});
+  const _TabBar({
+    required this.labels,
+    required this.selectedIndex,
+    required this.onTabChanged,
+  });
+  final List<String> labels;
   final int selectedIndex;
   final ValueChanged<int> onTabChanged;
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Future visits(20)', 'Past visits', 'Planned Treatments'];
+    final tabs = labels;
     const activeColor = Color(0xFF309CA3);
 
     return Container(
@@ -547,10 +567,33 @@ class _AppointmentsViewModel {
 /// Switches between the loading, error, empty and populated states of the
 /// calendar area.
 class _AppointmentsBody extends StatelessWidget {
-  const _AppointmentsBody({required this.vm, required this.onRetry});
+  const _AppointmentsBody({
+    required this.vm,
+    required this.tab,
+    required this.onRetry,
+  });
 
   final _AppointmentsViewModel vm;
+
+  /// 0 future visits, 1 past visits, 2 planned treatments.
+  final int tab;
   final VoidCallback onRetry;
+
+  /// The selected tab's visits. The tabs used to only change colour, so all
+  /// three showed the same list.
+  List<Appointment> _visits() {
+    final now = DateTime.now();
+    final past = tab == 1;
+    final list = vm.appointments.where((a) => a.isPastAt(now) == past).toList();
+    final far = DateTime(9999);
+    int byTime(Appointment a, Appointment b) {
+      final c = (a.date ?? far).compareTo(b.date ?? far);
+      return c != 0 ? c : (a.timeSlot ?? '').compareTo(b.timeSlot ?? '');
+    }
+    // Soonest first ahead; most recent first behind.
+    list.sort(past ? (a, b) => byTime(b, a) : byTime);
+    return list;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -603,6 +646,31 @@ class _AppointmentsBody extends StatelessWidget {
       );
     }
 
+    if (tab == 2) {
+      return const _TabNotice(
+        icon: Icons.medical_services_outlined,
+        title: 'No planned treatments yet',
+        detail: 'Treatment plans are not stored by the platform yet, so there '
+            'is nothing to list here.',
+      );
+    }
+
+    final visits = _visits();
+    if (vm.appointments.isNotEmpty && visits.isEmpty) {
+      return tab == 1
+          ? const _TabNotice(
+              icon: Icons.history_rounded,
+              title: 'No past visits yet',
+              detail: 'Completed consultations and appointments whose day has '
+                  'passed appear here.',
+            )
+          : const _TabNotice(
+              icon: Icons.event_available_outlined,
+              title: 'No upcoming visits',
+              detail: 'New bookings appear here.',
+            );
+    }
+
     if (vm.appointments.isEmpty) {
       return const Center(
         child: Padding(
@@ -637,7 +705,41 @@ class _AppointmentsBody extends StatelessWidget {
     }
 
     return SingleChildScrollView(
-      child: _TimeGrid(appointments: vm.appointments),
+      child: _TimeGrid(appointments: visits),
+    );
+  }
+}
+
+class _TabNotice extends StatelessWidget {
+  const _TabNotice({required this.icon, required this.title, required this.detail});
+
+  final IconData icon;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 40, color: AppTheme.textSecondary),
+            const SizedBox(height: 12),
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary)),
+            const SizedBox(height: 6),
+            Text(detail,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 13, color: AppTheme.textSecondary)),
+          ],
+        ),
+      ),
     );
   }
 }

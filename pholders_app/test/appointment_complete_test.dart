@@ -109,8 +109,13 @@ void main() {
 
       expect(repo.completeCalls, 1);
       expect(find.text('Consultation with Pule Test marked complete'), findsOneWidget);
-      expect(find.text('Completed'), findsWidgets);
       expect(find.text('Mark complete'), findsNothing); // dialog closed
+
+      // A completed consultation moves to Past visits, reading Completed.
+      await tester.tap(find.text('Past visits (1)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Pule Test'), findsOneWidget);
+      expect(find.text('Completed'), findsWidgets);
     });
 
     testWidgets('a refusal from the server is shown, not swallowed',
