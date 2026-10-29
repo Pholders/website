@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../../core/network/api_client.dart';
 
 /// Where the signed-in doctor stands with one patient's health record.
@@ -137,6 +139,83 @@ class PatientMedication {
   final String? notes;
 }
 
+/// One line of a patient's history: a completed visit or a prescription,
+/// with any doctor on the platform.
+class PatientHistoryEntry {
+  const PatientHistoryEntry({
+    required this.kind,
+    this.date,
+    this.status,
+    this.providerName,
+    this.specialization,
+    this.notes,
+  });
+
+  factory PatientHistoryEntry.fromJson(Map<String, dynamic> json) {
+    String? text(String key) {
+      final v = json[key]?.toString().trim();
+      return (v == null || v.isEmpty) ? null : v;
+    }
+
+    return PatientHistoryEntry(
+      kind: text('record_type') ?? 'record',
+      date: _date(json['appointment_date']),
+      status: text('status'),
+      providerName: text('provider_name'),
+      specialization: text('specialization'),
+      notes: text('notes'),
+    );
+  }
+
+  /// 'appointment' or 'prescription'.
+  final String kind;
+  final DateTime? date;
+  final String? status;
+  final String? providerName;
+  final String? specialization;
+
+  /// A visit's notes, or a prescription's diagnosis.
+  final String? notes;
+}
+
+/// A file the patient stored in the patient app (/users/profile/files).
+class PatientDocument {
+  const PatientDocument({
+    required this.id,
+    required this.name,
+    this.mimeType,
+    this.sizeBytes,
+    this.category,
+    this.description,
+    this.uploadedAt,
+  });
+
+  factory PatientDocument.fromJson(Map<String, dynamic> json) {
+    String? text(String key) {
+      final v = json[key]?.toString().trim();
+      return (v == null || v.isEmpty) ? null : v;
+    }
+
+    return PatientDocument(
+      id: '${json['id']}',
+      name: text('file_name') ?? 'Untitled file',
+      mimeType: text('file_type'),
+      sizeBytes: _num(json['file_size'])?.toInt(),
+      category: text('category'),
+      description: text('description'),
+      uploadedAt: _date(json['upload_timestamp'] ?? json['created_at']),
+    );
+  }
+
+  final String id;
+  final String name;
+  final String? mimeType;
+  final int? sizeBytes;
+  final String? category;
+  final String? description;
+  final DateTime? uploadedAt;
+}
+
 DateTime? _date(dynamic v) =>
     v == null ? null : DateTime.tryParse(v.toString())?.toLocal();
 
@@ -205,4 +284,30 @@ class PatientRecordRepository {
         .map((e) => PatientMedication.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
+
+  /// The patient's completed visits and prescriptions, newest first.
+  Future<List<PatientHistoryEntry>> fetchHistory(String patientId) async {
+    final data = await _api.get('/users/phr/$patientId/history');
+    final rows = data['data'];
+    if (rows is! List) return const [];
+    return rows
+        .whereType<Map>()
+        .map((e) => PatientHistoryEntry.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// The files the patient stored, newest first. Metadata only.
+  Future<List<PatientDocument>> fetchDocuments(String patientId) async {
+    final data = await _api.get('/users/phr/$patientId/documents');
+    final rows = data['data'];
+    if (rows is! List) return const [];
+    return rows
+        .whereType<Map>()
+        .map((e) => PatientDocument.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// The bytes of one of the patient's files.
+  Future<Uint8List> downloadDocument(String patientId, String fileId) =>
+      _api.getBytes('/users/phr/$patientId/documents/$fileId');
 }

@@ -13,6 +13,8 @@ import 'package:pholders_app/features/doctor/appointments/data/models/appointmen
 import 'package:pholders_app/features/doctor/appointments/presentation/appointments_screen.dart';
 import 'package:pholders_app/features/doctor/appointments/redux/appointments_state.dart';
 import 'package:pholders_app/features/doctor/patients/data/patient_record_repository.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/documents_screen.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/medical_history_screen.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/medication_screen.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart';
 import 'package:pholders_app/features/doctor/prescriptions/data/models/prescription.dart'
@@ -214,6 +216,85 @@ void main() {
       );
       expect(find.text('You can see the record only of patients who have booked with you'),
           findsOneWidget);
+    });
+  });
+
+  group('History tab', () {
+    testWidgets("shows the patient's real visits and prescriptions", (tester) async {
+      await show(
+        tester,
+        store(),
+        MedicalHistoryScreen(
+          patient: patient,
+          repository: repo(200, {
+            'success': true,
+            'data': [
+              {
+                'record_type': 'prescription',
+                'appointment_date': '2026-10-29',
+                'status': 'signed',
+                'provider_name': 'Pule Doctor',
+                'specialization': 'General Practitioner',
+                'notes': 'Hypertension',
+              },
+              {
+                'record_type': 'appointment',
+                'appointment_date': '2026-10-20',
+                'status': 'completed',
+                'provider_name': 'Thandi Nkosi',
+              },
+            ],
+          }),
+        ),
+      );
+      expect(find.text('Prescription'), findsOneWidget);
+      expect(find.text('Hypertension'), findsOneWidget);
+      expect(find.text('Dr Pule Doctor · General Practitioner'), findsOneWidget);
+      expect(find.text('Visit'), findsOneWidget);
+      expect(find.text('Completed'), findsOneWidget);
+      // No note can be kept on the server yet, so none is offered.
+      expect(find.textContaining('Add note'), findsNothing);
+    });
+
+    testWidgets('an empty history says so', (tester) async {
+      await show(tester, store(),
+          MedicalHistoryScreen(patient: patient, repository: repo(200, {'success': true, 'data': []})));
+      expect(find.textContaining('No completed visits or prescriptions'), findsOneWidget);
+    });
+  });
+
+  group('Documents tab', () {
+    testWidgets("lists the patient's stored files with a download each", (tester) async {
+      await show(
+        tester,
+        store(),
+        DocumentsScreen(
+          patient: patient,
+          repository: repo(200, {
+            'success': true,
+            'data': [
+              {
+                'id': 5,
+                'file_name': 'blood-results.pdf',
+                'file_type': 'application/pdf',
+                'file_size': 204800,
+                'category': 'lab_results',
+                'upload_timestamp': '2026-10-28T10:00:00Z',
+              },
+            ],
+          }),
+        ),
+      );
+      expect(find.text('blood-results.pdf'), findsOneWidget);
+      expect(find.textContaining('lab results · 200 KB'), findsOneWidget);
+      expect(find.byTooltip('Download'), findsOneWidget);
+      expect(find.text('Blood Test Report'), findsNothing);
+    });
+
+    testWidgets('no stored documents says so', (tester) async {
+      await show(tester, store(),
+          DocumentsScreen(patient: patient, repository: repo(200, {'success': true, 'data': []})));
+      expect(find.textContaining('has not stored any documents'), findsOneWidget);
     });
   });
 }
