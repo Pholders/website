@@ -1,54 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
+import 'package:flutter_redux/flutter_redux.dart';
 
-// ─── Colors ───────────────────────────────────────────────────────────────────
-class ApptColors {
-  static const teal = Color(0xFF2EC4C4);
-  static const tealLight = Color(0xFFE6F7F7);
-  static const bg = Color(0xFFF4FAFA);
-  static const textPrimary = Color(0xFF1A2B2B);
-  static const textSecondary = Color(0xFF8A9E9E);
-  static const border = Color(0xFFE8F0F0);
-  static const cardBg = Color(0xFFFFFFFF);
-  static const scheduledBg = Color(0xFFD9F3F3);
-  static const scheduledText = Color(0xFF2EC4C4);
-  static const purple = Color(0xFF9B59B6);
-  static const purpleLight = Color(0xFFF3E8FF);
-}
+import 'package:pholders_app/app/app_state.dart';
+import 'package:pholders_app/features/doctor/appointments/data/models/appointment.dart';
+import 'package:pholders_app/features/doctor/appointments/redux/appointments_actions.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart'
+    show Patient;
 
-// ─── Data model ───────────────────────────────────────────────────────────────
-class Appointment { // alternates colours
+const _teal = Color(0xFF2EC4C4);
+const _tealLight = Color(0xFFE6F7F7);
+const _textPrimary = Color(0xFF1A2B2B);
+const _textSecondary = Color(0xFF8A9E9E);
+const _border = Color(0xFFE8F0F0);
 
-  const Appointment({
-    required this.id,
-    required this.time,
-    required this.date,
-    required this.service,
-    required this.doctor,
-    required this.status,
-    required this.hour,
-    this.isPurple = false,
-  });
-  final String id;
-  final String time;
-  final String date;
-  final String service;
-  final String doctor;
-  final String status;
-  final int hour; // for timeline placement
-  final bool isPurple;
-}
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-final _mockAppointments = [
-  const Appointment(id: 'A1', time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled', hour: 9, isPurple: true),
-  const Appointment(id: 'A2', time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled', hour: 10, isPurple: false),
-  const Appointment(id: 'A3', time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled', hour: 12, isPurple: false),
-];
-
-// ─── Appointments Screen ──────────────────────────────────────────────────────
+/// The Appointments tab of a patient's profile: their visits with this
+/// doctor, taken from the doctor's own appointments.
+///
+/// It used to show three invented visits ("Treatment of diabetes" with
+/// "Dr Sam Smith" on 26 Apr 2026) under whichever real patient was open, with
+/// fixed counts and a calendar stuck on 15 April.
 class AppointmentsScreen extends StatefulWidget {
-
   const AppointmentsScreen({super.key, required this.patient});
   final Patient patient;
 
@@ -57,439 +28,214 @@ class AppointmentsScreen extends StatefulWidget {
 }
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
-  int _visitTab = 0; // 0=Future visits, 1=Past Visits, 2=Planned Treatments
-  int _viewMode = 0; // 0=Day, 1=Week, 2=Month
-  DateTime _currentDate = DateTime(2026, 4, 15);
-
-  static const _visitTabs = ['Future visits (2)', 'Past Visits (15)', 'Planned Treatments'];
-  static const _viewModes = ['Day', 'Week', 'Month'];
-
-  void _prevDay() => setState(() => _currentDate = _currentDate.subtract(const Duration(days: 1)));
-  void _nextDay() => setState(() => _currentDate = _currentDate.add(const Duration(days: 1)));
-
-  String get _formattedDate {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${_currentDate.day} ${months[_currentDate.month - 1]} ${_currentDate.year}';
-  }
-
-  String get _shortDate {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${_currentDate.day} ${months[_currentDate.month - 1]}';
-  }
+  int _tab = 0; // 0 upcoming, 1 past
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+    return StoreConnector<AppState, _VisitsViewModel>(
+      distinct: true,
+      onInit: (store) {
+        if (!store.state.appointmentsState.hasLoadedOnce) {
+          store.dispatch(const LoadAppointmentsAction());
+        }
+      },
+      converter: (store) => _VisitsViewModel.of(store.state, widget.patient.id),
+      builder: (context, vm) => Material(
+        color: Colors.transparent,
         child: Container(
-        decoration: BoxDecoration(
-          color: ApptColors.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ApptColors.border),
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _border),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _tabButton(0, 'Upcoming (${vm.upcoming.length})'),
+                  _tabButton(1, 'Past (${vm.past.length})'),
+                ],
+              ),
+              const Divider(height: 1, color: _border),
+              const SizedBox(height: 12),
+              _body(vm),
+            ],
+          ),
         ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Visit tabs ───────────────────────────────────────────────────
-            Row(
-              children: List.generate(_visitTabs.length, (i) {
-                final active = i == _visitTab;
-                return GestureDetector(
-                  onTap: () => setState(() => _visitTab = i),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 4),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: active
-                              ? ApptColors.teal
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      _visitTabs[i],
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: active
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        color: active
-                            ? ApptColors.teal
-                            : ApptColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Controls row: date nav + view mode + date picker ─────────────
-            Row(
-              children: [
-                // Prev / Next arrows
-                GestureDetector(
-                  onTap: _prevDay,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: ApptColors.bg,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: ApptColors.border),
-                    ),
-                    child: const Icon(Icons.chevron_left,
-                        size: 18, color: ApptColors.textSecondary),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: _nextDay,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: ApptColors.bg,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: ApptColors.border),
-                    ),
-                    child: const Icon(Icons.chevron_right,
-                        size: 18, color: ApptColors.textSecondary),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Current date label
-                Text(
-                  _formattedDate,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: ApptColors.textPrimary,
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Day / Week / Month toggle
-                Container(
-                  decoration: BoxDecoration(
-                    color: ApptColors.bg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: ApptColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(_viewModes.length, (i) {
-                      final active = i == _viewMode;
-                      return GestureDetector(
-                        onTap: () => setState(() => _viewMode = i),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 160),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: active
-                                ? ApptColors.teal
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _viewModes[i],
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: active
-                                  ? Colors.white
-                                  : ApptColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                // Date picker button
-                GestureDetector(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _currentDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2030),
-                      builder: (ctx, child) => Theme(
-                        data: Theme.of(ctx).copyWith(
-                          colorScheme: const ColorScheme.light(
-                              primary: ApptColors.teal),
-                        ),
-                        child: child!,
-                      ),
-                    );
-                    if (picked != null) {
-                      setState(() => _currentDate = picked);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: ApptColors.bg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: ApptColors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today_outlined,
-                            size: 14, color: ApptColors.textSecondary),
-                        const SizedBox(width: 6),
-                        Text(
-                          _shortDate,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: ApptColors.textPrimary,
-                              fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // ── Timeline ─────────────────────────────────────────────────────
-            _buildTimeline(),
-          ],
-        ),        // closes Column
-        ),        // closes Container
-      ),          // closes SingleChildScrollView
-    );            // closes Material
-  }
-
-  // ── Timeline view ─────────────────────────────────────────────────────────
-  Widget _buildTimeline() {
-    final hours = List.generate(8, (i) => i + 9); // 9am to 4pm
-
-    return Column(
-      children: hours.map((hour) {
-        final appts = _mockAppointments
-            .where((a) => a.hour == hour)
-            .toList();
-
-        return _TimelineRow(
-          hour: hour,
-          appointments: appts,
-        );
-      }).toList(),
-    );
-  }
-}
-
-// ─── Timeline row ─────────────────────────────────────────────────────────────
-class _TimelineRow extends StatelessWidget {
-
-  const _TimelineRow({required this.hour, required this.appointments});
-  final int hour;
-  final List<Appointment> appointments;
-
-  String get _hourLabel {
-    if (hour == 12) return '12 pm';
-    if (hour > 12) return '${hour - 12} pm';
-    return '$hour am';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Hour label
-          SizedBox(
-            width: 50,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                _hourLabel,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: ApptColors.textSecondary,
-                ),
-              ),
-            ),
-          ),
-
-          // Divider + content area
-          Expanded(
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 64),
-              decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: ApptColors.border),
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: appointments.isEmpty
-                  ? const SizedBox()
-                  : Column(
-                      children: appointments
-                          .map((a) => Padding(
-                                padding:
-                                    const EdgeInsets.only(bottom: 8),
-                                child: _AppointmentCard(appt: a),
-                              ))
-                          .toList(),
-                    ),
-            ),
-          ),
-        ],
       ),
     );
   }
+
+  Widget _tabButton(int index, String label) {
+    final active = index == _tab;
+    return InkWell(
+      onTap: () => setState(() => _tab = index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+                color: active ? _teal : Colors.transparent, width: 2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            color: active ? _teal : _textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _body(_VisitsViewModel vm) {
+    if (vm.loading && !vm.loaded) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: _teal),
+          ),
+        ),
+      );
+    }
+    if (vm.error != null && !vm.loaded) {
+      return _message(vm.error!);
+    }
+    final visits = _tab == 0 ? vm.upcoming : vm.past;
+    if (visits.isEmpty) {
+      return _message(_tab == 0
+          ? 'No upcoming visits with you.'
+          : 'No past visits with you yet.');
+    }
+    return Column(
+      children: [for (final a in visits) _VisitRow(appointment: a)],
+    );
+  }
+
+  Widget _message(String text) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Text(text,
+            style: const TextStyle(fontSize: 13, color: _textSecondary)),
+      );
 }
 
-// ─── Appointment card ─────────────────────────────────────────────────────────
-class _AppointmentCard extends StatefulWidget {
-  const _AppointmentCard({required this.appt});
-  final Appointment appt;
+class _VisitsViewModel {
+  const _VisitsViewModel({
+    required this.upcoming,
+    required this.past,
+    required this.loading,
+    required this.loaded,
+    this.error,
+  });
+
+  /// Only this patient's visits, split the way the Appointments page splits
+  /// them: past = completed or an earlier day.
+  factory _VisitsViewModel.of(AppState state, String patientId) {
+    final s = state.appointmentsState;
+    final now = DateTime.now();
+    final mine =
+        s.appointments.where((a) => '${a.patientId}' == patientId).toList();
+    final far = DateTime(9999);
+    int byDate(Appointment a, Appointment b) {
+      final c = (a.date ?? far).compareTo(b.date ?? far);
+      return c != 0 ? c : (a.timeSlot ?? '').compareTo(b.timeSlot ?? '');
+    }
+
+    final upcoming = mine.where((a) => !a.isPastAt(now)).toList()
+      ..sort(byDate);
+    final past = mine.where((a) => a.isPastAt(now)).toList()
+      ..sort((a, b) => byDate(b, a));
+    return _VisitsViewModel(
+      upcoming: upcoming,
+      past: past,
+      loading: s.isLoading,
+      loaded: s.hasLoadedOnce,
+      error: s.errorMessage,
+    );
+  }
+
+  final List<Appointment> upcoming;
+  final List<Appointment> past;
+  final bool loading;
+  final bool loaded;
+  final String? error;
 
   @override
-  State<_AppointmentCard> createState() => _AppointmentCardState();
+  bool operator ==(Object other) =>
+      other is _VisitsViewModel &&
+      _same(other.upcoming, upcoming) &&
+      _same(other.past, past) &&
+      other.loading == loading &&
+      other.loaded == loaded &&
+      other.error == error;
+
+  @override
+  int get hashCode =>
+      Object.hash(upcoming.length, past.length, loading, loaded, error);
+
+  static bool _same(List<Appointment> a, List<Appointment> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!identical(a[i], b[i])) return false;
+    }
+    return true;
+  }
 }
 
-class _AppointmentCardState extends State<_AppointmentCard> {
-  bool _hovered = false;
+class _VisitRow extends StatelessWidget {
+  const _VisitRow({required this.appointment});
+  final Appointment appointment;
 
   @override
   Widget build(BuildContext context) {
-    final a = widget.appt;
-    final bgColor =
-        a.isPurple ? ApptColors.purpleLight : ApptColors.tealLight;
-    final accentColor =
-        a.isPurple ? ApptColors.purple : ApptColors.teal;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: _hovered ? bgColor.withValues(alpha: 0.8) : bgColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border(
-            left: BorderSide(color: accentColor, width: 3),
-          ),
-        ),
-        child: Row(
-          children: [
-            // Time + date
-            SizedBox(
-              width: 100,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(a.time,
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: accentColor)),
-                  const SizedBox(height: 2),
-                  Text(a.date,
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: ApptColors.textSecondary)),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Service
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Service',
-                      style: TextStyle(
-                          fontSize: 10,
-                          color: ApptColors.textSecondary)),
-                  const SizedBox(height: 2),
-                  Text(a.service,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: ApptColors.textPrimary)),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Doctor
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Doctor',
-                      style: TextStyle(
-                          fontSize: 10,
-                          color: ApptColors.textSecondary)),
-                  const SizedBox(height: 2),
-                  Text(a.doctor,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: ApptColors.textPrimary)),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Status
-            Column(
+    final a = appointment;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _border)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Status',
-                    style: TextStyle(
-                        fontSize: 10,
-                        color: ApptColors.textSecondary)),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: ApptColors.scheduledBg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    a.status,
+                Text(a.formattedDate,
                     style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: ApptColors.scheduledText),
-                  ),
-                ),
+                        color: _textPrimary)),
+                const SizedBox(height: 2),
+                Text(a.timeRange,
+                    style:
+                        const TextStyle(fontSize: 12, color: _textSecondary)),
               ],
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: Text(a.reason ?? 'Consultation',
+                style: const TextStyle(fontSize: 13, color: _textPrimary)),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: _tealLight,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(a.statusLabel,
+                style: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w600, color: _teal)),
+          ),
+        ],
       ),
     );
   }

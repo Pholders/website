@@ -58,18 +58,6 @@ class Prescription {
   final String? note;
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-List<Prescription> _mockPrescriptions(String patientName) => [
-      Prescription(id: 'RX001', patientName: patientName, medication: 'Isotretinoin', dosage: '10mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX002', patientName: patientName, medication: 'Isotretinoin', dosage: '10mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX003', patientName: patientName, medication: 'Isotretinoin', dosage: '10mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX004', patientName: patientName, medication: 'Isotretinoin', dosage: '30mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX005', patientName: patientName, medication: 'Isotretinoin', dosage: '40mg', dateIssued: '01 Mar', status: RxStatus.pending),
-      Prescription(id: 'RX006', patientName: patientName, medication: 'Isotretinoin', dosage: '10mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX007', patientName: patientName, medication: 'Isotretinoin', dosage: '30mg', dateIssued: '01 Mar', status: RxStatus.dispensed),
-      Prescription(id: 'RX008', patientName: patientName, medication: 'Isotretinoin', dosage: '20mg', dateIssued: '01 Mar', status: RxStatus.approved),
-    ];
-
 // ─── Prescriptions Screen ─────────────────────────────────────────────────────
 class PrescriptionsScreen extends StatefulWidget {
 
@@ -82,19 +70,19 @@ class PrescriptionsScreen extends StatefulWidget {
 
 class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
   int _filterIndex = 0;
-  late List<Prescription> _allPrescriptions;
   Prescription? _selectedPrescription; // null = list, non-null = details
 
-  /// With no patient supplied this is the doctor's own Prescriptions tab, so
-  /// the rows come from the API. Scoped to a patient it keeps its sample data:
-  /// the backend has no per-patient prescription list for doctors.
-  bool get _isLive => widget.patient == null;
+  /// Opened from a patient's profile, only that patient's prescriptions are
+  /// shown, filtered from the doctor's own list (the backend has no
+  /// per-patient list for doctors). It used to show eight invented
+  /// Isotretinoin scripts under the real patient's name.
+  int? get _patientId =>
+      widget.patient == null ? null : int.tryParse(widget.patient!.id);
 
   /// Rows from the API, refreshed by the store.
   List<Prescription> _livePrescriptions = const [];
 
-  List<Prescription> get _source =>
-      _isLive ? _livePrescriptions : _allPrescriptions;
+  List<Prescription> get _source => _livePrescriptions;
 
   /// Opens the real create form. The list refreshes itself on success, so
   /// nothing needs adding to local state here.
@@ -262,15 +250,12 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
     @override
   void initState() {
     super.initState();
-    _allPrescriptions = _mockPrescriptions(widget.patient?.name ?? 'Patient Name');
-    if (_isLive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          StoreProvider.of<AppState>(context)
-              .dispatch(const LoadPrescriptionsAction());
-        }
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        StoreProvider.of<AppState>(context)
+            .dispatch(const LoadPrescriptionsAction());
+      }
+    });
   }
 
   List<Prescription> get _filtered {
@@ -284,62 +269,18 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
     return _source.where((p) => p.status == map[_filterIndex]).toList();
   }
 
-        void _addPrescription() async {
-    final result = await showDialog<Prescription>(
-      context: context,
-      builder: (_) => _PrescriptionFormDialog(patientName: widget.patient?.name ?? 'Patient Name'),
-    );
-    if (result != null) setState(() => _allPrescriptions.add(result));
-  }
-
-  void _editPrescription(Prescription rx) async {
-    final result = await showDialog<Prescription>(
-      context: context,
-      builder: (_) => _PrescriptionFormDialog(
-          patientName: widget.patient?.name ?? 'Patient Name', existing: rx),
-    );
-    if (result != null) {
-      setState(() {
-        final i = _allPrescriptions.indexWhere((p) => p.id == rx.id);
-        if (i != -1) _allPrescriptions[i] = result;
-      });
-    }
-  }
-
-  void _deletePrescription(Prescription rx) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Prescription'),
-        content: Text('Remove prescription for ${rx.medication}?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade400),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      setState(() => _allPrescriptions.removeWhere((p) => p.id == rx.id));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     // Sample-data mode renders straight from local state.
-    if (!_isLive) return _buildContent(context);
-
     // Live mode feeds the rows from the store, keeping the same layout.
     return StoreConnector<AppState, _RxViewModel>(
       converter: _RxViewModel.fromStore,
       builder: (context, vm) {
-        _livePrescriptions = vm.prescriptions.map(_fromApi).toList();
+        final patientId = _patientId;
+        _livePrescriptions = vm.prescriptions
+            .where((p) => patientId == null || p.patientId == patientId)
+            .map(_fromApi)
+            .toList();
         // Checked on every build rather than via onDidChange: the receipt
         // must not be missed, and the guard inside makes repeats harmless.
         _maybeShowReceipt(vm.signingReceipt);
@@ -438,7 +379,7 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                 const Spacer(),
                 // New Prescription button
                 ElevatedButton.icon(
-                  onPressed: _isLive ? _newPrescription : _addPrescription,
+                  onPressed: _newPrescription,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: RxColors.teal,
                     shape: RoundedRectangleBorder(
@@ -508,20 +449,14 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                 border: Border(
                     bottom: BorderSide(color: RxColors.border)),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  const Expanded(flex: 3, child: _RxHeaderCell('Patient')),
-                  Expanded(
-                    flex: 3,
-                    child: _RxHeaderCell(_isLive ? 'Diagnosis' : 'Medication'),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: _RxHeaderCell(_isLive ? 'Reference' : 'Dosage'),
-                  ),
-                  const Expanded(flex: 2, child: _RxHeaderCell('Date Issued')),
-                  const Expanded(flex: 2, child: _RxHeaderCell('Status')),
-                  const Expanded(flex: 2, child: _RxHeaderCell('Actions')),
+                  Expanded(flex: 3, child: _RxHeaderCell('Patient')),
+                  Expanded(flex: 3, child: _RxHeaderCell('Diagnosis')),
+                  Expanded(flex: 2, child: _RxHeaderCell('Reference')),
+                  Expanded(flex: 2, child: _RxHeaderCell('Date Issued')),
+                  Expanded(flex: 2, child: _RxHeaderCell('Status')),
+                  Expanded(flex: 2, child: _RxHeaderCell('Actions')),
                 ],
               ),
             ),
@@ -540,23 +475,17 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                     children: _filtered
                         .map((rx) => _RxRow(
                               prescription: rx,
-                              onEdit: () => _editPrescription(rx),
-                              onDelete: () => _deletePrescription(rx),
                               onViewDetails: () => setState(
                                   () => _selectedPrescription = rx),
                               // Signing and revoking hit the API, so they are
                               // only offered against real prescriptions.
-                              onSign: _isLive && rx.status == RxStatus.pending
+                              onSign: rx.status == RxStatus.pending
                                   ? () => _signPrescription(rx)
                                   : null,
-                              onRevoke: _isLive && rx.status == RxStatus.approved
+                              onRevoke: rx.status == RxStatus.approved
                                   ? () => _revokePrescription(rx)
                                   : null,
-                              // Sample rows have no prescription on the server
-                              // to check, so the action is not offered there.
-                              onCheckInteractions: _isLive
-                                  ? () => _checkInteractions(rx)
-                                  : null,
+                              onCheckInteractions: () => _checkInteractions(rx),
                             ))
                         .toList(),
                   ),
@@ -588,16 +517,12 @@ class _RxRow extends StatefulWidget {
 
   const _RxRow({
     required this.prescription,
-    required this.onEdit,
-    required this.onDelete,
     required this.onViewDetails,
     this.onSign,
     this.onRevoke,
     this.onCheckInteractions,
   });
   final Prescription prescription;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
   final VoidCallback onViewDetails;
 
   /// Null when the action does not apply to this prescription's status.
@@ -619,8 +544,6 @@ class _RxRowState extends State<_RxRow> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.15),
       builder: (_) => _RxActionsMenu(
-        onEdit: widget.onEdit,
-        onDelete: widget.onDelete,
         onViewDetails: widget.onViewDetails,
         onSign: widget.onSign,
         onRevoke: widget.onRevoke,
@@ -731,14 +654,6 @@ class _RxRowState extends State<_RxRow> {
               child: Row(
                 children: [
                   _RxActionBtn(
-                      icon: Icons.edit_outlined,
-                      onTap: widget.onEdit),
-                  const SizedBox(width: 6),
-                  _RxActionBtn(
-                      icon: Icons.delete_outline,
-                      onTap: widget.onDelete),
-                  const SizedBox(width: 6),
-                  _RxActionBtn(
                     icon: Icons.more_vert,
                     onTap: () => _showMenu(context),
                   ),
@@ -827,15 +742,11 @@ class _RxActionBtn extends StatelessWidget {
 class _RxActionsMenu extends StatelessWidget {
 
   const _RxActionsMenu({
-    required this.onEdit,
-    required this.onDelete,
     required this.onViewDetails,
     this.onSign,
     this.onRevoke,
     this.onCheckInteractions,
   });
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
   final VoidCallback onViewDetails;
   final VoidCallback? onSign;
   final VoidCallback? onRevoke;
@@ -857,10 +768,6 @@ class _RxActionsMenu extends StatelessWidget {
       if (onRevoke != null)
         _RxAction(label: 'Revoke Prescription', icon: Icons.block_outlined,
             onTap: () { Navigator.pop(context); onRevoke!(); }),
-      _RxAction(label: 'Edit Prescription', icon: Icons.edit_outlined,
-          onTap: () { Navigator.pop(context); onEdit(); }),
-      _RxAction(label: 'Delete', icon: Icons.delete_outline,
-          onTap: () { Navigator.pop(context); onDelete(); }),
     ];
 
     return Dialog(
@@ -998,210 +905,6 @@ class _RxActionMenuItemState extends State<_RxActionMenuItem> {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ─── Add / Edit prescription dialog ──────────────────────────────────────────
-class _PrescriptionFormDialog extends StatefulWidget {
-  const _PrescriptionFormDialog(
-      {required this.patientName, this.existing});
-  final String patientName;
-  final Prescription? existing;
-
-  @override
-  State<_PrescriptionFormDialog> createState() =>
-      _PrescriptionFormDialogState();
-}
-
-class _PrescriptionFormDialogState
-    extends State<_PrescriptionFormDialog> {
-  late final TextEditingController _medCtrl;
-  late final TextEditingController _dosageCtrl;
-  late RxStatus _status;
-
-  bool get _isEdit => widget.existing != null;
-
-  @override
-  void initState() {
-    super.initState();
-    _medCtrl =
-        TextEditingController(text: widget.existing?.medication ?? '');
-    _dosageCtrl =
-        TextEditingController(text: widget.existing?.dosage ?? '');
-    _status = widget.existing?.status ?? RxStatus.pending;
-  }
-
-  @override
-  void dispose() {
-    _medCtrl.dispose();
-    _dosageCtrl.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (_medCtrl.text.isEmpty || _dosageCtrl.text.isEmpty) return;
-    final result = Prescription(
-      id: widget.existing?.id ??
-          'RX${DateTime.now().millisecondsSinceEpoch}',
-      patientName: widget.patientName,
-      medication: _medCtrl.text.trim(),
-      dosage: _dosageCtrl.text.trim(),
-      dateIssued: '${DateTime.now().day} ${_monthName(DateTime.now().month)}',
-      status: _status,
-    );
-    Navigator.pop(context, result);
-  }
-
-  String _monthName(int m) => const [
-        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][m];
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: SizedBox(
-        width: 420,
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_isEdit ? 'Edit Prescription' : 'New Prescription',
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 20),
-
-              _RxFormField(
-                  label: 'Medication',
-                  controller: _medCtrl,
-                  hint: 'e.g. Amoxicillin'),
-              const SizedBox(height: 14),
-              _RxFormField(
-                  label: 'Dosage',
-                  controller: _dosageCtrl,
-                  hint: 'e.g. 500mg'),
-              const SizedBox(height: 14),
-
-              const Text('Status',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: RxColors.textSecondary)),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<RxStatus>(
-                isExpanded: true,
-                initialValue: _status,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          const BorderSide(color: RxColors.border)),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          const BorderSide(color: RxColors.border)),
-                ),
-                items: RxStatus.values
-                    .map((s) => DropdownMenuItem(
-                        value: s,
-                        child: Text(s.name[0].toUpperCase() +
-                            s.name.substring(1))))
-                    .toList(),
-                onChanged: (v) => setState(() => _status = v!),
-              ),
-              const SizedBox(height: 24),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: RxColors.teal,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text(
-                          _isEdit ? 'Save Changes' : 'Add Prescription',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RxFormField extends StatelessWidget {
-
-  const _RxFormField(
-      {required this.label,
-      required this.controller,
-      required this.hint});
-  final String label;
-  final TextEditingController controller;
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: RxColors.textSecondary)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(
-                color: RxColors.textSecondary, fontSize: 13),
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: RxColors.border)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: RxColors.border)),
-            focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                    color: RxColors.teal, width: 1.5)),
-          ),
-        ),
-      ],
     );
   }
 }

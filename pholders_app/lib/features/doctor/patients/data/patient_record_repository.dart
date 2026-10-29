@@ -92,6 +92,51 @@ class PatientVital {
       : '$systolicBp/$diastolicBp';
 }
 
+/// A medication the patient is currently taking, from their health record
+/// (patient_medications, active rows only).
+class PatientMedication {
+  const PatientMedication({
+    required this.name,
+    this.dosage,
+    this.frequency,
+    this.route,
+    this.startDate,
+    this.endDate,
+    this.reason,
+    this.prescribedBy,
+    this.notes,
+  });
+
+  factory PatientMedication.fromJson(Map<String, dynamic> json) {
+    String? text(String key) {
+      final v = json[key]?.toString().trim();
+      return (v == null || v.isEmpty) ? null : v;
+    }
+
+    return PatientMedication(
+      name: text('medication_name') ?? 'Unnamed medication',
+      dosage: text('dosage'),
+      frequency: text('frequency'),
+      route: text('route'),
+      startDate: _date(json['start_date']),
+      endDate: _date(json['end_date']),
+      reason: text('reason'),
+      prescribedBy: text('prescribed_by'),
+      notes: text('notes'),
+    );
+  }
+
+  final String name;
+  final String? dosage;
+  final String? frequency;
+  final String? route;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String? reason;
+  final String? prescribedBy;
+  final String? notes;
+}
+
 DateTime? _date(dynamic v) =>
     v == null ? null : DateTime.tryParse(v.toString())?.toLocal();
 
@@ -147,5 +192,17 @@ class PatientRecordRepository {
       String patientId, Map<String, dynamic> values) async {
     final data = await _api.post('/users/phr/$patientId/vitals', body: values);
     return PatientVital.fromJson(data);
+  }
+
+  /// The patient's active medications. Any doctor the patient has booked may
+  /// read them; the server answers 403 for anyone else.
+  Future<List<PatientMedication>> fetchMedications(String patientId) async {
+    final data = await _api.get('/users/phr/$patientId/medications');
+    final rows = data['data'];
+    if (rows is! List) return const [];
+    return rows
+        .whereType<Map>()
+        .map((e) => PatientMedication.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 }
