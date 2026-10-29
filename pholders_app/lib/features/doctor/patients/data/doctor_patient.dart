@@ -23,12 +23,16 @@ class DoctorPatient {
     this.lastReason,
     this.nextVisit,
     this.hasCompletedVisit = false,
+    this.avatarUrl,
   });
 
   final int id;
   final String name;
   final String? email;
   final String? phone;
+
+  /// Their profile photo, or null when they have not set one.
+  final String? avatarUrl;
 
   /// How many times they have booked this doctor.
   final int visits;
@@ -79,12 +83,14 @@ List<DoctorPatient> patientsFromAppointments(
     String? lastReason;
     String? email;
     String? phone;
+    String? avatarUrl;
     var completed = false;
 
     for (final visit in visits) {
       if ((visit.status ?? '').toLowerCase() == 'completed') completed = true;
       email ??= _blankToNull(visit.patientEmail);
       phone ??= _blankToNull(visit.patientPhone);
+      avatarUrl ??= _blankToNull(visit.patientAvatarUrl);
 
       final date = visit.date;
       if (date == null) continue;
@@ -114,6 +120,7 @@ List<DoctorPatient> patientsFromAppointments(
       lastReason: lastReason,
       nextVisit: next,
       hasCompletedVisit: completed,
+      avatarUrl: avatarUrl,
     );
   }).toList();
 

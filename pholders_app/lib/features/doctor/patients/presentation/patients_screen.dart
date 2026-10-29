@@ -49,6 +49,7 @@ class Patient {
     this.avatarInitials,
     this.email,
     this.phone,
+    this.avatarUrl,
   });
   /// Built from a real patient, so the older detail screens can keep their
   /// type while showing what the appointments actually say.
@@ -66,6 +67,7 @@ class Patient {
         avatarInitials: p.initials,
         email: p.email,
         phone: p.phone,
+        avatarUrl: p.avatarUrl,
       );
 
   final String id;
@@ -80,6 +82,9 @@ class Patient {
   /// Real contact details when they came from a booking; null otherwise.
   String? email;
   String? phone;
+
+  /// Their profile photo, or null when they have not set one.
+  String? avatarUrl;
 
   Patient copyWith({
     String? name,
@@ -98,6 +103,9 @@ class Patient {
         priority: priority ?? this.priority,
         category: category ?? this.category,
         avatarInitials: avatarInitials,
+        email: email,
+        phone: phone,
+        avatarUrl: avatarUrl,
       );
 }
 
@@ -487,6 +495,13 @@ class _PatientRow extends StatelessWidget {
                   CircleAvatar(
                     radius: 16,
                     backgroundColor: AppColors.tealLight,
+                    // The photo when there is one; the initials show through
+                    // if it is missing or fails to load.
+                    foregroundImage: patient.avatarUrl == null
+                        ? null
+                        : NetworkImage(patient.avatarUrl!),
+                    onForegroundImageError:
+                        patient.avatarUrl == null ? null : (_, __) {},
                     child: Text(
                       patient.initials,
                       style: const TextStyle(

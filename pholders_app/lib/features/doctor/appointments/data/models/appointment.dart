@@ -19,6 +19,7 @@ class Appointment extends Equatable {
     this.consultationFee,
     this.status,
     this.doctorAccepted = false,
+    this.patientAvatarUrl,
   });
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
@@ -35,6 +36,7 @@ class Appointment extends Equatable {
       consultationFee: _asDouble(json['consultationFee']),
       status: _asString(json['status']),
       doctorAccepted: json['doctorAccepted'] == true,
+      patientAvatarUrl: _asString(json['patientAvatarUrl']),
     );
   }
 
@@ -46,6 +48,9 @@ class Appointment extends Equatable {
   final int? patientId;
 
   final String? patientEmail;
+
+  /// The patient's profile photo, or null when they have not set one.
+  final String? patientAvatarUrl;
   final String? patientPhone;
   final DateTime? date;
 

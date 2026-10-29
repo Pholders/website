@@ -225,7 +225,16 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: const Icon(Icons.person, size: 80, color: AppProfileColors.teal),
+                    child: widget.patient.avatarUrl == null
+                        ? const Icon(Icons.person, size: 80, color: AppProfileColors.teal)
+                        : Image.network(
+                            widget.patient.avatarUrl!,
+                            fit: BoxFit.cover,
+                            // A photo that will not load falls back to the
+                            // placeholder rather than a broken-image box.
+                            errorBuilder: (_, __, ___) => const Icon(Icons.person,
+                                size: 80, color: AppProfileColors.teal),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 14),

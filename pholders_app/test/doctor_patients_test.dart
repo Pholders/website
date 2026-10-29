@@ -191,4 +191,20 @@ void liveShapeTest() {
     expect(patient.hasCompletedVisit, isFalse);
     expect(patient.nextVisit, isNotNull);
   });
+
+  test("the patient's photo carries through from their bookings", () {
+    final withPhoto = Appointment.fromJson({
+      'id': 2,
+      'patientId': 7,
+      'patientName': 'Thandi Mokoena',
+      'patientAvatarUrl': 'https://example.test/api/profile/avatars/p7.jpg',
+      'appointmentDate': DateTime(2026, 10, 1).toIso8601String(),
+    });
+    final list = patientsFromAppointments(
+        [appointment(id: 1, patientId: 7, date: DateTime(2026, 9, 1)), withPhoto],
+        now: DateTime(2026, 10, 15, 12));
+    expect(list.single.avatarUrl, 'https://example.test/api/profile/avatars/p7.jpg');
+    expect(patientsFromAppointments([appointment(id: 3, patientId: 9)], now: DateTime(2026, 10, 15, 12))
+        .single.avatarUrl, isNull);
+  });
 }
