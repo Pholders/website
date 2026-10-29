@@ -27,6 +27,8 @@ List<Middleware<AppState>> createAppointmentsMiddleware({
   ) async {
     try {
       await repository.accept(action.appointmentId);
+      store.dispatch(
+          AppointmentActionSucceededAction(appointmentId: action.appointmentId));
       // Accepting flips doctor_accepted, which changes which scopes the
       // appointment falls into, so refetch rather than patching in place.
       await load(store);
@@ -48,6 +50,8 @@ List<Middleware<AppState>> createAppointmentsMiddleware({
         notes: action.notes,
         diagnosis: action.diagnosis,
       );
+      store.dispatch(
+          AppointmentActionSucceededAction(appointmentId: action.appointmentId));
       // A completed appointment drops out of this endpoint's filter.
       await load(store);
     } on ApiException catch (e) {

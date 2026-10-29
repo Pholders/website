@@ -43,6 +43,13 @@ class CompleteAppointmentAction {
   final String? diagnosis;
 }
 
+/// Dispatched when an accept or complete has gone through, so the dialog stops
+/// showing it as in progress.
+class AppointmentActionSucceededAction {
+  const AppointmentActionSucceededAction({required this.appointmentId});
+  final int appointmentId;
+}
+
 /// Dispatched when accepting an appointment fails.
 class AcceptAppointmentFailedAction {
   const AcceptAppointmentFailedAction({
