@@ -36,7 +36,8 @@ class RecordAccess {
   final bool canRequest;
 }
 
-/// One set of readings the patient logged in the Pholders app.
+/// One set of readings, taken by a doctor at a consultation. Older rows were
+/// typed in by the patient and have no doctor.
 ///
 /// Postgres DECIMAL columns arrive as strings ("74.50"), so every number is
 /// parsed rather than cast.
@@ -52,6 +53,7 @@ class PatientVital {
     this.oxygenSaturation,
     this.temperatureC,
     this.notes,
+    this.recordedByName,
   });
 
   factory PatientVital.fromJson(Map<String, dynamic> json) {
@@ -67,6 +69,7 @@ class PatientVital {
       oxygenSaturation: _num(json['oxygen_saturation'])?.toDouble(),
       temperatureC: _num(json['temperature_c'])?.toDouble(),
       notes: (notes == null || notes.isEmpty) ? null : notes,
+      recordedByName: json['recorded_by_name']?.toString(),
     );
   }
 
@@ -80,6 +83,9 @@ class PatientVital {
   final double? oxygenSaturation;
   final double? temperatureC;
   final String? notes;
+
+  /// "Dr Thandi Nkosi", or null for a reading the patient logged themselves.
+  final String? recordedByName;
 
   String? get bloodPressure => systolicBp == null || diastolicBp == null
       ? null
@@ -119,8 +125,8 @@ class PatientRecordRepository {
     return RecordAccess.fromJson(data);
   }
 
-  /// Newest first. Only works while access is granted; the server answers
-  /// 403 otherwise.
+  /// Newest first. Any doctor the patient has booked may read these; the
+  /// server answers 403 for anyone else.
   Future<List<PatientVital>> fetchVitals(String patientId, {int limit = 50}) async {
     final data = await _api.get(
       '/users/phr/$patientId/vitals',
@@ -132,5 +138,14 @@ class PatientRecordRepository {
         .whereType<Map>()
         .map((e) => PatientVital.fromJson(Map<String, dynamic>.from(e)))
         .toList();
+  }
+
+  /// Records a reading for a patient who booked this doctor. [values] uses
+  /// the server's field names (systolic_bp, heart_rate, …); BMI is worked out
+  /// on the server.
+  Future<PatientVital> recordVitals(
+      String patientId, Map<String, dynamic> values) async {
+    final data = await _api.post('/users/phr/$patientId/vitals', body: values);
+    return PatientVital.fromJson(data);
   }
 }

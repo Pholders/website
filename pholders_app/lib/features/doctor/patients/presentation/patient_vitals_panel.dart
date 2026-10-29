@@ -6,13 +6,15 @@ import 'package:pholders_app/features/doctor/patients/data/patient_record_reposi
 import 'package:pholders_app/features/doctor/patients/presentation/patient_profile_screen.dart'
     show AppProfileColors;
 
-/// The vitals a patient logged themselves, shown once they let this doctor
-/// see their health record. Until then: a way to ask, and where the
-/// request stands.
+/// The Vitals tab of a patient's profile.
 ///
-/// Readings are shown as the patient typed them. Nothing here labels one as
-/// normal or abnormal: they are self-measured, and the SRS keeps clinical
-/// alerting out of scope.
+/// Vitals are taken by the doctor at a consultation; the patient only views
+/// them. Booking a doctor is what shares them, so any doctor with a booking
+/// sees every reading, including ones another doctor took, and can record a
+/// new one. There is no access request to wait on.
+///
+/// Readings are shown as recorded. Nothing here labels one as normal or
+/// abnormal; the SRS keeps clinical alerting out of scope.
 class PatientVitalsPanel extends StatefulWidget {
   const PatientVitalsPanel({
     super.key,
@@ -31,10 +33,8 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
   late final PatientRecordRepository _repo =
       widget.repository ?? sl<PatientRecordRepository>();
 
-  RecordAccess? _access;
   List<PatientVital> _vitals = const [];
   bool _loading = true;
-  bool _asking = false;
   String? _error;
 
   @override
@@ -49,14 +49,9 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
       _error = null;
     });
     try {
-      final access = await _repo.fetchAccess(widget.patientId);
-      var vitals = const <PatientVital>[];
-      if (access.status == RecordAccessStatus.granted) {
-        vitals = await _repo.fetchVitals(widget.patientId);
-      }
+      final vitals = await _repo.fetchVitals(widget.patientId);
       if (!mounted) return;
       setState(() {
-        _access = access;
         _vitals = vitals;
         _loading = false;
       });
@@ -69,26 +64,18 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
     }
   }
 
-  Future<void> _ask() async {
-    final reason = await showDialog<String>(
+  Future<void> _record() async {
+    final saved = await showDialog<PatientVital>(
       context: context,
-      builder: (_) => const _AskDialog(),
+      builder: (_) => _RecordVitalsDialog(
+        save: (values) => _repo.recordVitals(widget.patientId, values),
+      ),
     );
-    if (reason == null || !mounted) return;
-    setState(() => _asking = true);
-    try {
-      final access = await _repo.requestAccess(widget.patientId, reason: reason);
-      if (!mounted) return;
-      setState(() {
-        _access = access;
-        _asking = false;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _asking = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
-    }
+    if (saved == null || !mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Vitals recorded')));
+    // Reload rather than insert: the server works out BMI and who recorded it.
+    await _load();
   }
 
   @override
@@ -123,6 +110,14 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
                       size: 18, color: AppProfileColors.textSecondary),
                   onPressed: _load,
                 ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: _loading || _error != null ? null : _record,
+                style: FilledButton.styleFrom(
+                    backgroundColor: AppProfileColors.teal),
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('Record vitals'),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -152,54 +147,11 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
         action: TextButton(onPressed: _load, child: const Text('Try again')),
       );
     }
-
-    final access = _access!;
-    switch (access.status) {
-      case RecordAccessStatus.granted:
-        return _vitals.isEmpty
-            ? const _Message(
-                text: 'The patient has not logged any vitals yet.')
-            : _VitalsView(vitals: _vitals);
-      case RecordAccessStatus.pending:
-        return _Message(
-          text: 'You asked to see this patient’s health record'
-              '${access.requestedAt == null ? '' : ' on ${_day(access.requestedAt!)}'}. '
-              'Their vitals appear here once they allow it in the Pholders app.',
-        );
-      case RecordAccessStatus.denied:
-      case RecordAccessStatus.revoked:
-      case RecordAccessStatus.none:
-        final lead = switch (access.status) {
-          RecordAccessStatus.denied =>
-            'The patient declined your last request to see their health record.',
-          RecordAccessStatus.revoked =>
-            'The patient no longer shares their health record with you.',
-          _ => 'Vitals are part of the patient’s own health record, which '
-              'they choose who may see.',
-        };
-        return _Message(
-          text: access.canRequest
-              ? '$lead You can ask them for access.'
-              : lead,
-          action: access.canRequest
-              ? FilledButton.icon(
-                  onPressed: _asking ? null : _ask,
-                  style: FilledButton.styleFrom(
-                      backgroundColor: AppProfileColors.teal),
-                  icon: _asking
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.lock_open_rounded, size: 16),
-                  label: Text(access.status == RecordAccessStatus.none
-                      ? 'Ask for access'
-                      : 'Ask again'),
-                )
-              : null,
-        );
-    }
+    return _vitals.isEmpty
+        ? const _Message(
+            text: 'No vitals recorded yet. Use “Record vitals” to add the '
+                'readings you take at this consultation.')
+        : _VitalsView(vitals: _vitals);
   }
 }
 
@@ -345,73 +297,206 @@ class _VitalsView extends StatelessWidget {
                         fontSize: 12, color: AppProfileColors.textPrimary),
                   ),
                 ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 150,
+                  child: Text(
+                    // Readings from before doctors took over recording were
+                    // typed in by the patient and have no doctor.
+                    v.recordedByName ?? 'Logged by the patient',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                        fontSize: 11, color: AppProfileColors.textSecondary),
+                  ),
+                ),
               ],
             ),
           ),
-        const SizedBox(height: 8),
-        const Text(
-          'Logged by the patient from their own measurements.',
-          style: TextStyle(fontSize: 11, color: AppProfileColors.textSecondary),
-        ),
       ],
     );
   }
 }
 
-class _AskDialog extends StatefulWidget {
-  const _AskDialog();
-
-  @override
-  State<_AskDialog> createState() => _AskDialogState();
+/// One measurement in the record form. The limits mirror the backend's
+/// services/vitalsService.js, so a typo is caught before the round trip; the
+/// server still checks and its message is shown if it disagrees.
+class _Field {
+  const _Field(this.key, this.label, this.unit, this.min, this.max,
+      {this.integer = false});
+  final String key;
+  final String label;
+  final String unit;
+  final num min;
+  final num max;
+  final bool integer;
 }
 
-class _AskDialogState extends State<_AskDialog> {
-  final _reason = TextEditingController();
+const _fields = <_Field>[
+  _Field('systolic_bp', 'Systolic BP', 'mmHg', 50, 260, integer: true),
+  _Field('diastolic_bp', 'Diastolic BP', 'mmHg', 30, 160, integer: true),
+  _Field('heart_rate', 'Heart rate', 'bpm', 25, 250, integer: true),
+  _Field('temperature_c', 'Temperature', '°C', 30, 45),
+  _Field('oxygen_saturation', 'Oxygen saturation', '%', 50, 100),
+  _Field('blood_glucose', 'Blood glucose', 'mmol/L', 1, 40),
+  _Field('weight_kg', 'Weight', 'kg', 1, 350),
+  _Field('height_cm', 'Height', 'cm', 40, 250),
+];
+
+class _RecordVitalsDialog extends StatefulWidget {
+  const _RecordVitalsDialog({required this.save});
+
+  final Future<PatientVital> Function(Map<String, dynamic> values) save;
+
+  @override
+  State<_RecordVitalsDialog> createState() => _RecordVitalsDialogState();
+}
+
+class _RecordVitalsDialogState extends State<_RecordVitalsDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final Map<String, TextEditingController> _controllers = {
+    for (final f in _fields) f.key: TextEditingController(),
+  };
+  final _notes = TextEditingController();
+  bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
-    _reason.dispose();
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    _notes.dispose();
     super.dispose();
+  }
+
+  String? _validate(_Field f, String? raw) {
+    final text = raw?.trim() ?? '';
+    if (text.isEmpty) return null;
+    final n = num.tryParse(text.replaceAll(',', '.'));
+    if (n == null) return 'Enter a number';
+    if (f.integer && n != n.roundToDouble()) return 'Whole number';
+    if (n < f.min || n > f.max) return '${f.min}–${f.max} ${f.unit}';
+    return null;
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final values = <String, dynamic>{};
+    for (final f in _fields) {
+      final text = _controllers[f.key]!.text.trim().replaceAll(',', '.');
+      if (text.isNotEmpty) values[f.key] = num.parse(text);
+    }
+    final hasMeasurement = values.keys.any((k) => k != 'height_cm');
+    if (!hasMeasurement) {
+      setState(() => _error = 'Enter at least one reading.');
+      return;
+    }
+    if (values.containsKey('systolic_bp') != values.containsKey('diastolic_bp')) {
+      setState(() => _error = 'Enter both blood pressure numbers, or neither.');
+      return;
+    }
+    final notes = _notes.text.trim();
+    if (notes.isNotEmpty) values['notes'] = notes;
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final saved = await widget.save(values);
+      if (!mounted) return;
+      Navigator.pop(context, saved);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e.message;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Ask to see their health record'),
+      title: const Text('Record vitals'),
       content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'The patient gets a notification and chooses whether to share '
-              'their record, including their vitals, with you.',
-              style: TextStyle(fontSize: 13, height: 1.5),
+        width: 520,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Fill in what you measured; leave the rest blank. The '
+                  'patient sees these in their app.',
+                  style: TextStyle(fontSize: 13, height: 1.5),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final f in _fields)
+                      SizedBox(
+                        width: 240,
+                        child: TextFormField(
+                          controller: _controllers[f.key],
+                          enabled: !_saving,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          validator: (v) => _validate(f, v),
+                          decoration: InputDecoration(
+                            labelText: f.label,
+                            suffixText: f.unit,
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _notes,
+                  enabled: !_saving,
+                  maxLength: 500,
+                  maxLines: 3,
+                  minLines: 1,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 4),
+                  Text(_error!,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.error)),
+                ],
+              ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _reason,
-              maxLength: 500,
-              maxLines: 3,
-              minLines: 1,
-              decoration: const InputDecoration(
-                labelText: 'Why (optional, shown to the patient)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _saving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(context, _reason.text),
+          onPressed: _saving ? null : _submit,
           style: FilledButton.styleFrom(backgroundColor: AppProfileColors.teal),
-          child: const Text('Send request'),
+          child: _saving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : const Text('Save'),
         ),
       ],
     );

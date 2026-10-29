@@ -33,6 +33,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     'Appointments',
     'Documents',
     'History',
+    'Vitals',
   ];
 
   @override
@@ -91,6 +92,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   ] else if (_tabIndex == 5) ...[
                     const SizedBox(height: 20),
                     MedicalHistoryScreen(patient: widget.patient),
+                  ] else if (_tabIndex == 6) ...[
+                    const SizedBox(height: 20),
+                    PatientVitalsPanel(patientId: widget.patient.id),
                   ] else ...[
                     const SizedBox(height: 40),
                     Center(
@@ -157,21 +161,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Stack(
-            children: [
-              Positioned(
-                top: 8, right: 8,
-                child: Container(
-                  width: 8, height: 8,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppProfileColors.teal,
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -287,10 +276,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                         label: 'Reason', value: widget.patient.condition),
                   ],
                 ),
-
-                const SizedBox(height: 20),
-
-                PatientVitalsPanel(patientId: widget.patient.id),
               ],
             ),
           ),
