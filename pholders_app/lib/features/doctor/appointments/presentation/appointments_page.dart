@@ -676,10 +676,21 @@ class _AppointmentActionsDialog extends StatelessWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
+    // The dialog stays open with a spinner until the server answers, then
+    // closes and says how it went (see onDidChange below). Closing at once
+    // hid a refusal completely.
     StoreProvider.of<AppState>(context)
         .dispatch(CompleteAppointmentAction(appointmentId: data.id));
-    if (context.mounted) Navigator.pop(context);
   }
+
+  /// Why "Mark complete" is not offered, or null when it is.
+  String? get _cannotCompleteReason => switch (data.status) {
+        'pending_payment' =>
+          'Can be completed once the patient has paid for it.',
+        'completed' => 'This consultation is completed.',
+        'cancelled' => 'This appointment was cancelled.',
+        _ => null,
+      };
 
   void _accept(BuildContext context) {
     StoreProvider.of<AppState>(context)
@@ -689,10 +700,26 @@ class _AppointmentActionsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StoreConnector<AppState, bool>(
-      converter: (store) =>
-          store.state.appointmentsState.pendingActionIds.contains(data.id),
-      builder: (context, isBusy) {
+    return StoreConnector<AppState, ({bool busy, String? error})>(
+      distinct: true,
+      converter: (store) => (
+        busy: store.state.appointmentsState.pendingActionIds.contains(data.id),
+        error: store.state.appointmentsState.errorMessage,
+      ),
+      onDidChange: (previous, current) {
+        // Only the complete call keeps this dialog open while it runs.
+        if (previous?.busy != true || current.busy) return;
+        final messenger = ScaffoldMessenger.of(context);
+        Navigator.pop(context);
+        messenger.showSnackBar(SnackBar(
+          content: Text(current.error ??
+              'Consultation with ${data.patientName} marked complete'),
+          backgroundColor: current.error == null ? null : Colors.red.shade700,
+        ));
+      },
+      builder: (context, vm) {
+        final isBusy = vm.busy;
+        final reason = _cannotCompleteReason;
         return AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -706,6 +733,12 @@ class _AppointmentActionsDialog extends StatelessWidget {
               _line('Status', data.statusLabel),
               if (data.patientPhone != null) _line('Phone', data.patientPhone!),
               if (data.patientEmail != null) _line('Email', data.patientEmail!),
+              if (reason != null) ...[
+                const SizedBox(height: 6),
+                Text(reason,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.textSecondary)),
+              ],
             ],
           ),
           actions: isBusy
@@ -726,15 +759,18 @@ class _AppointmentActionsDialog extends StatelessWidget {
                   ),
                   // Already-accepted consultations do not come back from this
                   // endpoint, so this is always the un-accepted case.
-                  if (!data.doctorAccepted)
+                  if (!data.doctorAccepted &&
+                      data.status != 'completed' &&
+                      data.status != 'cancelled')
                     TextButton(
                       onPressed: () => _accept(context),
                       child: const Text('Accept'),
                     ),
-                  FilledButton(
-                    onPressed: () => _complete(context),
-                    child: const Text('Mark complete'),
-                  ),
+                  if (data.canComplete)
+                    FilledButton(
+                      onPressed: () => _complete(context),
+                      child: const Text('Mark complete'),
+                    ),
                 ],
         );
       },

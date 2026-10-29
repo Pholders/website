@@ -57,7 +57,8 @@ class Appointment extends Equatable {
   final String? reason;
   final double? consultationFee;
 
-  /// 'pending_payment' | 'scheduled' | 'completed' | 'cancelled'.
+  /// 'pending_payment' | 'scheduled' | 'rescheduled' | 'completed' |
+  /// 'cancelled'. 'rescheduled' is a paid appointment that was moved.
   final String? status;
   final bool doctorAccepted;
 
@@ -87,18 +88,29 @@ class Appointment extends Equatable {
     return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
+  /// Paid and not yet seen: the only state the server lets a doctor complete.
+  bool get canComplete => status == 'scheduled' || status == 'rescheduled';
+
   /// A human label for the status badge.
+  ///
+  /// A finished or cancelled appointment says so even if the doctor accepted
+  /// it first. Checking acceptance first left a completed consultation
+  /// reading "Accepted", so completing one looked like it had done nothing.
   String get statusLabel {
+    switch (status) {
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+    }
     if (doctorAccepted) return 'Accepted';
     switch (status) {
       case 'pending_payment':
         return 'Awaiting payment';
       case 'scheduled':
         return 'Scheduled';
-      case 'completed':
-        return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
+      case 'rescheduled':
+        return 'Rescheduled';
       default:
         return status ?? 'Unknown';
     }
