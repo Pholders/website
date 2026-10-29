@@ -21,7 +21,11 @@ Map<String, dynamic> row(String status, {bool accepted = true}) => {
       'id': 4,
       'patientId': 17,
       'patientName': 'Pule Test',
-      'appointmentDate': '2026-10-29T00:00:00.000Z',
+      // Today, so it falls in whichever day, week or month the page opens on.
+      'appointmentDate': () {
+        final d = DateTime.now();
+        return DateTime.utc(d.year, d.month, d.day).toIso8601String();
+      }(),
       'timeSlot': '09:00',
       'status': status,
       'doctorAccepted': accepted,

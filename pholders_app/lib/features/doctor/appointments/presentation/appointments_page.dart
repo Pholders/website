@@ -17,7 +17,29 @@ class AppointmentsPage extends StatefulWidget {
 
 class _AppointmentsPageState extends State<AppointmentsPage> {
   int _selectedTab = 0;
-  String _viewMode = 'Day';
+
+  /// Opens on the month: on a single day, Past visits is usually empty.
+  String _viewMode = 'Month';
+
+  /// The day the period is built around; the arrows and the date chip move it.
+  DateTime _anchor = DateUtils.dateOnly(DateTime.now());
+
+  DateTimeRange get _period => periodFor(_viewMode, _anchor);
+
+  void _step(int direction) =>
+      setState(() => _anchor = stepAnchor(_viewMode, _anchor, direction));
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _anchor,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && mounted) {
+      setState(() => _anchor = DateUtils.dateOnly(picked));
+    }
+  }
 
   @override
   void initState() {
@@ -67,23 +89,25 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
               const SizedBox(height: 20),
 
               // ── Tab bar ────────────────────────────────────────────────────
-              StoreConnector<AppState, ({int future, int past})>(
+              StoreConnector<AppState, List<Appointment>>(
                 distinct: true,
-                converter: (store) {
+                converter: (store) => store.state.appointmentsState.appointments,
+                builder: (context, all) {
+                  // Counted in the builder, not the converter, so a change of
+                  // period (a setState here) is reflected straight away.
                   final now = DateTime.now();
-                  final all = store.state.appointmentsState.appointments;
-                  final past = all.where((a) => a.isPastAt(now)).length;
-                  return (future: all.length - past, past: past);
+                  final shown = all.where((a) => a.isWithin(_period)).toList();
+                  final past = shown.where((a) => a.isPastAt(now)).length;
+                  return _TabBar(
+                    labels: [
+                      'Future visits (${shown.length - past})',
+                      'Past visits ($past)',
+                      'Planned Treatments',
+                    ],
+                    selectedIndex: _selectedTab,
+                    onTabChanged: (i) => setState(() => _selectedTab = i),
+                  );
                 },
-                builder: (context, counts) => _TabBar(
-                  labels: [
-                    'Future visits (${counts.future})',
-                    'Past visits (${counts.past})',
-                    'Planned Treatments',
-                  ],
-                  selectedIndex: _selectedTab,
-                  onTabChanged: (i) => setState(() => _selectedTab = i),
-                ),
               ),
               const SizedBox(height: 20),
 
@@ -99,6 +123,11 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                     children: [
                       _CalendarHeader(
                         viewMode: _viewMode,
+                        label: periodLabel(_viewMode, _anchor),
+                        chipLabel: _shortDate(_anchor),
+                        onPrevious: () => _step(-1),
+                        onNext: () => _step(1),
+                        onPickDate: _pickDate,
                         onViewModeChanged: (v) =>
                             setState(() => _viewMode = v),
                       ),
@@ -109,6 +138,8 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                           builder: (context, vm) => _AppointmentsBody(
                             vm: vm,
                             tab: _selectedTab,
+                            period: _period,
+                            periodName: _periodName(_viewMode),
                             onRetry: () => StoreProvider.of<AppState>(context)
                                 .dispatch(const LoadAppointmentsAction()),
                           ),
@@ -123,6 +154,79 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ),
       ),
     );
+  }
+}
+
+// ─── Period (Day / Week / Month) ───────────────────────────────────────────────
+
+const _monthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/// The day, the week (Monday to Sunday) or the month around [anchor], as a
+/// start-inclusive, end-exclusive range.
+DateTimeRange periodFor(String viewMode, DateTime anchor) {
+  final day = DateUtils.dateOnly(anchor);
+  switch (viewMode) {
+    case 'Week':
+      final start = day.subtract(Duration(days: day.weekday - DateTime.monday));
+      return DateTimeRange(start: start, end: DateUtils.addDaysToDate(start, 7));
+    case 'Month':
+      return DateTimeRange(
+          start: DateTime(day.year, day.month),
+          end: DateTime(day.year, day.month + 1));
+    default:
+      return DateTimeRange(start: day, end: DateUtils.addDaysToDate(day, 1));
+  }
+}
+
+/// Moves [anchor] one day, week or month in [direction] (-1 or 1).
+///
+/// A month step keeps the day of the month (clamped: 31 Jan → 28/29 Feb), so
+/// stepping away and back returns to the same day rather than the 1st.
+DateTime stepAnchor(String viewMode, DateTime anchor, int direction) {
+  switch (viewMode) {
+    case 'Week':
+      return DateUtils.addDaysToDate(anchor, 7 * direction);
+    case 'Month':
+      final first = DateTime(anchor.year, anchor.month + direction);
+      final last = DateUtils.getDaysInMonth(first.year, first.month);
+      return DateTime(first.year, first.month,
+          anchor.day < last ? anchor.day : last);
+    default:
+      return DateUtils.addDaysToDate(anchor, direction);
+  }
+}
+
+/// "29 October 2026", "26 Oct – 1 Nov 2026" or "October 2026".
+String periodLabel(String viewMode, DateTime anchor) {
+  final range = periodFor(viewMode, anchor);
+  final start = range.start;
+  switch (viewMode) {
+    case 'Week':
+      final last = DateUtils.addDaysToDate(range.end, -1);
+      return '${_shortDate(start)} – ${_shortDate(last)} ${last.year}';
+    case 'Month':
+      return '${_monthNames[start.month - 1]} ${start.year}';
+    default:
+      return '${start.day} ${_monthNames[start.month - 1]} ${start.year}';
+  }
+}
+
+String _shortDate(DateTime d) =>
+    '${d.day} ${_monthNames[d.month - 1].substring(0, 3)}';
+
+String _periodName(String viewMode) => viewMode.toLowerCase();
+
+extension on Appointment {
+  /// Whether the visit's day falls inside [range]. A visit with no date is in
+  /// no period.
+  bool isWithin(DateTimeRange range) {
+    final d = date?.toLocal();
+    if (d == null) return false;
+    final day = DateTime(d.year, d.month, d.day);
+    return !day.isBefore(range.start) && day.isBefore(range.end);
   }
 }
 
@@ -195,9 +299,22 @@ class _CalendarHeader extends StatelessWidget {
 
   const _CalendarHeader({
     required this.viewMode,
+    required this.label,
+    required this.chipLabel,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onPickDate,
     required this.onViewModeChanged,
   });
   final String viewMode;
+
+  /// The period on screen: "29 October 2026", "26 Oct – 1 Nov 2026" or
+  /// "October 2026". It used to be a fixed "15 April 2026".
+  final String label;
+  final String chipLabel;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final VoidCallback onPickDate;
   final ValueChanged<String> onViewModeChanged;
 
   @override
@@ -206,13 +323,24 @@ class _CalendarHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
-          const Icon(Icons.chevron_left, size: 22, color: AppTheme.textSecondary),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right, size: 22, color: AppTheme.textSecondary),
-          const SizedBox(width: 12),
-          const Text(
-            '15 April 2026',
-            style: TextStyle(
+          IconButton(
+            tooltip: 'Previous ${viewMode.toLowerCase()}',
+            visualDensity: VisualDensity.compact,
+            onPressed: onPrevious,
+            icon: const Icon(Icons.chevron_left,
+                size: 22, color: AppTheme.textSecondary),
+          ),
+          IconButton(
+            tooltip: 'Next ${viewMode.toLowerCase()}',
+            visualDensity: VisualDensity.compact,
+            onPressed: onNext,
+            icon: const Icon(Icons.chevron_right,
+                size: 22, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
               color: AppTheme.textPrimary,
@@ -221,23 +349,28 @@ class _CalendarHeader extends StatelessWidget {
           const Spacer(),
           _ViewToggle(selected: viewMode, onChanged: onViewModeChanged),
           const SizedBox(width: 12),
-          Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.divider),
-            ),
-            child: Row(
-              children: [
-                Image.asset('assets/calender.png',
-                    width: 14, height: 14),
-                const SizedBox(width: 6),
-                const Text(
-                  '15 Apr',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                ),
-              ],
+          InkWell(
+            onTap: onPickDate,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.divider),
+              ),
+              child: Row(
+                children: [
+                  Image.asset('assets/calender.png',
+                      width: 14, height: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    chipLabel,
+                    style: const TextStyle(
+                        fontSize: 13, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -570,8 +703,16 @@ class _AppointmentsBody extends StatelessWidget {
   const _AppointmentsBody({
     required this.vm,
     required this.tab,
+    required this.period,
+    required this.periodName,
     required this.onRetry,
   });
+
+  /// Only visits inside this day, week or month are shown.
+  final DateTimeRange period;
+
+  /// "day", "week" or "month", for the empty-state wording.
+  final String periodName;
 
   final _AppointmentsViewModel vm;
 
@@ -584,7 +725,9 @@ class _AppointmentsBody extends StatelessWidget {
   List<Appointment> _visits() {
     final now = DateTime.now();
     final past = tab == 1;
-    final list = vm.appointments.where((a) => a.isPastAt(now) == past).toList();
+    final list = vm.appointments
+        .where((a) => a.isWithin(period) && a.isPastAt(now) == past)
+        .toList();
     final far = DateTime(9999);
     int byTime(Appointment a, Appointment b) {
       final c = (a.date ?? far).compareTo(b.date ?? far);
@@ -658,16 +801,17 @@ class _AppointmentsBody extends StatelessWidget {
     final visits = _visits();
     if (vm.appointments.isNotEmpty && visits.isEmpty) {
       return tab == 1
-          ? const _TabNotice(
+          ? _TabNotice(
               icon: Icons.history_rounded,
-              title: 'No past visits yet',
+              title: 'No past visits this $periodName',
               detail: 'Completed consultations and appointments whose day has '
-                  'passed appear here.',
+                  'passed appear here. Use the arrows to look further back.',
             )
-          : const _TabNotice(
+          : _TabNotice(
               icon: Icons.event_available_outlined,
-              title: 'No upcoming visits',
-              detail: 'New bookings appear here.',
+              title: 'No upcoming visits this $periodName',
+              detail: 'Use the arrows or switch to Week or Month to look '
+                  'further ahead.',
             );
     }
 

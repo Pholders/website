@@ -75,10 +75,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // All today, so they sit in the same day, week and month whatever the date
+  // the tests run on; a day already gone is covered by the isPastAt test.
   final rows = [
-    row(1, 'Future Patient', day(3), 'scheduled'),
-    row(2, 'Seen Patient', day(-2), 'completed'),
-    row(3, 'Missed Patient', day(-5), 'scheduled'),
+    row(1, 'Future Patient', day(0), 'scheduled'),
+    row(2, 'Seen Patient', day(0), 'completed'),
+    row(3, 'Missed Patient', day(0), 'completed'),
   ];
 
   testWidgets('each tab shows its own visits, with real counts', (tester) async {
@@ -105,9 +107,69 @@ void main() {
   });
 
   testWidgets('a doctor with no past visits is told so', (tester) async {
-    await show(tester, [row(1, 'Future Patient', day(3), 'scheduled')]);
+    await show(tester, [row(1, 'Future Patient', day(0), 'scheduled')]);
     await tester.tap(find.text('Past visits (0)'));
     await tester.pumpAndSettle();
-    expect(find.text('No past visits yet'), findsOneWidget);
+    expect(find.text('No past visits this month'), findsOneWidget);
+  });
+
+  group('Day / Week / Month', () {
+    // A Thursday.
+    final thu = DateTime(2026, 10, 29);
+
+    test('a day is that day, a week runs Monday to Sunday, a month is the month', () {
+      expect(periodFor('Day', thu).start, DateTime(2026, 10, 29));
+      expect(periodFor('Day', thu).end, DateTime(2026, 10, 30));
+      expect(periodFor('Week', thu).start, DateTime(2026, 10, 26));
+      expect(periodFor('Week', thu).end, DateTime(2026, 11, 2));
+      expect(periodFor('Month', thu).start, DateTime(2026, 10, 1));
+      expect(periodFor('Month', thu).end, DateTime(2026, 11, 1));
+    });
+
+    test('the arrows move by the period on screen', () {
+      expect(stepAnchor('Day', thu, 1), DateTime(2026, 10, 30));
+      expect(stepAnchor('Week', thu, -1), DateTime(2026, 10, 22));
+      expect(stepAnchor('Month', thu, 1), DateTime(2026, 11, 29));
+      // December into January crosses the year.
+      expect(stepAnchor('Month', DateTime(2026, 12, 15), 1), DateTime(2027, 1, 15));
+      // A day the next month lacks is clamped to its last day.
+      expect(stepAnchor('Month', DateTime(2027, 1, 31), 1), DateTime(2027, 2, 28));
+    });
+
+    test('the label names the period instead of a fixed date', () {
+      expect(periodLabel('Day', thu), '29 October 2026');
+      expect(periodLabel('Week', thu), '26 Oct – 1 Nov 2026');
+      expect(periodLabel('Month', thu), 'October 2026');
+    });
+
+    testWidgets('switching period and stepping changes what is listed', (tester) async {
+      final now = DateTime.now();
+      final nextMonth = DateTime.utc(now.year, now.month + 1, 1).toIso8601String();
+      await show(tester, [
+        row(1, 'Today Patient', day(0), 'scheduled'),
+        row(2, 'Next Month Patient', nextMonth, 'scheduled'),
+      ]);
+
+      // Opens on this month.
+      expect(find.text('Today Patient'), findsOneWidget);
+      expect(find.text('Next Month Patient'), findsNothing);
+
+      await tester.tap(find.byTooltip('Next month'));
+      await tester.pumpAndSettle();
+      expect(find.text('Today Patient'), findsNothing);
+      expect(find.text('Next Month Patient'), findsOneWidget);
+      expect(find.text('Future visits (1)'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Previous month'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Day'));
+      await tester.pumpAndSettle();
+      expect(find.text('Today Patient'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Next day'));
+      await tester.pumpAndSettle();
+      expect(find.text('Today Patient'), findsNothing);
+      expect(find.text('No upcoming visits this day'), findsOneWidget);
+    });
   });
 }
