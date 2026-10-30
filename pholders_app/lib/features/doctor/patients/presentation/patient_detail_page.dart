@@ -1,4 +1,6 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:pholders_app/core/routing/app_routes.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patient_profile_screen.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patient_scope.dart';
 
@@ -18,7 +20,11 @@ class PatientDetailPage extends StatelessWidget {
         patientId: patientId,
         builder: (context, patient) => PatientProfileScreen(
           patient: patient,
-          onBack: () => Navigator.pop(context),
+          // Reached by its address there is nothing underneath to pop back
+          // to, and popping crashed; go to the patient list instead.
+          onBack: () => context.canPop()
+              ? context.pop()
+              : context.go(AppRoutes.doctorPatients),
         ),
       ),
     );
