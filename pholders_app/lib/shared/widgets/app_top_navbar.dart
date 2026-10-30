@@ -39,12 +39,7 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
     return 'Dashboard';
   }
 
-  String _getSearchHint() {
-    if (role == AppConstants.rolePharmacy) {
-      return 'Search for patient or medication...';
-    }
-    return 'Search for patient name, ID, or prescription...';
-  }
+  String _getSearchHint() => 'Search for patient or medication...';
 
   @override
   Widget build(BuildContext context) {
@@ -97,8 +92,11 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
 
           const Spacer(),
 
-          // Search bar
-          Container(
+          // A search box that searched nothing: it was drawn as text, not a
+          // field. Doctors search on the pages that have something to search
+          // (Patients, Appointments, Prescriptions, Billing), so it is gone
+          // for them. The pharmacy side is left as it was.
+          if (isPharmacy) Container(
             width: 300,
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 14),

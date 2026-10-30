@@ -26,6 +26,19 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
   DateTimeRange get _period => periodFor(_viewMode, _anchor);
 
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  /// Searching looks across every date; otherwise only the period shows.
+  bool _inScope(Appointment a) =>
+      _query.trim().isEmpty ? a.isWithin(_period) : appointmentMatches(a, _query);
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _step(int direction) =>
       setState(() => _anchor = stepAnchor(_viewMode, _anchor, direction));
 
@@ -69,22 +82,40 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              // ── Title ──────────────────────────────────────────────────────
-              const Text(
-                'Appointments',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Stay organized and on track with calender',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textSecondary,
-                ),
+              // ── Title and search ───────────────────────────────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Appointments',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Stay organized and on track with your calendar',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  _SearchField(
+                    controller: _searchController,
+                    hint: 'Search by patient, reason or status',
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
 
@@ -96,7 +127,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                   // Counted in the builder, not the converter, so a change of
                   // period (a setState here) is reflected straight away.
                   final now = DateTime.now();
-                  final shown = all.where((a) => a.isWithin(_period)).toList();
+                  final shown = all.where(_inScope).toList();
                   final past = shown.where((a) => a.isPastAt(now)).length;
                   return _TabBar(
                     labels: [
@@ -123,7 +154,9 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                     children: [
                       _CalendarHeader(
                         viewMode: _viewMode,
-                        label: periodLabel(_viewMode, _anchor),
+                        label: _query.trim().isEmpty
+                            ? periodLabel(_viewMode, _anchor)
+                            : 'All dates matching "${_query.trim()}"',
                         chipLabel: _shortDate(_anchor),
                         onPrevious: () => _step(-1),
                         onNext: () => _step(1),
@@ -140,6 +173,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                             tab: _selectedTab,
                             period: _period,
                             periodName: _periodName(_viewMode),
+                            query: _query.trim(),
                             onRetry: () => StoreProvider.of<AppState>(context)
                                 .dispatch(const LoadAppointmentsAction()),
                           ),
@@ -150,6 +184,74 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Search ────────────────────────────────────────────────────────────────────
+
+/// Whether [a] matches what the doctor typed: every word must appear in the
+/// patient's name, the reason for the visit or the status.
+bool appointmentMatches(Appointment a, String query) {
+  final haystack =
+      '${a.patientName} ${a.reason ?? ''} ${a.statusLabel}'.toLowerCase();
+  return query
+      .toLowerCase()
+      .split(RegExp(r'\s+'))
+      .where((w) => w.isNotEmpty)
+      .every(haystack.contains);
+}
+
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.controller,
+    required this.hint,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 300,
+      height: 40,
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller,
+        builder: (context, value, _) => TextField(
+          controller: controller,
+          onChanged: onChanged,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            prefixIcon: const Icon(Icons.search, size: 18, color: AppTheme.textSecondary),
+            suffixIcon: value.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () {
+                      controller.clear();
+                      onChanged('');
+                    },
+                  ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: const BorderSide(color: AppTheme.divider),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: const BorderSide(color: AppTheme.divider),
+            ),
           ),
         ),
       ),
@@ -706,7 +808,11 @@ class _AppointmentsBody extends StatelessWidget {
     required this.period,
     required this.periodName,
     required this.onRetry,
+    this.query = '',
   });
+
+  /// When not empty, visits matching it on any date replace the period.
+  final String query;
 
   /// Only visits inside this day, week or month are shown.
   final DateTimeRange period;
@@ -726,7 +832,8 @@ class _AppointmentsBody extends StatelessWidget {
     final now = DateTime.now();
     final past = tab == 1;
     final list = vm.appointments
-        .where((a) => a.isWithin(period) && a.isPastAt(now) == past)
+        .where((a) => (query.isEmpty ? a.isWithin(period) : appointmentMatches(a, query)) &&
+            a.isPastAt(now) == past)
         .toList();
     final far = DateTime(9999);
     int byTime(Appointment a, Appointment b) {
@@ -799,6 +906,16 @@ class _AppointmentsBody extends StatelessWidget {
     }
 
     final visits = _visits();
+    if (query.isNotEmpty && visits.isEmpty) {
+      return _TabNotice(
+        icon: Icons.search_off_rounded,
+        title: tab == 1
+            ? 'No past visits match "$query"'
+            : 'No upcoming visits match "$query"',
+        detail: "Search looks at the patient's name, the reason for the visit "
+            'and its status, across all dates.',
+      );
+    }
     if (vm.appointments.isNotEmpty && visits.isEmpty) {
       return tab == 1
           ? _TabNotice(

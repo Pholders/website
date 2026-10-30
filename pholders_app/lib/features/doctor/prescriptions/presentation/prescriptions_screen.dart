@@ -58,6 +58,17 @@ class Prescription {
   final String? note;
 }
 
+/// Whether [p] matches what the doctor typed: every word must appear in the
+/// patient's name, the diagnosis or the prescription reference.
+bool prescriptionMatches(Prescription p, String query) {
+  final haystack = '${p.patientName} ${p.medication} ${p.dosage}'.toLowerCase();
+  return query
+      .toLowerCase()
+      .split(RegExp(r'\s+'))
+      .where((w) => w.isNotEmpty)
+      .every(haystack.contains);
+}
+
 // ─── Prescriptions Screen ─────────────────────────────────────────────────────
 class PrescriptionsScreen extends StatefulWidget {
 
@@ -70,6 +81,15 @@ class PrescriptionsScreen extends StatefulWidget {
 
 class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
   int _filterIndex = 0;
+
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
   Prescription? _selectedPrescription; // null = list, non-null = details
 
   /// Opened from a patient's profile, only that patient's prescriptions are
@@ -259,14 +279,16 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
   }
 
   List<Prescription> get _filtered {
-    if (_filterIndex == 0) return _source;
     final map = {
       1: RxStatus.pending,
       2: RxStatus.approved,
       3: RxStatus.dispensed,
       4: RxStatus.expired,
     };
-    return _source.where((p) => p.status == map[_filterIndex]).toList();
+    return _source
+        .where((p) => _filterIndex == 0 || p.status == map[_filterIndex])
+        .where((p) => prescriptionMatches(p, _query))
+        .toList();
   }
 
   @override
@@ -407,9 +429,16 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Filter tabs ─────────────────────────────────────────────────
+            // ── Filter tabs and search ──────────────────────────────────────
             Row(
-              children: List.generate(_filters.length, (i) {
+              children: [
+                // On a narrow window the chips scroll sideways rather than
+                // pushing the search box off the edge.
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(_filters.length, (i) {
                 final active = i == _filterIndex;
                 return GestureDetector(
                   onTap: () => setState(() => _filterIndex = i),
@@ -437,6 +466,52 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                   ),
                 );
               }),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 280,
+                  height: 40,
+                  child: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _searchController,
+                    builder: (context, value, _) => TextField(
+                      controller: _searchController,
+                      onChanged: (v) => setState(() => _query = v),
+                      style: const TextStyle(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Search patient, diagnosis or reference',
+                        hintStyle: const TextStyle(
+                            fontSize: 12, color: RxColors.textSecondary),
+                        prefixIcon: const Icon(Icons.search,
+                            size: 18, color: RxColors.textSecondary),
+                        suffixIcon: value.text.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear search',
+                                icon: const Icon(Icons.close, size: 16),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _query = '');
+                                },
+                              ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4, horizontal: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: RxColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: RxColors.border),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 20),
@@ -463,11 +538,14 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
 
             // ── Table rows ──────────────────────────────────────────────────
             _filtered.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Center(
-                      child: Text('No prescriptions found',
-                          style: TextStyle(
+                      child: Text(
+                          _query.trim().isEmpty
+                              ? 'No prescriptions found'
+                              : 'No prescriptions match "${_query.trim()}"',
+                          style: const TextStyle(
                               color: RxColors.textSecondary)),
                     ),
                   )
