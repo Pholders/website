@@ -557,13 +557,16 @@ class _TxRowState extends State<_TxRow> {
   }
 
   // ── Receipt dialog ─────────────────────────────────────────────────────────
+  // Dialogs open on the root navigator, but this page sits in a ShellRoute
+  // with its own. Each dialog closes itself through its own context: popping
+  // with the page's context popped the page instead, and crashed.
   void _showReceipt(BuildContext context) {
     final tx = widget.tx;
     final statusInfo = _statusStyle(tx.status);
 
     showDialog(
       context: context,
-      builder: (_) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           width: 420,
@@ -666,11 +669,23 @@ class _TxRowState extends State<_TxRow> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () async {
-                          Navigator.pop(context);
-                          await _downloadReceiptPDF(tx);
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(dialogContext);
+                          try {
+                            await _downloadReceiptPDF(tx);
+                          } catch (e) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Could not create the receipt PDF: $e'),
+                                backgroundColor: Colors.red.shade400,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          messenger.showSnackBar(
                             SnackBar(
-                              content: const Text('Receipt PDF ready for download'),
+                              content: const Text('Receipt PDF downloaded'),
                               backgroundColor: AppColors.activeTeal,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -694,7 +709,7 @@ class _TxRowState extends State<_TxRow> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(dialogContext),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.activeTeal,
                           foregroundColor: Colors.white,
@@ -743,7 +758,7 @@ class _TxRowState extends State<_TxRow> {
 
     showDialog(
       context: context,
-      builder: (_) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           width: 500,
@@ -957,7 +972,7 @@ class _TxRowState extends State<_TxRow> {
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () {
-                                Navigator.pop(context);
+                                Navigator.pop(dialogContext);
                                 _showReceipt(context);
                               },
                               style: OutlinedButton.styleFrom(
@@ -979,7 +994,7 @@ class _TxRowState extends State<_TxRow> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => Navigator.pop(dialogContext),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.activeTeal,
                                 foregroundColor: Colors.white,

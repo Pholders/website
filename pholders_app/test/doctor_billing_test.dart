@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pholders_app/core/auth/token_storage.dart';
 import 'package:pholders_app/core/network/api_client.dart';
 import 'package:pholders_app/features/doctor/billing/data/billing_repository.dart';
@@ -161,6 +162,69 @@ void main() {
 
     expect(find.text('Could not load your payments'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
+  });
+
+  // The portal's pages sit inside a ShellRoute, so they have their own
+  // Navigator while dialogs open on the root one. Closing a dialog with the
+  // page's context popped the page instead, and crashed.
+  Future<void> showInShell(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1600, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final api = ApiClient(
+        tokenStorage: const _NoSession(),
+        dio: Dio()
+          ..httpClientAdapter = _Server({
+            'GET /users/doctor/payments/summary': (200, _summary),
+            'GET /users/doctor/payments': (200, _payments),
+          }));
+    final router = GoRouter(initialLocation: '/billing', routes: [
+      ShellRoute(
+        builder: (context, state, child) => Scaffold(body: child),
+        routes: [
+          GoRoute(
+            path: '/billing',
+            builder: (context, state) => BillingPage(repository: BillingRepository(api)),
+          ),
+        ],
+      ),
+    ]);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openFromMenu(WidgetTester tester, String item) async {
+    await tester.tap(find.byIcon(Icons.more_vert).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(item));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('closing View Details closes only the dialog', (tester) async {
+    await showInShell(tester);
+    await openFromMenu(tester, 'View Details');
+    expect(find.text('Transaction Details'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Close'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Transaction Details'), findsNothing);
+    expect(find.text('Billing & Payments'), findsOneWidget);
+  });
+
+  testWidgets('Receipt from the details opens the receipt, and Close keeps the page', (tester) async {
+    await showInShell(tester);
+    await openFromMenu(tester, 'View Details');
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Receipt'));
+    await tester.pumpAndSettle();
+    expect(find.text('Transaction Details'), findsNothing);
+    expect(find.text('Payment Receipt'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Close'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Payment Receipt'), findsNothing);
+    expect(find.text('Billing & Payments'), findsOneWidget);
   });
 
   test('rand amounts are grouped by thousands and keep real cents', () {
