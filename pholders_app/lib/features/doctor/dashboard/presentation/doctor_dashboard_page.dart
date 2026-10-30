@@ -1,142 +1,143 @@
 import 'package:flutter/material.dart';
-import '../../reviews/redux/reviews_actions.dart';
-import '../../reviews/redux/reviews_state.dart';
-import '../../reviews/data/models/rating_summary.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:go_router/go_router.dart';
+import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
+import '../../../../core/routing/app_routes.dart';
 import '../../../../shared/utils/greeting.dart';
+import '../../appointments/data/models/appointment.dart';
+import '../../appointments/redux/appointments_actions.dart';
+import '../../appointments/redux/appointments_state.dart';
+import '../../patients/data/doctor_patient.dart';
+import '../../reviews/redux/reviews_actions.dart';
+import '../../reviews/redux/reviews_state.dart';
+import '../data/dashboard_summary.dart';
 
+/// The doctor's home: today's appointments, what is waiting on them, how busy
+/// they have been, and the patients they saw most recently.
+///
+/// All of it is worked out from the doctor's own appointments, the list the
+/// Appointments and Patients pages load. It used to be invented: four
+/// "Maria Wilson" appointments on 14 March, a "72 appointments, +12%" tile,
+/// a medication alert about a made-up patient, a fixed chart, and a patient
+/// table with conditions, statuses and priorities nobody recorded, whose add,
+/// edit and delete changed only the screen.
 class DoctorDashboardPage extends StatefulWidget {
-  const DoctorDashboardPage({super.key});
+  const DoctorDashboardPage({super.key, this.clock});
+
+  /// Stands in for the time of day in tests.
+  final DateTime Function()? clock;
 
   @override
   State<DoctorDashboardPage> createState() => _DoctorDashboardPageState();
 }
 
 class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
-  @override
-  void initState() {
-    super.initState();
-    // The reviews routes carry no role guard, so the doctor's own id has to
-    // be passed rather than inferred from the token.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final store = StoreProvider.of<AppState>(context);
-      final doctorId = store.state.authState.doctor?.id;
-      if (doctorId != null && doctorId > 0) {
-        store.dispatch(LoadRatingSummaryAction(doctorId: doctorId));
-      }
-    });
-  }
+  TrendPeriod selectedTrend = TrendPeriod.monthly;
+  bool upcomingOnly = false;
 
-  bool showAlert = true;
-  String selectedTrend = 'Monthly';
-  String selectedPatientFilter = 'All';
-  final DateTime dashboardDate = DateTime(2026, 3, 14);
-
-  final List<Map<String, dynamic>> appointments = const [
-    {'time': '08:00', 'patient': 'Maria Wilson', 'duration': '08:25 - 09:00'},
-    {'time': '09:00', 'patient': 'Maria Wilson', 'duration': '09:45 - 10:30'},
-    {'time': '11:00', 'patient': 'Maria Wilson', 'duration': '11:20 - 11:45'},
-    {'time': '14:00', 'patient': 'Maria Wilson', 'duration': '14:20 - 14:45'},
-  ];
-
-  final List<Map<String, dynamic>> patients = [
-    {
-      'name': 'Maria Wilson',
-      'condition': 'Acne Treatment',
-      'activity': '2 hours ago',
-      'status': 'Attention Needed',
-      'priority': 'High',
-      'type': 'All',
-      'avatar': 'assets/doctors.png',
-    },
-    {
-      'name': 'Maria Wilson',
-      'condition': 'Statin therapy',
-      'activity': '2 hours ago',
-      'status': 'Monitored',
-      'priority': 'Low',
-      'type': 'Outpatients',
-      'avatar': 'assets/doctors.png',
-    },
-  ];
+  DateTime get _now => widget.clock?.call() ?? DateTime.now();
 
   static const Color primaryTeal = Color(0xFF48BFC4);
   static const Color darkTeal = Color(0xFF2E9FA5);
   static const Color lightTealBg = Color(0xFFE4F8F9);
   static const Color cardMint = Color(0xFFE2F6F7);
-  static const Color pageText = Color(0xFF102025);
   static const Color orange = Color(0xFFFFA51E);
   static const Color lavender = Color(0xFFEDE3FF);
 
+  static const _months = [
+    'January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December',
+  ];
+  static const _weekdays = [
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+    'Sunday',
+  ];
+
+  void _refresh(Store<AppState> store) {
+    store.dispatch(const LoadAppointmentsAction());
+    // The reviews routes carry no role guard, so the doctor's own id has to
+    // be passed rather than inferred from the token.
+    final doctorId = store.state.authState.doctor?.id;
+    if (doctorId != null && doctorId > 0) {
+      store.dispatch(LoadRatingSummaryAction(doctorId: doctorId));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.of(context).size.width;
-        final height = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : 720.0;
+    return StoreConnector<AppState, AppointmentsState>(
+      onInit: _refresh,
+      converter: (store) => store.state.appointmentsState,
+      builder: (context, state) => LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : MediaQuery.of(context).size.width;
+          final height = constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : 720.0;
 
-        final compact = width < 860;
-        final contentHeight = height < 620 ? 620.0 : height;
-        final dashboardHeight = contentHeight - 48;
-        final shouldScroll = compact || height < 700;
+          final compact = width < 860;
+          final contentHeight = height < 620 ? 620.0 : height;
+          final dashboardHeight = contentHeight - 48;
+          final shouldScroll = compact || height < 700;
 
-        final dashboardPanel = Container(
-          padding: const EdgeInsets.fromLTRB(26, 18, 26, 22),
-          decoration: BoxDecoration(
-            color: lightTealBg,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: compact
-              ? _compactLayout()
-              : SizedBox(height: dashboardHeight, child: _desktopLayout()),
-        );
+          final dashboardPanel = Container(
+            padding: const EdgeInsets.fromLTRB(26, 18, 26, 22),
+            decoration: BoxDecoration(
+              color: lightTealBg,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: compact
+                ? _compactLayout(state)
+                : SizedBox(
+                    height: dashboardHeight,
+                    child: _desktopLayout(state),
+                  ),
+          );
 
-        return Container(
-          color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-          child: shouldScroll
-              ? SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: contentHeight - 8),
+          return Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: shouldScroll
+                ? SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: contentHeight - 8),
+                      child: dashboardPanel,
+                    ),
+                  )
+                : SizedBox(
+                    height: contentHeight - 8,
+                    width: double.infinity,
                     child: dashboardPanel,
                   ),
-                )
-              : SizedBox(
-                  height: contentHeight - 8,
-                  width: double.infinity,
-                  child: dashboardPanel,
-                ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  Widget _desktopLayout() {
+  Widget _desktopLayout(AppointmentsState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _headerRow(),
+        _headerRow(state),
         const SizedBox(height: 12),
         Expanded(
           flex: 3,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(width: 255, child: _appointmentsSection()),
+              SizedBox(width: 255, child: _appointmentsSection(state)),
               const SizedBox(width: 20),
               Expanded(
                 child: Column(
                   children: [
-                    SizedBox(height: 124, child: _statsRow()),
+                    SizedBox(height: 124, child: _statsRow(state)),
                     const SizedBox(height: 14),
-                    Expanded(child: _activitySection()),
+                    Expanded(child: _activitySection(state)),
                   ],
                 ),
               ),
@@ -144,40 +145,39 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
           ),
         ),
         const SizedBox(height: 18),
-        Expanded(flex: 2, child: _patientsSection()),
+        Expanded(flex: 2, child: _patientsSection(state)),
       ],
     );
   }
 
-  Widget _compactLayout() {
+  Widget _compactLayout(AppointmentsState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _headerRow(),
+        _headerRow(state),
         const SizedBox(height: 12),
-        SizedBox(height: 280, child: _appointmentsSection()),
+        SizedBox(height: 280, child: _appointmentsSection(state)),
         const SizedBox(height: 14),
-        SizedBox(height: 124, child: _statsRow()),
+        SizedBox(height: 124, child: _statsRow(state)),
         const SizedBox(height: 14),
-        SizedBox(height: 210, child: _activitySection()),
+        SizedBox(height: 210, child: _activitySection(state)),
         const SizedBox(height: 14),
-        SizedBox(height: 180, child: _patientsSection()),
+        SizedBox(height: 240, child: _patientsSection(state)),
       ],
     );
   }
 
-  Widget _headerRow() {
+  // ─── Header ────────────────────────────────────────────────────────────────
+
+  Widget _headerRow(AppointmentsState state) {
+    final today = _now;
     final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _dashboardDateLabel,
-
-          style: const TextStyle(
-            fontSize: 12,
-
-            color: Color(0xFF7C8B8D),
-          ),
+          '${_weekdays[today.weekday - 1]}, '
+          '${today.day}${_ordinalSuffix(today.day)} ${_months[today.month - 1]}',
+          style: const TextStyle(fontSize: 12, color: Color(0xFF7C8B8D)),
         ),
         const SizedBox(height: 5),
         StoreConnector<AppState, String?>(
@@ -185,7 +185,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
           builder: (context, userName) {
             final name = userName?.trim() ?? '';
             return Text(
-              '${timeOfDayGreeting()} ${name.isEmpty ? 'Doctor' : name}',
+              '${timeOfDayGreeting(today)} ${name.isEmpty ? 'Doctor' : name}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -199,12 +199,20 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
       ],
     );
 
+    final waiting = awaitingAcceptance(state.appointments, today);
     final actions = Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (showAlert) _alertPill(),
+        if (waiting > 0) _alertPill(waiting),
         const SizedBox(height: 10),
-        _dashboardMenu(),
+        StoreConnector<AppState, VoidCallback>(
+          converter: (store) => () => _refresh(store),
+          builder: (context, refresh) => IconButton(
+            tooltip: 'Refresh dashboard',
+            onPressed: state.isLoading ? null : refresh,
+            icon: const Icon(Icons.refresh_rounded, size: 22, color: Colors.black),
+          ),
+        ),
       ],
     );
 
@@ -216,86 +224,64 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
             children: [
               title,
               const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: actions,
-              ),
+              Align(alignment: Alignment.centerRight, child: actions),
             ],
           );
         }
-
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: title),
-            actions,
-          ],
+          children: [Expanded(child: title), actions],
         );
       },
     );
   }
 
-  Widget _alertPill() {
-    return Container(
-      width: 280,
-      height: 24,
-      padding: const EdgeInsets.only(left: 8),
-      color: const Color(0xFFFFE760),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, size: 14, color: orange),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Prince Mashumu skipped medication for 2 days',
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 8, color: Color(0xFF9B8500)),
+  /// Bookings waiting on the doctor, the one thing on this page that asks
+  /// them to act. Opens the Appointments page, where accepting happens.
+  Widget _alertPill(int waiting) {
+    return InkWell(
+      onTap: () => context.go(AppRoutes.doctorAppointments),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        color: const Color(0xFFFFE760),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber_rounded, size: 14, color: orange),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                waiting == 1
+                    ? '1 booking is waiting for you to accept'
+                    : '$waiting bookings are waiting for you to accept',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, color: Color(0xFF7A6800)),
+              ),
             ),
-          ),
-          PopupMenuButton<String>(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 34, height: 24),
-            icon: const Icon(Icons.more_horiz, size: 15, color: Colors.black),
-            onSelected: (value) {
-              if (value == 'dismiss') setState(() => showAlert = false);
-              if (value == 'snooze') _message('Alert snoozed for 1 hour');
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'dismiss', child: Text('Dismiss alert')),
-              PopupMenuItem(value: 'snooze', child: Text('Snooze for 1 hour')),
-            ],
-          ),
-        ],
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right, size: 14, color: Color(0xFF7A6800)),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _dashboardMenu() {
-    return PopupMenuButton<String>(
-      tooltip: 'Dashboard options',
-      icon: const Icon(
-        Icons.dashboard_customize,
-        size: 22,
-        color: Colors.black,
-      ),
-      onSelected: (value) {
-        if (value == 'refresh') _message('Dashboard refreshed');
-        if (value == 'customize') _message('Customize dashboard selected');
-      },
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: 'refresh', child: Text('Refresh dashboard')),
-        PopupMenuItem(value: 'customize', child: Text('Customize widgets')),
-      ],
-    );
-  }
+  // ─── Stats ─────────────────────────────────────────────────────────────────
 
-  Widget _statsRow() {
+  Widget _statsRow(AppointmentsState state) {
+    final now = _now;
+    final ready = state.hasLoadedOnce;
+    final thisMonth = appointmentsInMonth(state.appointments, now);
+    final change = changeVersusLastMonth(state.appointments, now);
+    final patients = patientsFromAppointments(state.appointments, now: now);
+    final newThisMonth = newPatientsThisMonth(state.appointments, now);
+
     return _tealCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final rowWidth = constraints.maxWidth < 520
-              ? 520.0
-              : constraints.maxWidth;
+          final rowWidth =
+              constraints.maxWidth < 520 ? 520.0 : constraints.maxWidth;
 
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -305,18 +291,20 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                 children: [
                   _statTile(
                     Icons.calendar_month,
-                    'Appointments',
-                    '72',
-                    '+12%',
-                    'vs last month',
+                    'Appointments this month',
+                    ready ? '$thisMonth' : '—',
+                    change ?? '',
+                    change == null ? '' : 'vs last month',
+                    onTap: () => context.go(AppRoutes.doctorAppointments),
                   ),
                   _statDivider(),
                   _statTile(
                     Icons.person,
                     'Patients',
-                    '100+',
-                    '+12%',
-                    'vs last month',
+                    ready ? '${patients.length}' : '—',
+                    newThisMonth > 0 ? '+$newThisMonth' : '',
+                    newThisMonth > 0 ? 'new this month' : '',
+                    onTap: () => context.go(AppRoutes.doctorPatients),
                   ),
                   _statDivider(),
                   StoreConnector<AppState, ReviewsState>(
@@ -345,6 +333,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                         summary == null ? '—' : '${summary.totalReviews}',
                         summary == null ? '' : _stars(summary.filledStars),
                         subtext,
+                        isReview: true,
                       );
                     },
                   ),
@@ -359,22 +348,25 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
 
   /// The tile already drew stars as text; this keeps that and makes them
   /// reflect the real score.
-  static String _stars(int filled) =>
-      ('★' * filled) + ('☆' * (5 - filled));
+  static String _stars(int filled) => ('★' * filled) + ('☆' * (5 - filled));
 
   Widget _statTile(
     IconData icon,
     String label,
     String value,
     String meta,
-    String subtext,
-  ) {
-    final isReview = label == 'Reviews';
+    String subtext, {
+    VoidCallback? onTap,
+    bool isReview = false,
+  }) {
+    final falling = meta.startsWith('-');
+    final trendColor =
+        falling ? const Color(0xFFE0533D) : const Color(0xFF24C35B);
 
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => _message('$label opened'),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 10, 12, 8),
           child: Column(
@@ -386,10 +378,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                 child: Icon(icon, size: 13, color: Colors.black),
               ),
               const SizedBox(height: 5),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 10, color: Colors.black),
-              ),
+              Text(label, style: const TextStyle(fontSize: 10, color: Colors.black)),
               const SizedBox(height: 1),
               Text(
                 value,
@@ -402,45 +391,30 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
               ),
               const SizedBox(height: 5),
               if (isReview) ...[
-                Text(
-                  meta,
-                  style: const TextStyle(fontSize: 10, color: Colors.black),
-                ),
+                Text(meta, style: const TextStyle(fontSize: 10, color: Colors.black)),
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
                     subtext,
-                    style: const TextStyle(
-                      fontSize: 8,
-                      color: Color(0xFF8A8A8A),
-                    ),
+                    style: const TextStyle(fontSize: 8, color: Color(0xFF8A8A8A)),
                   ),
                 ),
-              ] else
+              ] else if (meta.isNotEmpty)
                 Row(
                   children: [
-                    const Icon(
-                      Icons.trending_up,
+                    Icon(
+                      falling ? Icons.trending_down : Icons.trending_up,
                       size: 8,
-                      color: Color(0xFF24C35B),
+                      color: trendColor,
                     ),
                     const SizedBox(width: 3),
-                    Text(
-                      meta,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Color(0xFF24C35B),
-                      ),
-                    ),
+                    Text(meta, style: TextStyle(fontSize: 9, color: trendColor)),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         subtext,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 8,
-                          color: Color(0xFF9A9A9A),
-                        ),
+                        style: const TextStyle(fontSize: 8, color: Color(0xFF9A9A9A)),
                       ),
                     ),
                   ],
@@ -460,7 +434,42 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _appointmentsSection() {
+  // ─── Today's appointments ──────────────────────────────────────────────────
+
+  Widget _appointmentsSection(AppointmentsState state) {
+    final now = _now;
+    final today = todaysAppointments(state.appointments, now);
+
+    final Widget body;
+    if (!state.hasLoadedOnce && state.isLoading) {
+      body = const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, color: primaryTeal),
+        ),
+      );
+    } else if (state.errorMessage != null && state.appointments.isEmpty) {
+      body = _sectionNote('Could not load your appointments.\n${state.errorMessage}');
+    } else if (today.isEmpty) {
+      final next = nextAppointmentAfterToday(state.appointments, now);
+      body = _sectionNote(
+        next == null
+            ? 'No appointments today.'
+            : 'No appointments today.\n\nNext: ${next.patientName}, '
+                '${next.formattedDate} at ${next.timeSlot ?? '—'}',
+      );
+    } else {
+      body = Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _timelineAxis(today),
+          const SizedBox(width: 8),
+          Expanded(child: _appointmentTimeline(today)),
+        ],
+      );
+    }
+
     return _tealCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
       child: Column(
@@ -470,37 +479,51 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
             children: [
               const Expanded(
                 child: Text(
-                  'Appointments',
+                  "Today's appointments",
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                 ),
               ),
               Text(
-                'Mar 14th',
+                '${_months[now.month - 1].substring(0, 3)} '
+                '${now.day}${_ordinalSuffix(now.day)}',
                 style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _timelineAxis(),
-                const SizedBox(width: 8),
-                Expanded(child: _appointmentTimeline()),
-              ],
-            ),
-          ),
+          Expanded(child: body),
         ],
       ),
     );
   }
 
-  Widget _appointmentTimeline() {
+  Widget _sectionNote(String text) {
+    return Center(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 11, color: Color(0xFF7C8B8D)),
+      ),
+    );
+  }
+
+  /// The hours the day's timeline spans: at least 08:00–15:00, widened to
+  /// take in any appointment outside that.
+  (int, int) _hourRange(List<Appointment> today) {
+    var start = 8;
+    var end = 15;
+    for (final a in today) {
+      final minutes = startMinutes(a);
+      if (minutes ~/ 60 < start) start = minutes ~/ 60;
+      if (minutes ~/ 60 + 1 > end) end = minutes ~/ 60 + 1;
+    }
+    return (start, end.clamp(start + 1, 24));
+  }
+
+  Widget _appointmentTimeline(List<Appointment> today) {
+    final (startHour, endHour) = _hourRange(today);
     return LayoutBuilder(
       builder: (context, constraints) {
-        const startHour = 8;
-        const endHour = 15;
         const cardHeight = 38.0;
         final timelineHeight = constraints.maxHeight;
         final minuteHeight = timelineHeight / ((endHour - startHour) * 60);
@@ -508,14 +531,15 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            for (var i = 0; i < appointments.length; i++)
-              _positionedAppointment(
-                appointments[i],
-                i,
-                cardHeight,
-                minuteHeight,
-                startHour,
-                timelineHeight,
+            for (var i = 0; i < today.length; i++)
+              Positioned(
+                top: ((startMinutes(today[i]) - startHour * 60) * minuteHeight)
+                    .clamp(0.0, (timelineHeight - cardHeight).clamp(0.0, double.infinity))
+                    .toDouble(),
+                left: 0,
+                right: 0,
+                height: cardHeight,
+                child: _appointmentCard(today[i], highlight: i == 0),
               ),
           ],
         );
@@ -523,50 +547,8 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _positionedAppointment(
-    Map<String, dynamic> appt,
-    int index,
-    double cardHeight,
-    double minuteHeight,
-    int startHour,
-    double timelineHeight,
-  ) {
-    final start = _appointmentStartMinutes(appt['duration']);
-    final top = ((start - startHour * 60) * minuteHeight)
-        .clamp(0.0, timelineHeight - cardHeight)
-        .toDouble();
-
-    return Positioned(
-      top: top,
-      left: 0,
-      right: 0,
-      height: cardHeight,
-      child: _appointmentCard(appt, index),
-    );
-  }
-
-  int _appointmentStartMinutes(String duration) {
-    final start = duration.split('-').first.trim();
-    final parts = start.split(':');
-    if (parts.length != 2) return 8 * 60;
-
-    final hour = int.tryParse(parts[0]) ?? 8;
-    final minute = int.tryParse(parts[1]) ?? 0;
-    return hour * 60 + minute;
-  }
-
-  Widget _timelineAxis() {
-    const times = [
-      '08:00',
-      '09:00',
-      '10:00',
-      '11:00',
-      '12:00',
-      '13:00',
-      '14:00',
-      '15:00',
-    ];
-
+  Widget _timelineAxis(List<Appointment> today) {
+    final (startHour, endHour) = _hourRange(today);
     return SizedBox(
       width: 34,
       child: Row(
@@ -577,37 +559,17 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final time in times)
+                for (var h = startHour; h <= endHour; h++)
                   Text(
-                    time,
-                    style: const TextStyle(
-                      fontSize: 8,
-                      color: Color(0xFF8C9A9D),
-                    ),
+                    '${h.toString().padLeft(2, '0')}:00',
+                    style: const TextStyle(fontSize: 8, color: Color(0xFF8C9A9D)),
                   ),
               ],
             ),
           ),
           Expanded(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(width: 1, color: const Color(0xFFC6D4D6)),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    for (var i = 0; i < 4; i++)
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: const BoxDecoration(
-                          color: primaryTeal,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+            child: Center(
+              child: Container(width: 1, color: const Color(0xFFC6D4D6)),
             ),
           ),
         ],
@@ -615,16 +577,14 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _appointmentCard(Map<String, dynamic> appt, int index) {
-    final isFirst = index == 0;
-
+  Widget _appointmentCard(Appointment appt, {required bool highlight}) {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () => _showAppointmentDetails(appt),
       child: Container(
         padding: const EdgeInsets.fromLTRB(11, 6, 9, 6),
         decoration: BoxDecoration(
-          color: isFirst ? lavender : cardMint,
+          color: highlight ? lavender : cardMint,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -635,38 +595,82 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    appt['patient'],
+                    appt.patientName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    appt['duration'],
+                    '${appt.timeRange}  ·  ${appt.statusLabel}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: Color(0xFF7A8B8E),
-                    ),
+                    style: const TextStyle(fontSize: 9, color: Color(0xFF7A8B8E)),
                   ),
                 ],
               ),
             ),
-            if (isFirst)
-              const Icon(Icons.medication, size: 12, color: Colors.black),
           ],
         ),
       ),
     );
   }
 
-  Widget _activitySection() {
-    final labels = _trendLabels();
-    final values = _trendValues(labels.length);
+  void _showAppointmentDetails(Appointment appointment) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final reason = appointment.reason?.trim() ?? '';
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                appointment.patientName,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text('${appointment.formattedDate}, ${appointment.timeRange}'),
+              const SizedBox(height: 4),
+              Text('Status: ${appointment.statusLabel}'),
+              if (reason.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('Reason: $reason'),
+              ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      context.go(AppRoutes.doctorAppointments);
+                    },
+                    child: const Text('Open in Appointments'),
+                  ),
+                  const SizedBox(width: 10),
+                  TextButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── Activity trend ────────────────────────────────────────────────────────
+
+  Widget _activitySection(AppointmentsState state) {
+    final buckets = activityTrend(state.appointments, selectedTrend, _now);
+    final peak = buckets.fold<int>(0, (m, b) => b.appointments > m ? b.appointments : m);
+    // A round top for the axis, so its labels are whole numbers.
+    final top = peak <= 4 ? 4 : ((peak + 3) ~/ 4) * 4;
 
     return _tealCard(
       padding: const EdgeInsets.fromLTRB(20, 14, 18, 12),
@@ -681,36 +685,9 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                 ),
               ),
-              Flexible(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  reverse: true,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _trendChip('Daily'),
-                      _trendChip('Monthly'),
-                      _trendChip('Yearly'),
-                      IconButton(
-                        tooltip: 'Pick date range',
-                        onPressed: () async {
-                          await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030),
-                          );
-                        },
-                        icon: const Icon(Icons.calendar_month, size: 13),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 22,
-                          height: 22,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _trendChip('Week', TrendPeriod.weekly),
+              _trendChip('Monthly', TrendPeriod.monthly),
+              _trendChip('Yearly', TrendPeriod.yearly),
             ],
           ),
           const SizedBox(height: 10),
@@ -718,117 +695,43 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 28,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '80',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                      Text(
-                        '60',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                      Text(
-                        '40',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                      Text(
-                        '20',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                      Text(
-                        '0',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
+                      for (var i = 4; i >= 0; i--)
+                        Text(
+                          '${top * i ~/ 4}',
+                          style: const TextStyle(fontSize: 8, color: Colors.grey),
+                        ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Stack(
+                  child: Stack(
+                    children: [
+                      Column(
                         children: [
-                          Column(
-                            children: [
-                              for (var i = 0; i < 5; i++) ...[
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.topCenter,
-                                    child: Container(
-                                      height: 1,
-                                      color: const Color(0xFFE8EFF0),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              for (var i = 0; i < labels.length; i++)
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 1.5,
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Expanded(
-                                          child: Align(
-                                            alignment: Alignment.bottomCenter,
-                                            child: Stack(
-                                              alignment: Alignment.bottomCenter,
-                                              children: [
-                                                Container(
-                                                  width: 26,
-                                                  decoration: BoxDecoration(
-                                                    color: cardMint,
-                                                    borderRadius:
-                                                        BorderRadius.circular(6),
-                                                  ),
-                                                ),
-                                                FractionallySizedBox(
-                                                  heightFactor: values[i],
-                                                  child: Container(
-                                                    width: 26,
-                                                    decoration: BoxDecoration(
-                                                      color: darkTeal,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            5,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 7),
-                                        Text(
-                                          labels[i],
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 8,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                          for (var i = 0; i < 4; i++)
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.topCenter,
+                                child: Container(height: 1, color: const Color(0xFFE8EFF0)),
+                              ),
+                            ),
                         ],
-                      );
-                    },
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          for (final bucket in buckets)
+                            Expanded(child: _trendBar(bucket, top)),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -847,87 +750,65 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  List<String> _trendLabels() {
-    if (selectedTrend == 'Daily') {
-      return const ['00', '03', '06', '09', '12', '15', '18'];
-    }
-    if (selectedTrend == 'Yearly') {
-      return const ['2020', '2021', '2022', '2023', '2024', '2025'];
-    }
-    return const [
-      'Jan',
-      'Feb',
-      'Apr',
-      'Mar',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
+  /// Appointments as the light bar, the distinct patients among them as the
+  /// dark bar in front.
+  Widget _trendBar(TrendBucket bucket, int top) {
+    return Tooltip(
+      message: '${bucket.label}: ${bucket.appointments} appointments, '
+          '${bucket.patients} patients',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 1.5),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    FractionallySizedBox(
+                      heightFactor: bucket.appointments / top,
+                      child: Container(
+                        width: 26,
+                        decoration: BoxDecoration(
+                          color: cardMint,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                    ),
+                    FractionallySizedBox(
+                      heightFactor: bucket.patients / top,
+                      child: Container(
+                        width: 26,
+                        decoration: BoxDecoration(
+                          color: darkTeal,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              bucket.label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 8, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  List<double> _trendValues(int length) {
-    final base = selectedTrend == 'Daily'
-        ? <double>[.54, .66, .48, .73, .61, .42, .69]
-        : selectedTrend == 'Yearly'
-        ? <double>[.44, .55, .63, .71, .78, .83]
-        : <double>[.72, .72, .72, .72, .52, .72, .72, .72, .72, .72, .72];
-    return base.take(length).toList();
-  }
-
-  String get _dashboardDateLabel {
-    const weekdays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    return '${weekdays[dashboardDate.weekday - 1]}, '
-        '${dashboardDate.day}${_ordinalSuffix(dashboardDate.day)} '
-        '${months[dashboardDate.month - 1]}';
-  }
-
-  String _ordinalSuffix(int day) {
-    if (day >= 11 && day <= 13) return 'th';
-    switch (day % 10) {
-      case 1:
-        return 'st';
-      case 2:
-        return 'nd';
-      case 3:
-        return 'rd';
-      default:
-        return 'th';
-    }
-  }
-
-  Widget _trendChip(String text) {
-    final selected = selectedTrend == text;
+  Widget _trendChip(String text, TrendPeriod period) {
+    final selected = selectedTrend == period;
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      onTap: () => setState(() => selectedTrend = text),
+      onTap: () => setState(() => selectedTrend = period),
       child: Container(
         margin: const EdgeInsets.only(left: 3),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -946,18 +827,33 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _patientsSection() {
-    final visiblePatients = selectedPatientFilter == 'All'
-        ? patients
-        : patients
-              .where((patient) => patient['type'] == selectedPatientFilter)
-              .toList();
+  String _ordinalSuffix(int day) {
+    if (day >= 11 && day <= 13) return 'th';
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
+  }
+
+  // ─── Recent patients ───────────────────────────────────────────────────────
+
+  Widget _patientsSection(AppointmentsState state) {
+    final now = _now;
+    final all = patientsFromAppointments(state.appointments, now: now);
+    final visible = upcomingOnly
+        ? all.where((p) => p.nextVisit != null).toList()
+        : all;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tableWidth = constraints.maxWidth < 824
-            ? 780.0
-            : constraints.maxWidth - 44;
+        final tableWidth =
+            constraints.maxWidth < 824 ? 780.0 : constraints.maxWidth - 44;
 
         return Container(
           padding: const EdgeInsets.fromLTRB(22, 12, 22, 10),
@@ -980,21 +876,17 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                       ),
                       const SizedBox(width: 13),
                       const Text(
-                        'Patients',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        'Recent patients',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(width: 28),
-                      _filterChip('All'),
-                      _filterChip('Outpatients'),
-                      _filterChip('Remote care'),
-                      _filterChip('Follow-up'),
+                      _filterChip('All', !upcomingOnly, () => setState(() => upcomingOnly = false)),
+                      _filterChip('With an upcoming visit', upcomingOnly, () => setState(() => upcomingOnly = true)),
                       const Spacer(),
-                      _filterButton(),
-                      const SizedBox(width: 10),
-                      _addButton(),
+                      TextButton(
+                        onPressed: () => context.go(AppRoutes.doctorPatients),
+                        child: const Text('View all', style: TextStyle(color: darkTeal)),
+                      ),
                     ],
                   ),
                 ),
@@ -1003,18 +895,25 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
               _patientHeader(tableWidth),
               const SizedBox(height: 8),
               Expanded(
-                child: visiblePatients.isEmpty
-                    ? const Center(
+                child: visible.isEmpty
+                    ? Center(
                         child: Text(
-                          'No patients for this filter',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          !state.hasLoadedOnce
+                              ? ''
+                              : all.isEmpty
+                                  ? 'Patients appear here once they book with you'
+                                  : 'No patients with an upcoming visit',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       )
                     : ListView.separated(
-                        itemCount: visiblePatients.length,
+                        itemCount: visible.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) =>
-                            _patientRow(visiblePatients[index], tableWidth),
+                        itemBuilder: (context, index) => _patientRow(
+                          visible[index],
+                          lastVisit(state.appointments, visible[index].id, now),
+                          tableWidth,
+                        ),
                       ),
               ),
             ],
@@ -1024,12 +923,10 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _filterChip(String text) {
-    final selected = selectedPatientFilter == text;
-
+  Widget _filterChip(String text, bool selected, VoidCallback onTap) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => setState(() => selectedPatientFilter = text),
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(right: 14),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
@@ -1049,41 +946,6 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _filterButton() {
-    return PopupMenuButton<String>(
-      tooltip: 'Filter patients',
-      onSelected: (value) => setState(() => selectedPatientFilter = value),
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: 'All', child: Text('All')),
-        PopupMenuItem(value: 'Outpatients', child: Text('Outpatients')),
-        PopupMenuItem(value: 'Remote care', child: Text('Remote care')),
-        PopupMenuItem(value: 'Follow-up', child: Text('Follow-up')),
-      ],
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: const BoxDecoration(
-          color: Color(0xFFE5E5E5),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(Icons.tune, size: 18, color: Colors.black),
-      ),
-    );
-  }
-
-  Widget _addButton() {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: _showAddPatientDialog,
-      child: Container(
-        width: 30,
-        height: 30,
-        decoration: const BoxDecoration(color: orange, shape: BoxShape.circle),
-        child: const Icon(Icons.add, size: 23, color: Colors.black),
-      ),
-    );
-  }
-
   Widget _patientHeader(double tableWidth) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1091,197 +953,80 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
         width: tableWidth,
         child: const Row(
           children: [
-            Expanded(flex: 2, child: _HeaderText('Name')),
-            Expanded(flex: 2, child: _HeaderText('Condition')),
-            Expanded(flex: 2, child: _HeaderText('Last activity')),
-            Expanded(flex: 2, child: _HeaderText('Status')),
-            Expanded(flex: 1, child: _HeaderText('Priority')),
-            SizedBox(width: 96),
+            Expanded(flex: 3, child: _HeaderText('Name')),
+            Expanded(flex: 3, child: _HeaderText('Last reason for visit')),
+            Expanded(flex: 2, child: _HeaderText('Last visit')),
+            Expanded(flex: 2, child: _HeaderText('Next visit')),
+            Expanded(flex: 1, child: _HeaderText('Visits')),
+            SizedBox(width: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget _patientRow(Map<String, dynamic> patient, double tableWidth) {
+  String _shortDate(DateTime? date) {
+    if (date == null) return '—';
+    final d = date.toLocal();
+    return '${d.day} ${_months[d.month - 1].substring(0, 3)} ${d.year}';
+  }
+
+  Widget _patientRow(DoctorPatient patient, DateTime? last, double tableWidth) {
+    const cell = TextStyle(fontSize: 9, color: Color(0xFF777777));
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
         width: tableWidth,
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: () => _showPatientDetails(patient),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    _patientAvatar(patient),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        patient['name'],
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Color(0xFF777777),
-                        ),
+          onTap: () => context.push('${AppRoutes.doctorPatients}/${patient.id}'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      _patientAvatar(patient),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(patient.name, overflow: TextOverflow.ellipsis, style: cell),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  patient['condition'],
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9, color: Color(0xFF777777)),
+                Expanded(
+                  flex: 3,
+                  child: Text(patient.lastReason ?? '—', overflow: TextOverflow.ellipsis, style: cell),
                 ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  patient['activity'],
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9, color: Color(0xFF777777)),
+                Expanded(flex: 2, child: Text(_shortDate(last), style: cell)),
+                Expanded(flex: 2, child: Text(_shortDate(patient.nextVisit), style: cell)),
+                Expanded(flex: 1, child: Text('${patient.visits}', style: cell)),
+                const SizedBox(
+                  width: 24,
+                  child: Icon(Icons.chevron_right, size: 16, color: Color(0xFF6C6C6C)),
                 ),
-              ),
-              Expanded(flex: 2, child: _statusChip(patient['status'])),
-              Expanded(flex: 1, child: _priorityText(patient['priority'])),
-              SizedBox(
-                width: 96,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      tooltip: 'Edit patient',
-                      onPressed: () => _showEditPatientDialog(patient),
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        size: 16,
-                        color: Color(0xFF6C6C6C),
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 22,
-                        height: 22,
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Delete patient',
-                      onPressed: () => _deletePatient(patient),
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 16,
-                        color: Color(0xFF6C6C6C),
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 22,
-                        height: 22,
-                      ),
-                    ),
-                    PopupMenuButton<String>(
-                      tooltip: 'Patient menu',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 22,
-                        height: 22,
-                      ),
-                      icon: const Icon(
-                        Icons.more_vert,
-                        size: 16,
-                        color: Color(0xFF6C6C6C),
-                      ),
-                      onSelected: (value) =>
-                          _message('$value: ${patient['name']}'),
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: 'View profile',
-                          child: Text('View profile'),
-                        ),
-                        PopupMenuItem(
-                          value: 'Send reminder',
-                          child: Text('Send reminder'),
-                        ),
-                        PopupMenuItem(
-                          value: 'Create prescription',
-                          child: Text('Create prescription'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _patientAvatar(Map<String, dynamic> patient) {
-    final avatar = patient['avatar'] as String?;
-
-    if (avatar == null || avatar.isEmpty) {
-      return CircleAvatar(
-        radius: 12,
-        backgroundColor: primaryTeal,
-        child: Text(
-          _initials(patient['name']),
-          style: const TextStyle(fontSize: 8, color: Colors.white),
-        ),
-      );
-    }
-
+  Widget _patientAvatar(DoctorPatient patient) {
+    final url = patient.avatarUrl;
     return CircleAvatar(
       radius: 12,
-      backgroundColor: cardMint,
-      backgroundImage: AssetImage(avatar),
-    );
-  }
-
-  Widget _statusChip(String status) {
-    final isAttention = status == 'Attention Needed';
-    final bg = isAttention ? const Color(0xFFFF7777) : const Color(0xFFFFD36D);
-    final text = isAttention
-        ? const Color(0xFFFF1D25)
-        : const Color(0xFFFFA000);
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Container(
-          height: 20,
-          padding: const EdgeInsets.symmetric(horizontal: 9),
-          decoration: BoxDecoration(
-            color: bg.withValues(alpha: .85),
-            borderRadius: BorderRadius.circular(3),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(color: text, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 5),
-              Text(status, style: TextStyle(fontSize: 9, color: text)),
-            ],
-          ),
-        ),
+      backgroundColor: primaryTeal,
+      foregroundImage: url == null ? null : NetworkImage(url),
+      onForegroundImageError: url == null ? null : (_, __) {},
+      child: Text(
+        patient.initials,
+        style: const TextStyle(fontSize: 8, color: Colors.white),
       ),
     );
-  }
-
-  Widget _priorityText(String priority) {
-    final color = priority == 'High' ? darkTeal : const Color(0xFF00A1A6);
-    return Text(priority, style: TextStyle(fontSize: 9, color: color));
   }
 
   Widget _tealCard({
@@ -1296,238 +1041,6 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
       ),
       child: Padding(padding: padding, child: child),
     );
-  }
-
-  void _showAppointmentDetails(Map<String, dynamic> appointment) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                appointment['patient'],
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('Time: ${appointment['duration']}'),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _message('Appointment opened');
-                    },
-                    child: const Text('Open'),
-                  ),
-                  const SizedBox(width: 10),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Close'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showPatientDetails(Map<String, dynamic> patient) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(patient['name']),
-        content: Text(
-          'Condition: ${patient['condition']}\nStatus: ${patient['status']}\nPriority: ${patient['priority']}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddPatientDialog() {
-    final nameController = TextEditingController();
-    final conditionController = TextEditingController();
-    String type = 'Outpatients';
-    String priority = 'Low';
-
-    showDialog<void>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Add Patient'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Patient name'),
-                ),
-                TextField(
-                  controller: conditionController,
-                  decoration: const InputDecoration(labelText: 'Condition'),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: type,
-                  decoration: const InputDecoration(labelText: 'Care type'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Outpatients',
-                      child: Text('Outpatients'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Remote care',
-                      child: Text('Remote care'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Follow-up',
-                      child: Text('Follow-up'),
-                    ),
-                  ],
-                  onChanged: (value) =>
-                      setDialogState(() => type = value ?? type),
-                ),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: const [
-                    DropdownMenuItem(value: 'Low', child: Text('Low')),
-                    DropdownMenuItem(value: 'High', child: Text('High')),
-                  ],
-                  onChanged: (value) =>
-                      setDialogState(() => priority = value ?? priority),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (nameController.text.trim().isEmpty) return;
-                  setState(() {
-                    patients.add({
-                      'name': nameController.text.trim(),
-                      'condition': conditionController.text.trim().isEmpty
-                          ? 'General care'
-                          : conditionController.text.trim(),
-                      'activity': 'Just now',
-                      'status': priority == 'High'
-                          ? 'Attention Needed'
-                          : 'Monitored',
-                      'priority': priority,
-                      'type': type,
-                    });
-                  });
-                  Navigator.pop(context);
-                  _message('Patient added');
-                },
-                child: const Text('Add'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _showEditPatientDialog(Map<String, dynamic> patient) {
-    final nameController = TextEditingController(text: patient['name']);
-    final conditionController = TextEditingController(
-      text: patient['condition'],
-    );
-    String priority = patient['priority'];
-
-    showDialog<void>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Edit Patient'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Patient name'),
-                ),
-                TextField(
-                  controller: conditionController,
-                  decoration: const InputDecoration(labelText: 'Condition'),
-                ),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: const [
-                    DropdownMenuItem(value: 'Low', child: Text('Low')),
-                    DropdownMenuItem(value: 'High', child: Text('High')),
-                  ],
-                  onChanged: (value) =>
-                      setDialogState(() => priority = value ?? priority),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    patient['name'] = nameController.text.trim();
-                    patient['condition'] = conditionController.text.trim();
-                    patient['priority'] = priority;
-                    patient['status'] = priority == 'High'
-                        ? 'Attention Needed'
-                        : 'Monitored';
-                  });
-                  Navigator.pop(context);
-                  _message('Patient updated');
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _deletePatient(Map<String, dynamic> patient) {
-    setState(() => patients.remove(patient));
-    _message('Patient removed');
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    return parts.take(2).map((part) => part[0]).join().toUpperCase();
-  }
-
-  void _message(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 }
 
