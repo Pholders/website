@@ -81,6 +81,11 @@ class ApiClient {
     return _send(() => _dio.patch<dynamic>(path, data: body));
   }
 
+  /// Sends a DELETE and returns the decoded `data` object.
+  Future<Map<String, dynamic>> delete(String path) {
+    return _send(() => _dio.delete<dynamic>(path));
+  }
+
   /// Sends a PUT and returns the decoded `data` object.
   Future<Map<String, dynamic>> put(
     String path, {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/di/service_locator.dart';
 import '../../core/routing/app_routes.dart';
+import '../../features/doctor/notifications/data/doctor_notifications_repository.dart';
 import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
 
@@ -141,24 +143,67 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
                     height: 24,
                   ),
                 ),
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                    ),
-                  ),
-                ),
+                if (isPharmacy)
+                  const Positioned(right: 6, top: 6, child: _RedDot())
+                else
+                  const Positioned(right: 6, top: 6, child: _DoctorUnreadDot()),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RedDot extends StatelessWidget {
+  const _RedDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF4444),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
+    );
+  }
+}
+
+/// The doctor's bell shows the dot only while something is unread. It used to
+/// show it always. Checks the count each time the bar is built for a new page,
+/// and follows the Notifications page as the doctor reads.
+class _DoctorUnreadDot extends StatefulWidget {
+  const _DoctorUnreadDot();
+
+  @override
+  State<_DoctorUnreadDot> createState() => _DoctorUnreadDotState();
+}
+
+class _DoctorUnreadDotState extends State<_DoctorUnreadDot> {
+  DoctorNotificationsRepository? get _repo =>
+      sl.isRegistered<DoctorNotificationsRepository>()
+          ? sl<DoctorNotificationsRepository>()
+          : null;
+
+  @override
+  void initState() {
+    super.initState();
+    // A failed check leaves the last known count; the bell is not worth an error.
+    _repo?.refreshUnread().catchError((_) {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = _repo;
+    if (repo == null) return const SizedBox.shrink();
+    return ValueListenableBuilder<int>(
+      valueListenable: repo.unread,
+      builder: (context, unread, _) =>
+          unread > 0 ? const _RedDot() : const SizedBox.shrink(),
     );
   }
 }
