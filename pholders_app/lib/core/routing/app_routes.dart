@@ -87,7 +87,6 @@ class AppRoutes {
   static const String doctorInformation = '/doctor/information';
   static const String doctorNotifications = '/doctor/notifications';
   static const String doctorSettingsPractice = '/doctor/settings/practice';
-  static const String doctorSettingsPracticePage = '/doctor/settings/practice-page';
   static const String doctorSettingsPreferences = '/doctor/settings/preferences';
   static const String doctorSettingsSupportLegal = '/doctor/settings/support-legal';
   static const String pharmacyNotifications = '/pharmacy/notifications';

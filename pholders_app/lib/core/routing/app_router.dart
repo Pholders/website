@@ -40,6 +40,7 @@ import '../../features/doctor/prescriptions/presentation/search_scripts_page.dar
 import '../../features/doctor/sick_notes/presentation/sick_notes_page.dart';
 import '../../features/doctor/appointments/presentation/appointments_page.dart';
 import '../../features/doctor/billing/presentation/billing_page.dart';
+import '../../features/doctor/notifications/presentation/notifications_page.dart';
 import '../../features/doctor/settings/presentation/settings_page.dart';
 import '../../features/doctor/settings/presentation/account_settings.dart';
 import '../../features/doctor/settings/presentation/practice_settings.dart';
@@ -246,6 +247,12 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.doctorBilling,
             builder: (context, state) => const BillingPage(),
+          ),
+          // The top bar's bell links here; without the route it led to a
+          // blank page.
+          GoRoute(
+            path: AppRoutes.doctorNotifications,
+            builder: (context, state) => const DoctorNotificationsPage(),
           ),
           GoRoute(
             path: AppRoutes.doctorSettings,
