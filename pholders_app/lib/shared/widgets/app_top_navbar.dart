@@ -146,7 +146,7 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
                 if (isPharmacy)
                   const Positioned(right: 6, top: 6, child: _RedDot())
                 else
-                  const Positioned(right: 6, top: 6, child: _DoctorUnreadDot()),
+                  const Positioned(right: 0, top: 2, child: _DoctorUnreadDot()),
               ],
             ),
           ),
@@ -173,9 +173,10 @@ class _RedDot extends StatelessWidget {
   }
 }
 
-/// The doctor's bell shows the dot only while something is unread. It used to
-/// show it always. Checks the count each time the bar is built for a new page,
-/// and follows the Notifications page as the doctor reads.
+/// The doctor's bell shows how many notifications are unread, and nothing when
+/// none are. It used to show a plain dot always. Checks the count each time the
+/// bar is built for a new page, and follows the Notifications page as the
+/// doctor reads.
 class _DoctorUnreadDot extends StatefulWidget {
   const _DoctorUnreadDot();
 
@@ -202,8 +203,33 @@ class _DoctorUnreadDotState extends State<_DoctorUnreadDot> {
     if (repo == null) return const SizedBox.shrink();
     return ValueListenableBuilder<int>(
       valueListenable: repo.unread,
-      builder: (context, unread, _) =>
-          unread > 0 ? const _RedDot() : const SizedBox.shrink(),
+      builder: (context, unread, _) {
+        if (unread <= 0) return const SizedBox.shrink();
+        return Semantics(
+          label: '$unread unread notification${unread == 1 ? '' : 's'}',
+          excludeSemantics: true,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 18),
+            height: 18,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: Colors.white, width: 1.5),
+            ),
+            child: Text(
+              unread > 99 ? '99+' : '$unread',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                height: 1,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
