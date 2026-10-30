@@ -5,90 +5,52 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-import '../../../../main.dart';
-import '../../../../shared/theme/app_theme.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../shared/widgets/app_sidebar.dart';
-import '../../../../shared/widgets/app_top_navbar.dart';
+import '../data/billing_repository.dart';
 import 'pdf_download_stub.dart'
     if (dart.library.html) 'pdf_download_web.dart';
-
-// ─── Transaction model ────────────────────────────────────────────────────────
-enum TxStatus { paid, pending, cancelled, refund, processing }
-
-class Transaction {
-
-  const Transaction({
-    required this.id,
-    required this.patient,
-    required this.initials,
-    required this.service,
-    required this.amount,
-    required this.date,
-    required this.status,
-  });
-  final String id;
-  final String patient;
-  final String initials;
-  final String service;
-  final String amount;
-  final String date;
-  final TxStatus status;
-
-  Transaction copyWith({TxStatus? status}) => Transaction(
-    id: id,
-    patient: patient,
-    initials: initials,
-    service: service,
-    amount: amount,
-    date: date,
-    status: status ?? this.status,
-  );
-}
-
-final _initialTransactions = [
-  const Transaction(id: 'TXN-001', patient: 'Maria Wilson',   initials: 'MW', service: 'Consultation', amount: 'R200', date: '05 May', status: TxStatus.paid),
-  const Transaction(id: 'TXN-002', patient: 'James Mokoena',  initials: 'JM', service: 'Chemotherapy',  amount: 'R450', date: '03 May', status: TxStatus.pending),
-  const Transaction(id: 'TXN-003', patient: 'Sarah Dlamini',  initials: 'SD', service: 'Consultation',  amount: 'R200', date: '03 May', status: TxStatus.cancelled),
-  const Transaction(id: 'TXN-004', patient: 'John Nkosi',     initials: 'JN', service: 'X-Ray',         amount: 'R100', date: '02 May', status: TxStatus.paid),
-  const Transaction(id: 'TXN-005', patient: 'Thandi Khumalo', initials: 'TK', service: 'Consultation',  amount: 'R80',  date: '01 May', status: TxStatus.refund),
-  const Transaction(id: 'TXN-006', patient: 'Peter Sithole',  initials: 'PS', service: 'Blood Test',    amount: 'R200', date: '30 Apr', status: TxStatus.processing),
-  const Transaction(id: 'TXN-007', patient: 'Lisa Mahlangu',  initials: 'LM', service: 'Consultation',  amount: 'R200', date: '29 Apr', status: TxStatus.paid),
-];
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 ({Color bg, Color fg, String label}) _statusStyle(TxStatus s) => switch (s) {
   TxStatus.paid       => (bg: const Color(0xFFE1F5EE), fg: const Color(0xFF0F6E56), label: 'Paid'),
   TxStatus.pending    => (bg: const Color(0xFFFAEEDA), fg: const Color(0xFF854F0B), label: 'Pending'),
   TxStatus.cancelled  => (bg: const Color(0xFFF1EFE8), fg: const Color(0xFF5F5E5A), label: 'Cancelled'),
-  TxStatus.refund     => (bg: const Color(0xFFFCEBEB), fg: const Color(0xFFA32D2D), label: 'Refund'),
-  TxStatus.processing => (bg: const Color(0xFFE6F1FB), fg: const Color(0xFF185FA5), label: 'Processing'),
+  TxStatus.failed     => (bg: const Color(0xFFFCEBEB), fg: const Color(0xFFA32D2D), label: 'Failed'),
 };
 
 Color _dotColor(TxStatus s) => switch (s) {
   TxStatus.paid       => const Color(0xFF1D9E75),
   TxStatus.pending    => const Color(0xFFBA7517),
   TxStatus.cancelled  => const Color(0xFF888780),
-  TxStatus.refund     => const Color(0xFFE24B4A),
-  TxStatus.processing => const Color(0xFF378ADD),
+  TxStatus.failed     => const Color(0xFFE24B4A),
 };
 
 // ─── BillingPage ──────────────────────────────────────────────────────────────
+/// The doctor's payments from patients, from /users/doctor/payments.
+///
+/// It used to show seven invented transactions, made-up totals (R88,200
+/// earned), a Withdraw button that announced a R8,200 payout nobody made, and
+/// a Cancel that changed only the row on screen. There is no payout or
+/// doctor-side cancel on the backend, so those are gone rather than faked.
 class BillingPage extends StatelessWidget {
-  const BillingPage({super.key});
-  static const String _role = 'doctor';
+  const BillingPage({super.key, this.repository});
+
+  final BillingRepository? repository;
 
   @override
   Widget build(BuildContext context) {
-    // Remove the Scaffold and layout logic from BillingPage.
-    // The parent widget (e.g., ShellLayout) will handle the layout.
-    return const _BillingBody();
+    // The parent widget (e.g., ShellLayout) handles the layout.
+    return _BillingBody(repository: repository ?? sl<BillingRepository>());
   }
 }
 
 // ─── Body ─────────────────────────────────────────────────────────────────────
 class _BillingBody extends StatefulWidget {
-  const _BillingBody();
+  const _BillingBody({required this.repository});
+
+  final BillingRepository repository;
 
   @override
   State<_BillingBody> createState() => _BillingBodyState();
@@ -96,15 +58,43 @@ class _BillingBody extends StatefulWidget {
 
 class _BillingBodyState extends State<_BillingBody> {
   final TextEditingController _searchController = TextEditingController();
-  late List<Transaction> _transactions;
-  List<Transaction> _filtered = [];
+  List<Transaction> _transactions = const [];
+  List<Transaction> _filtered = const [];
+  BillingSummary? _summary;
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _transactions = List.from(_initialTransactions);
-    _filtered = _transactions;
     _searchController.addListener(_onSearch);
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait([
+        widget.repository.fetchSummary(),
+        widget.repository.fetchPayments(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _summary = results[0] as BillingSummary;
+        _transactions = results[1] as List<Transaction>;
+        _loading = false;
+      });
+      _onSearch();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    }
   }
 
   void _onSearch() {
@@ -117,18 +107,9 @@ class _BillingBodyState extends State<_BillingBody> {
                   tx.service.toLowerCase().contains(q) ||
                   tx.amount.toLowerCase().contains(q) ||
                   tx.date.toLowerCase().contains(q) ||
+                  tx.method.toLowerCase().contains(q) ||
                   _statusStyle(tx.status).label.toLowerCase().contains(q);
             }).toList();
-    });
-  }
-
-  void _cancelTransaction(String id) {
-    setState(() {
-      final idx = _transactions.indexWhere((t) => t.id == id);
-      if (idx != -1) {
-        _transactions[idx] = _transactions[idx].copyWith(status: TxStatus.cancelled);
-      }
-      _onSearch();
     });
   }
 
@@ -145,20 +126,36 @@ class _BillingBodyState extends State<_BillingBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Billing & Payments', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-          const SizedBox(height: 16),
-          const _WithdrawButton(),
+          Row(children: [
+            const Text('Billing & Payments', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+            const Spacer(),
+            if (!_loading)
+              IconButton(
+                tooltip: 'Refresh',
+                icon: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.textSecondary),
+                onPressed: _load,
+              ),
+          ]),
           const SizedBox(height: 18),
-          const _StatBox(),
-          const SizedBox(height: 24),
-          _TransactionsHeader(controller: _searchController),
-          const SizedBox(height: 10),
-          const _ColumnHeaders(),
-          const SizedBox(height: 6),
-          _DataRowsBox(
-            transactions: _filtered,
-            onCancel: _cancelTransaction,
-          ),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: CircularProgressIndicator(color: AppColors.activeTeal)),
+            )
+          else if (_error != null)
+            _LoadError(message: _error!, onRetry: _load)
+          else ...[
+            _StatBox(summary: _summary!),
+            const SizedBox(height: 24),
+            _TransactionsHeader(controller: _searchController),
+            const SizedBox(height: 10),
+            const _ColumnHeaders(),
+            const SizedBox(height: 6),
+            _DataRowsBox(
+              transactions: _filtered,
+              searching: _searchController.text.trim().isNotEmpty,
+            ),
+          ],
           const SizedBox(height: 24),
         ],
       ),
@@ -166,46 +163,43 @@ class _BillingBodyState extends State<_BillingBody> {
   }
 }
 
-// ─── Withdraw button ──────────────────────────────────────────────────────────
-class _WithdrawButton extends StatelessWidget {
-  const _WithdrawButton();
+// ─── Load error ───────────────────────────────────────────────────────────────
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Withdraw Funds'),
-          content: const Text('Your withdrawal request of R8,200 has been submitted successfully.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK', style: const TextStyle(color: AppColors.activeTeal)),
-            ),
-          ],
-        ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider, width: 0.5),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(color: AppColors.activeTeal, borderRadius: BorderRadius.circular(20)),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.arrow_circle_up_outlined, color: Colors.white, size: 16),
-            SizedBox(width: 6),
-            Text('Withdraw Funds', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
+      child: Column(children: [
+        const Icon(Icons.cloud_off_rounded, size: 40, color: AppColors.textSecondary),
+        const SizedBox(height: 8),
+        const Text('Could not load your payments', style: TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+        const SizedBox(height: 4),
+        Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        const SizedBox(height: 12),
+        TextButton(onPressed: onRetry, child: const Text('Try again', style: TextStyle(color: AppColors.activeTeal))),
+      ]),
     );
   }
 }
 
 // ─── Stat box ─────────────────────────────────────────────────────────────────
 class _StatBox extends StatelessWidget {
-  const _StatBox();
+  const _StatBox({required this.summary});
+
+  final BillingSummary summary;
+
+  String _count(int n, String one) => '$n ${n == 1 ? one : '${one}s'}';
 
   @override
   Widget build(BuildContext context) {
@@ -232,13 +226,13 @@ class _StatBox extends StatelessWidget {
             child: IntrinsicHeight(
               child: Row(
                 children: [
-                  _StatItem(icon: Icons.monetization_on_outlined, iconBg: AppColors.activeTeal.withValues(alpha: 0.12), iconColor: AppColors.activeTeal, label: 'Total Earnings',     value: 'R88,200', sub: '+2.5% Learn more', subColor: const Color(0xFF1D9E75)),
+                  _StatItem(icon: Icons.monetization_on_outlined, iconBg: AppColors.activeTeal.withValues(alpha: 0.12), iconColor: AppColors.activeTeal, label: 'Received', value: formatRand(summary.receivedAmount), sub: 'From paid consultations'),
                   _vDiv(),
-                  _StatItem(icon: Icons.account_balance_wallet_outlined, iconBg: AppColors.activeTeal.withValues(alpha: 0.12), iconColor: AppColors.activeTeal, label: 'Available Balance', value: 'R8,200',  sub: 'Ready to withdraw'),
+                  _StatItem(icon: Icons.access_time_outlined, iconBg: const Color(0xFFFAEEDA), iconColor: const Color(0xFFBA7517), label: 'Pending Payments', value: formatRand(summary.pendingAmount), sub: 'Not paid yet'),
                   _vDiv(),
-                  const _StatItem(icon: Icons.access_time_outlined, iconBg: Color(0xFFFAEEDA), iconColor: Color(0xFFBA7517), label: 'Pending Payments',   value: 'R3,400',  sub: 'In progress'),
+                  _StatItem(icon: Icons.check_circle_outline, iconBg: const Color(0xFFE1F5EE), iconColor: const Color(0xFF1D9E75), label: 'Completed Payments', value: '${summary.receivedCount}', sub: _count(summary.pendingCount, 'pending payment')),
                   _vDiv(),
-                  const _StatItem(icon: Icons.check_circle_outline,  iconBg: Color(0xFFE1F5EE), iconColor: Color(0xFF1D9E75), label: 'Completed Payments', value: '42',      sub: 'Transactions'),
+                  _StatItem(icon: Icons.cancel_outlined, iconBg: const Color(0xFFF1EFE8), iconColor: const Color(0xFF5F5E5A), label: 'Cancelled or Failed', value: '${summary.cancelledCount + summary.failedCount}', sub: 'Not charged'),
                 ],
               ),
             ),
@@ -253,14 +247,13 @@ class _StatBox extends StatelessWidget {
 
 class _StatItem extends StatelessWidget {
 
-  const _StatItem({required this.icon, required this.iconBg, required this.iconColor, required this.label, required this.value, required this.sub, this.subColor});
+  const _StatItem({required this.icon, required this.iconBg, required this.iconColor, required this.label, required this.value, required this.sub});
   final IconData icon;
   final Color iconBg;
   final Color iconColor;
   final String label;
   final String value;
   final String sub;
-  final Color? subColor;
 
   @override
   Widget build(BuildContext context) {
@@ -276,7 +269,7 @@ class _StatItem extends StatelessWidget {
             const SizedBox(height: 4),
             Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
             const SizedBox(height: 3),
-            Text(sub, style: TextStyle(fontSize: 10, color: subColor ?? AppColors.textMuted)),
+            Text(sub, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
           ],
         ),
       ),
@@ -367,27 +360,35 @@ class _ColumnHeaders extends StatelessWidget {
 // ─── Data rows box ────────────────────────────────────────────────────────────
 class _DataRowsBox extends StatelessWidget {
 
-  const _DataRowsBox({required this.transactions, required this.onCancel});
+  const _DataRowsBox({required this.transactions, required this.searching});
   final List<Transaction> transactions;
-  final void Function(String id) onCancel;
+
+  /// Whether an empty list means "no match" rather than "no payments yet".
+  final bool searching;
 
   @override
   Widget build(BuildContext context) {
     if (transactions.isEmpty) {
       return Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 40),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.divider, width: 0.5),
         ),
-        child: const Center(
+        child: Center(
           child: Column(children: [
-            const Icon(Icons.search_off_rounded, size: 40, color: AppColors.textSecondary),
-            SizedBox(height: 8),
-            const Text('No transactions found', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            SizedBox(height: 4),
-            const Text('Try a different search term', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            Icon(searching ? Icons.search_off_rounded : Icons.receipt_long_outlined, size: 40, color: AppColors.textSecondary),
+            const SizedBox(height: 8),
+            Text(searching ? 'No transactions found' : 'No payments yet', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 4),
+            Text(
+              searching
+                  ? 'Try a different search term'
+                  : 'Payments appear here when patients pay for appointments with you',
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
           ]),
         ),
       );
@@ -419,7 +420,6 @@ class _DataRowsBox extends StatelessWidget {
                 (i) => _TxRow(
                   tx: transactions[i],
                   isLast: i == transactions.length - 1,
-                  onCancel: onCancel,
                 ),
               ),
             ),
@@ -433,10 +433,9 @@ class _DataRowsBox extends StatelessWidget {
 // ─── Transaction row ──────────────────────────────────────────────────────────
 class _TxRow extends StatefulWidget {
 
-  const _TxRow({required this.tx, required this.isLast, required this.onCancel});
+  const _TxRow({required this.tx, required this.isLast});
   final Transaction tx;
   final bool isLast;
-  final void Function(String id) onCancel;
 
   @override
   State<_TxRow> createState() => _TxRowState();
@@ -493,6 +492,8 @@ class _TxRowState extends State<_TxRow> {
                   _pdfDetailRow('Service', tx.service),
                   pw.SizedBox(height: 10),
                   _pdfDetailRow('Date', tx.date),
+                  pw.SizedBox(height: 10),
+                  _pdfDetailRow('Paid by', tx.method),
                   pw.SizedBox(height: 10),
                   _pdfDetailRow('Amount', tx.amount, isBold: true, color: const PdfColor.fromInt(0xFF2D9B8C)),
                   pw.SizedBox(height: 10),
@@ -601,6 +602,8 @@ class _TxRowState extends State<_TxRow> {
                     _receiptDivider(),
                     _receiptRow('Date', tx.date),
                     _receiptDivider(),
+                    _receiptRow('Paid by', tx.method),
+                    _receiptDivider(),
                     _receiptRow('Amount', tx.amount, valueColor: AppColors.activeTeal, valueBold: true),
                     _receiptDivider(),
                     Row(
@@ -632,6 +635,7 @@ class _TxRowState extends State<_TxRow> {
                               'Patient        : ${tx.patient}\n'
                               'Service        : ${tx.service}\n'
                               'Date           : ${tx.date}\n'
+                              'Paid by        : ${tx.method}\n'
                               'Amount         : ${tx.amount}\n'
                               'Status         : ${statusInfo.label}\n'
                               '─────────────────────────';
@@ -889,6 +893,15 @@ class _TxRowState extends State<_TxRow> {
                       ),
                       const SizedBox(height: 16),
 
+                      // How the patient paid
+                      _detailsSection(
+                        icon: Icons.payments_outlined,
+                        iconColor: AppColors.activeTeal,
+                        label: 'Paid by',
+                        value: tx.method,
+                      ),
+                      const SizedBox(height: 16),
+
                       // Status
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -1038,110 +1051,9 @@ class _TxRowState extends State<_TxRow> {
     );
   }
 
-  // ── Cancel confirmation dialog ─────────────────────────────────────────────
-  void _confirmCancel(BuildContext context) {
-    final tx = widget.tx;
-
-    // Already cancelled — nothing to do
-    if (tx.status == TxStatus.cancelled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('This transaction is already cancelled'),
-          backgroundColor: AppColors.textSecondary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: const Color(0xFFFCEBEB), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
-          ),
-          const SizedBox(width: 10),
-          const Text('Cancel Transaction', style: TextStyle(fontSize: 16)),
-        ]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Are you sure you want to cancel this transaction?', style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Column(
-                children: [
-                  _dialogInfoRow('Patient', tx.patient),
-                  const SizedBox(height: 4),
-                  _dialogInfoRow('Service', tx.service),
-                  const SizedBox(height: 4),
-                  _dialogInfoRow('Amount', tx.amount),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This action cannot be undone.',
-              style: TextStyle(fontSize: 12, color: Colors.red.shade400),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Keep', style: const TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onCancel(tx.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Transaction ${tx.id} has been cancelled'),
-                  backgroundColor: Colors.red.shade400,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Yes, Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dialogInfoRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        Text(value, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
-      ],
-    );
-  }
-
   // ── Action menu ────────────────────────────────────────────────────────────
   void _showMenu(BuildContext context) {
     final tx = widget.tx;
-    final canCancel = tx.status != TxStatus.cancelled && tx.status != TxStatus.refund;
 
     showModalBottomSheet(
       context: context,
@@ -1213,32 +1125,6 @@ class _TxRowState extends State<_TxRow> {
                 Navigator.pop(context);
                 _showReceipt(context);
               },
-            ),
-
-            // Cancel
-            ListTile(
-              leading: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: canCancel ? const Color(0xFFFCEBEB) : AppColors.rowDivider,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.cancel_outlined, color: canCancel ? Colors.red : AppColors.textMuted, size: 18),
-              ),
-              title: Text(
-                'Cancel Transaction',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: canCancel ? AppColors.textPrimary : AppColors.textMuted),
-              ),
-              subtitle: Text(
-                canCancel ? 'Mark this transaction as cancelled' : 'Already ${_statusStyle(tx.status).label.toLowerCase()}',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-              onTap: canCancel
-                  ? () {
-                      Navigator.pop(context);
-                      _confirmCancel(context);
-                    }
-                  : null,
             ),
 
             const SizedBox(height: 8),
