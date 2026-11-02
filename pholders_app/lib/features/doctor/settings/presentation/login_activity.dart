@@ -103,40 +103,15 @@ class _LoginActivityPageState extends State<LoginActivityPage> {
               },
             ),
             const SizedBox(height: 16),
-
-            // Suspicious activity card
-            Card(
-              color: Colors.white,
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.warning, color: Colors.orange),
-                        SizedBox(width: 8),
-                        Text('Suspicious Activity!', style: TextStyle(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Text('This login was from a new location.'),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: null,
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE2F6F7), foregroundColor: Colors.black, elevation: 0),
-                      child: const Text('Secure Account — not in this phase'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-                        const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: null,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE2F6F7), foregroundColor: Colors.black, elevation: 0, minimumSize: const Size.fromHeight(44)),
-              child: const Text('Report Suspicious Activity — not in this phase'),
+            // A "Suspicious Activity! This login was from a new location"
+            // card sat here for every doctor, whatever their sign-ins, with
+            // two buttons marked not in this phase. Nothing checks for
+            // suspicious sign-ins, so it is gone. Signing out a device you do
+            // not recognise is on Device Management.
+            Text(
+              'Do not recognise a sign-in? Sign that device out on Device '
+              'Management, and change your password on Security Settings.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
           ],
         ),

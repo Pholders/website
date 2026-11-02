@@ -1,567 +1,36 @@
-
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:go_router/go_router.dart';
 import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
 import '../../../../core/auth/auth_actions.dart';
-import '../../../auth/data/models/doctor.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../../../shared/widgets/settings_shell.dart';
-import '../../../../shared/widgets/settings_sidebar.dart';
 import '../../../../core/routing/app_routes.dart';
+import '../../../../shared/widgets/settings_shell.dart';
+import '../../../auth/data/models/doctor.dart';
+import 'settings_frame.dart';
 
+/// Fees Setup (tab 0) and Notification Settings (tab 1).
+///
+/// Fees Setup used to list video, phone, time-based, follow-up, after-hours,
+/// cancellation and late fees, an "Accept Medical Aid" switch and a list of
+/// schemes with Discovery ticked. Only the consultation fee was ever stored.
+/// Notification Settings was fifteen switches and boxes with nothing behind
+/// them. Both now show only what the server keeps.
 class PracticeSettings extends StatelessWidget {
   const PracticeSettings({super.key, this.initialTab = 0});
 
   final int initialTab;
 
-    @override
-    Widget build(BuildContext context) {
-      return initialTab == 1
-          ? _PracticeNotifications(_navigate)
-          : _FeesSetup(_navigate);
-    }
-
-    void _navigate(BuildContext context, String id) {
-    switch (id) {
-      case 'personal_information':
-        context.go(AppRoutes.doctorSettingsProfile);
-        break;
-      case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
-        break;
-      case 'fees_setup':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
-        break;
-      case 'notification_settings':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
-        break;
-      case 'notification_center':
-        context.go(AppRoutes.doctorNotifications);
-        break;
-      case 'security_settings':
-        context.go(AppRoutes.doctorSettingsSecurity);
-        break;
-      case 'device_management':
-        context.go(AppRoutes.doctorSettingsDevices);
-        break;
-      case 'login_activity':
-        context.go(AppRoutes.doctorSettingsLoginActivity);
-        break;
-      case 'preferences_settings':
-        context.go(AppRoutes.doctorSettingsPreferences);
-        break;
-      case 'linked_services':
-        context.go(AppRoutes.doctorSettingsLinkedServices);
-        break;
-      case 'help_center':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
-        break;
-      case 'privacy_policy':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
-        break;
-      case 'terms_of_service':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
-        break;
-      case 'contact_support':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
-        break;
-      default:
-        break;
-    }
-  }
-}
-
-class _FeesSetup extends StatelessWidget {
-  const _FeesSetup(this._navigate);
-
-  final Function(BuildContext, String) _navigate;
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Settings sidebar ──────────────────────────────────────────────
-          SettingsSidebar(
-            selectedItemId: 'fees_setup',
-            onMenuItemSelected: (id) => _navigate(context, id),
-          ),
-                    // ── Content area ────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: SettingsContentCard(
-                title: 'Fees Setup',
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(left: 32, bottom: 12),
-                    child: Text(
-                      'Set and manage your service pricing',
-                      style: TextStyle(fontSize: 16, color: Color(0xFFC1C1C1)),
-                    ),
-                  ),
-                  const _CompactDivider(),
-                  const _ConsultationFees(),
-                  const _CompactDivider(),
-                  const _FeeSection(
-                    title: 'Time-based pricing',
-                    prefix: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TinySwitch(),
-                        SizedBox(width: 10),
-                        Text('Enable time-based pricing', style: TextStyle(fontSize: 11)),
-                      ],
-                    ),
-                    rows: [
-                      ('15 min:', 'R', '0.00'),
-                      ('30 min:', 'R', '0.00'),
-                      ('60 min:', 'R', '0.00'),
-                    ],
-                  ),
-                  const _CompactDivider(),
-                  const _FeeSection(
-                    title: 'Special Fees',
-                    rows: [
-                      ('Follow-up Fee:', 'R', '0.00'),
-                      ('After-Hours Fee:', 'R', '0.00'),
-                    ],
-                  ),
-                  const _CompactDivider(),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SettingsSectionTitle('Insurance settings'),
-                        const SizedBox(height: 8),
-                        const Row(
-                          children: [
-                            TinySwitch(),
-                            SizedBox(width: 10),
-                            Text('Accept Medical Aid', style: TextStyle(fontSize: 11)),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 8,
-                          children: const [
-                            _SmallCheckLabel('Discovery Health', checked: true),
-                            _SmallCheckLabel('Bonitas'),
-                            _SmallCheckLabel('Momentum Medical'),
-                            _SmallCheckLabel('Medihelp'),
-                            _SmallCheckLabel('Fedhealth'),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        const _FeeLine(
-                            label: 'Cash Rate:', currency: 'R', amount: '0.00'),
-                      ],
-                    ),
-                  ),
-                  const _CompactDivider(),
-                                    const Padding(
-                    padding: EdgeInsets.fromLTRB(18, 8, 18, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SettingsSectionTitle('Cancellation Policy'),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Text('Cancellation:', style: TextStyle(fontSize: 11)),
-                            SizedBox(width: 12),
-                            SettingsInput(
-                                text: 'Free cancellation', width: 175, height: 16),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        _FeeLine(label: 'Late Fee:', currency: 'R', amount: '0.00'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PracticeNotifications extends StatelessWidget {
-  const _PracticeNotifications(this._navigate);
-
-  final Function(BuildContext, String) _navigate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Settings sidebar ──────────────────────────────────────────────
-          SettingsSidebar(
-            selectedItemId: 'notification_settings',
-            onMenuItemSelected: (id) => _navigate(context, id),
-          ),
-                    // ── Content area ────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: SettingsContentCard(
-                title: 'Notifications',
-                children: const [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(28, 4, 18, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SettingsSectionTitle('Notification Preferences'),
-                        SizedBox(height: 10),
-                        _SwitchLine('Push Notifications'),
-                        _SwitchLine('Email Notifications'),
-                      ],
-                    ),
-                  ),
-                  _CompactDivider(),
-                  _CheckSection(
-                    title: 'Appointment Preferences',
-                    labels: [
-                      'New Appointment Booked',
-                      'Appointment Reminders',
-                      'Appointment Cancellations',
-                      'Missed Appointments',
-                    ],
-                  ),
-                  _CompactDivider(),
-                  _CheckSection(
-                      title: 'Patient Messages',
-                      labels: ['New Patient Messages', 'Message Replies']),
-                  _CompactDivider(),
-                  _CheckSection(
-                    title: 'General Notifications',
-                    labels: [
-                      'Lab Result Updates',
-                      'Prescription Renewal Alerts',
-                      'Announcements & News'
-                    ],
-                  ),
-                  _CompactDivider(),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(28, 4, 0, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SettingsSectionTitle('Sound & Vibration'),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                                child: Text('Notification Sound',
-                                    style: TextStyle(fontSize: 11))),
-                            SettingsInput(
-                                text: 'Select Sound',
-                                width: 150,
-                                height: 14,
-                                trailing: Icon(Icons.keyboard_arrow_down, size: 14)),
-                          ],
-                        ),
-                        SizedBox(height: 9),
-                        _SwitchLine('Vibrate on Notification'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FeeSection extends StatelessWidget {
-  const _FeeSection({required this.title, required this.rows, this.prefix});
-
-  final String title;
-  final List<(String, String, String)> rows;
-  final Widget? prefix;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SettingsSectionTitle(title),
-          if (prefix != null) ...[
-            const SizedBox(height: 8),
-            prefix!,
-          ],
-          const SizedBox(height: 8),
-          ...rows.map((row) =>
-              _FeeLine(label: row.$1, currency: row.$2, amount: row.$3)),
-        ],
-      ),
-    );
-  }
-}
-
-class _FeeLine extends StatelessWidget {
-  const _FeeLine(
-      {required this.label,
-      required this.currency,
-      required this.amount,
-      this.controller});
-
-  final String label;
-  final String currency;
-  final String amount;
-
-  /// Given only for the row the API actually stores. Without one the row is
-  /// the read-only placeholder it has always been.
-  final TextEditingController? controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          SizedBox(
-              width: 110,
-              child: Text(label, style: const TextStyle(fontSize: 11))),
-          Container(
-            height: 14,
-            width: 56,
-            decoration: BoxDecoration(
-                color: const Color(0xFFD2D2D2),
-                borderRadius: BorderRadius.circular(3)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(currency, style: const TextStyle(fontSize: 9)),
-                const SizedBox(width: 8),
-                Container(
-                  width: 32,
-                  height: 10,
-                  alignment: Alignment.center,
-                  color: const Color(0xFF9F9F9F),
-                  child: controller == null
-                      ? Text(amount,
-                          style: const TextStyle(
-                              fontSize: 9, color: Colors.black))
-                      : TextField(
-                          controller: controller,
-                          textAlign: TextAlign.center,
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
-                          style: const TextStyle(
-                              fontSize: 9, color: Colors.black),
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CheckSection extends StatelessWidget {
-  const _CheckSection({required this.title, required this.labels});
-
-  final String title;
-  final List<String> labels;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 4, 18, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SettingsSectionTitle(title),
-          const SizedBox(height: 8),
-          ...labels.map(
-              (label) => _SmallCheckLabel(label, checked: true, large: true)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SmallCheckLabel extends StatelessWidget {
-  const _SmallCheckLabel(this.label,
-      {this.checked = false, this.large = false});
-
-  final String label;
-  final bool checked;
-  final bool large;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SmallCheck(checked: checked),
-        Text(label, style: TextStyle(fontSize: large ? 11 : 10)),
-      ],
-    );
-  }
-}
-
-class _SwitchLine extends StatelessWidget {
-  const _SwitchLine(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 11))),
-          const TinySwitch(),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompactDivider extends StatelessWidget {
-  const _CompactDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Divider(color: SettingsShell.divider, thickness: 2, height: 2),
-    );
-  }
-}
-
-/// The Consultation Fees section of the Fees Setup screen.
-///
-/// The doctors table has exactly one fee column, `consultation_fee`, and
-/// booking copies it onto the appointment — a doctor with none set cannot be
-/// booked at all. So the in-person row is that fee and is editable; the video
-/// and phone rows have nothing behind them yet and stay as placeholders.
-class _ConsultationFees extends StatefulWidget {
-  const _ConsultationFees();
-
-  @override
-  State<_ConsultationFees> createState() => _ConsultationFeesState();
-}
-
-class _ConsultationFeesState extends State<_ConsultationFees> {
-  final _inPersonFee = TextEditingController();
-  bool _prefilled = false;
-  String? _problem;
-
-  @override
-  void dispose() {
-    _inPersonFee.dispose();
-    super.dispose();
-  }
-
-  void _prefill(Doctor? doctor) {
-    if (doctor == null || _prefilled) return;
-    final fee = doctor.consultationFee;
-    _inPersonFee.text = fee == null ? '' : fee.toStringAsFixed(2);
-    _prefilled = true;
-  }
-
-  void _save() {
-    final fee = double.tryParse(_inPersonFee.text.trim());
-    if (fee == null || fee < 0) {
-      setState(() => _problem = 'Enter a fee amount, for example 350.00');
-      return;
-    }
-    setState(() => _problem = null);
-    StoreProvider.of<AppState>(context)
-        .dispatch(UpdateDoctorProfileAction(consultationFee: fee));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StoreConnector<AppState, _FeesViewModel>(
-      converter: _FeesViewModel.fromStore,
-      builder: (context, vm) {
-        _prefill(vm.doctor);
-        final error = _problem ?? vm.errorMessage;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SettingsSectionTitle('Consultation Fees'),
-              const SizedBox(height: 8),
-              _FeeLine(
-                label: 'In-person Fee:',
-                currency: vm.currencySymbol,
-                amount: '0.00',
-                controller: _inPersonFee,
-              ),
-              _FeeLine(
-                  label: 'Video Fee:', currency: vm.currencySymbol, amount: '0.00'),
-              _FeeLine(
-                  label: 'Phone Fee:', currency: vm.currencySymbol, amount: '0.00'),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  SettingsButton(
-                    'Save Fee',
-                    width: 110,
-                    height: 28,
-                    onTap: vm.isSaving ? null : _save,
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        error,
-                        style: const TextStyle(
-                            fontSize: 10, color: Color(0xFFCC1111)),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    return initialTab == 1 ? const _NotificationSettings() : const _FeesSetup();
   }
 }
 
 class _FeesViewModel {
-  const _FeesViewModel({
-    required this.isSaving,
-    this.doctor,
-    this.errorMessage,
-  });
+  const _FeesViewModel({required this.isSaving, this.doctor, this.errorMessage});
 
   factory _FeesViewModel.fromStore(Store<AppState> store) {
     final auth = store.state.authState;
@@ -577,16 +46,325 @@ class _FeesViewModel {
   final String? errorMessage;
 
   /// The record stores an ISO code; the screen shows a symbol.
-  String get currencySymbol {
-    switch (doctor?.currency) {
-      case 'USD':
-        return r'$';
-      case 'GBP':
-        return '\u00A3';
-      case 'EUR':
-        return '\u20AC';
-      default:
-        return 'R';
+  String get currencySymbol => switch (doctor?.currency) {
+        'USD' => r'$',
+        'GBP' => '£',
+        'EUR' => '€',
+        _ => 'R',
+      };
+}
+
+// ─── Fees Setup ───────────────────────────────────────────────────────────────
+
+/// The consultation fee: the one fee the doctor record has. Booking copies it
+/// onto the appointment, and a doctor with none set cannot be booked.
+class _FeesSetup extends StatefulWidget {
+  const _FeesSetup();
+
+  @override
+  State<_FeesSetup> createState() => _FeesSetupState();
+}
+
+class _FeesSetupState extends State<_FeesSetup> {
+  final _fee = TextEditingController();
+  bool _prefilled = false;
+  bool _awaitingSave = false;
+  String? _problem;
+
+  @override
+  void dispose() {
+    _fee.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final fee = double.tryParse(_fee.text.trim().replaceAll(',', '.'));
+    if (fee == null || fee <= 0) {
+      setState(() => _problem = 'Enter your fee, for example 450.00');
+      return;
     }
+    if (fee > 100000) {
+      setState(() => _problem = 'That fee looks too large. Check the amount.');
+      return;
+    }
+    setState(() => _problem = null);
+    _awaitingSave = true;
+    StoreProvider.of<AppState>(context)
+        .dispatch(UpdateDoctorProfileAction(consultationFee: fee));
+  }
+
+  void _onChange(_FeesViewModel? previous, _FeesViewModel vm) {
+    if (!_awaitingSave || vm.isSaving) return;
+    _awaitingSave = false;
+    if (vm.errorMessage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your consultation fee is saved')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, _FeesViewModel>(
+      converter: _FeesViewModel.fromStore,
+      onWillChange: _onChange,
+      builder: (context, vm) {
+        final fee = vm.doctor?.consultationFee;
+        if (!_prefilled && vm.doctor != null) {
+          _fee.text = fee == null ? '' : fee.toStringAsFixed(2);
+          _prefilled = true;
+        }
+        final error = _problem ?? (_awaitingSave ? null : vm.errorMessage);
+        return DoctorSettingsFrame(
+          selectedItemId: 'fees_setup',
+          title: 'Fees Setup',
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SettingsSectionTitle('Consultation Fee'),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'What a patient pays for one consultation with you. It is '
+                    'copied onto each booking when it is made, and patients '
+                    'cannot book you until it is set.',
+                    style: settingsNote,
+                  ),
+                  const SizedBox(height: 14),
+                  if (vm.doctor != null && fee == null)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Not set yet, so patients cannot book you.',
+                        style: TextStyle(fontSize: 13, color: Color(0xFFCC1111)),
+                      ),
+                    ),
+                  SizedBox(
+                    width: 220,
+                    child: TextField(
+                      key: const ValueKey('fee'),
+                      controller: _fee,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                      ],
+                      decoration: InputDecoration(
+                        prefixText: '${vm.currencySymbol} ',
+                        hintText: '450.00',
+                        isDense: true,
+                        filled: true,
+                        fillColor: SettingsShell.panelMint,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(7),
+                          borderSide: const BorderSide(color: Color(0xFFCFECEE)),
+                        ),
+                      ),
+                      onSubmitted: (_) => _save(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(error,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111))),
+                    ),
+                  SettingsButton(
+                    vm.isSaving ? 'Saving…' : 'Save Fee',
+                    icon: Icons.save_outlined,
+                    width: 140,
+                    height: 34,
+                    onTap: vm.isSaving ? null : _save,
+                  ),
+                  const SizedBox(height: 26),
+                  const SettingsDivider(),
+                  const SizedBox(height: 14),
+                  const SettingsSectionTitle('Medical Aid'),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'The schemes you accept are chosen on Professional Details, '
+                    'where patients searching by their plan find you.',
+                    style: settingsNote,
+                  ),
+                  const SizedBox(height: 10),
+                  SettingsButton(
+                    'Open Professional Details',
+                    width: 230,
+                    height: 32,
+                    filled: false,
+                    onTap: () => context.go(AppRoutes.doctorSettingsProfessional),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ─── Notification Settings ────────────────────────────────────────────────────
+
+/// The kinds of notification a doctor can switch off, with the backend's key.
+const notificationKinds = <(String, String, String)>[
+  ('newBookings', 'New bookings',
+      'A patient has paid for a booking and it waits for you to accept it.'),
+  ('appointmentChanges', 'Moved or cancelled appointments',
+      'A patient moves an appointment to another time, or cancels it.'),
+  ('prescriptionsDispensed', 'Dispensed prescriptions',
+      'A pharmacy dispenses a script you wrote.'),
+  ('reviews', 'Reviews', 'A patient rates you, or changes their rating.'),
+];
+
+/// Which notifications the doctor wants in their Notification Centre. Saved
+/// on the doctor record and checked before each one is written.
+class _NotificationSettings extends StatefulWidget {
+  const _NotificationSettings();
+
+  @override
+  State<_NotificationSettings> createState() => _NotificationSettingsState();
+}
+
+class _NotificationSettingsState extends State<_NotificationSettings> {
+  Map<String, bool>? _choices;
+  bool _awaitingSave = false;
+
+  bool _isOn(String key, Doctor? doctor) =>
+      _choices?[key] ?? doctor?.wantsNotification(key) ?? true;
+
+  void _save(Doctor? doctor) {
+    _awaitingSave = true;
+    StoreProvider.of<AppState>(context).dispatch(UpdateDoctorProfileAction(
+      notificationPreferences: {
+        for (final (key, _, _) in notificationKinds) key: _isOn(key, doctor),
+      },
+    ));
+  }
+
+  void _onChange(_FeesViewModel? previous, _FeesViewModel vm) {
+    if (!_awaitingSave || vm.isSaving) return;
+    _awaitingSave = false;
+    if (vm.errorMessage == null) {
+      setState(() => _choices = null); // the saved profile is the truth now
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your notification settings are saved')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, _FeesViewModel>(
+      converter: _FeesViewModel.fromStore,
+      onWillChange: _onChange,
+      builder: (context, vm) {
+        final error = _awaitingSave ? null : vm.errorMessage;
+        return DoctorSettingsFrame(
+          selectedItemId: 'notification_settings',
+          title: 'Notification Settings',
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Choose what appears in your Notification Centre and on the '
+                    'bell. Notifications show in the portal only; nothing is '
+                    'emailed or texted.',
+                    style: settingsNote,
+                  ),
+                  const SizedBox(height: 16),
+                  for (final (key, label, detail) in notificationKinds)
+                    _ChoiceRow(
+                      key: ValueKey('pref-$key'),
+                      label: label,
+                      detail: detail,
+                      value: _isOn(key, vm.doctor),
+                      onChanged: vm.isSaving
+                          ? null
+                          : (on) => setState(() =>
+                              _choices = {...?_choices, key: on}),
+                    ),
+                  const SizedBox(height: 18),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(error,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111))),
+                    ),
+                  Row(
+                    children: [
+                      SettingsButton(
+                        vm.isSaving ? 'Saving…' : 'Save Changes',
+                        icon: Icons.save_outlined,
+                        width: 160,
+                        height: 34,
+                        onTap: vm.isSaving || _choices == null
+                            ? null
+                            : () => _save(vm.doctor),
+                      ),
+                      const SizedBox(width: 12),
+                      SettingsButton(
+                        'Open Notification Centre',
+                        width: 220,
+                        height: 34,
+                        filled: false,
+                        onTap: () => context.go(AppRoutes.doctorNotifications),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ChoiceRow extends StatelessWidget {
+  const _ChoiceRow({
+    super.key,
+    required this.label,
+    required this.detail,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String detail;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 14)),
+                const SizedBox(height: 2),
+                Text(detail, style: settingsNote),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            activeThumbColor: Colors.white,
+            activeTrackColor: const Color(0xFF2EC4C4),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
   }
 }

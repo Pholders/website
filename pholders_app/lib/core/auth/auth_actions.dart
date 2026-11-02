@@ -218,6 +218,7 @@ class UpdateDoctorProfileAction {
     this.consultationFee,
     this.medicalAidIds,
     this.availability,
+    this.notificationPreferences,
   });
 
   final String? firstName;
@@ -248,6 +249,9 @@ class UpdateDoctorProfileAction {
   /// Consulting windows per weekday. A day with an empty list is closed, so
   /// this is sent whole rather than merged.
   final Map<String, List<String>>? availability;
+
+  /// Which notification kinds the doctor wants, sent whole.
+  final Map<String, bool>? notificationPreferences;
 }
 
 /// Dispatched when a profile save fails.

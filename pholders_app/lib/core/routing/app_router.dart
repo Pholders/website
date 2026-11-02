@@ -298,7 +298,9 @@ GoRouter createRouter(Store<AppState> store) {
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsDevices,
-            builder: (context, state) => const SecuritySettingsPage(),
+            // Without the tab the Device Management link opened Security
+            // Settings.
+            builder: (context, state) => const SecuritySettingsPage(initialTab: 1),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsLoginActivity,
