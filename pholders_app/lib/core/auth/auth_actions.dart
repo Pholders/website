@@ -213,6 +213,8 @@ class UpdateDoctorProfileAction {
     this.city,
     this.province,
     this.zipCode,
+    this.qualification,
+    this.bio,
     this.consultationFee,
     this.medicalAidIds,
     this.availability,
@@ -228,6 +230,12 @@ class UpdateDoctorProfileAction {
   final String? city;
   final String? province;
   final String? zipCode;
+
+  /// e.g. "MBChB (UCT)". Shown with the doctor's name.
+  final String? qualification;
+
+  /// The About text patients read on the doctor's page in the app.
+  final String? bio;
 
   /// The doctor's consultation fee. Booking copies this onto the appointment,
   /// and fails outright when it is null.

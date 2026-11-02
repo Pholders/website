@@ -80,6 +80,13 @@ class AccountSettings extends StatelessWidget {
   }
 }
 
+/// Personal Information: photo, the About text patients read, name and phone.
+///
+/// The About box used to be a fixed hint that could not be typed in, though
+/// the doctor record has a bio column and the patient app shows it ("No
+/// biography provided yet."). Date of birth, gender, nationality and ID number
+/// were shown switched off: nothing stores them, and the SRS asks the platform
+/// to collect only what it needs (BR-107), so they are gone.
 class _ProfileDetails extends StatefulWidget {
   const _ProfileDetails();
 
@@ -88,8 +95,104 @@ class _ProfileDetails extends StatefulWidget {
 }
 
 class _ProfileDetailsState extends State<_ProfileDetails> {
+  static const bioLimit = 1000;
+
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+  final _bio = TextEditingController();
+
+  bool _isEditing = false;
+  bool _prefilled = false;
+
+  /// Set when this screen sends a save, so the answer can be reported here.
+  bool _awaitingSave = false;
+  String? _problem;
+
+  @override
+  void dispose() {
+    _firstName.dispose();
+    _lastName.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _bio.dispose();
+    super.dispose();
+  }
+
+  /// Fills the fields from the stored profile: once at first, and again on
+  /// Cancel. Not on every store change, so typing is never overwritten.
+  void _fill(Doctor doctor) {
+    _firstName.text = doctor.firstName;
+    _lastName.text = doctor.lastName;
+    _email.text = doctor.email;
+    _phone.text = doctor.phone ?? '';
+    _bio.text = doctor.bio ?? '';
+  }
+
+  String? _validate() {
+    if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty) {
+      return 'First and last name are both needed.';
+    }
+    final phone = _phone.text.trim();
+    if (phone.isNotEmpty && phone.length != 10) {
+      return 'A phone number has 10 digits, like 0821234567.';
+    }
+    return null;
+  }
+
+  void _save() {
+    final problem = _validate();
+    setState(() => _problem = problem);
+    if (problem != null) return;
+    _awaitingSave = true;
+    StoreProvider.of<AppState>(context).dispatch(
+      UpdateDoctorProfileAction(
+        firstName: _firstName.text.trim(),
+        lastName: _lastName.text.trim(),
+        phone: _phone.text.trim(),
+        bio: _bio.text.trim(),
+      ),
+    );
+  }
+
+  void _cancel(Doctor? doctor) {
+    if (doctor != null) _fill(doctor);
+    setState(() {
+      _isEditing = false;
+      _problem = null;
+    });
+  }
+
+  /// Reports how a save this screen sent turned out, once it has.
+  void _onChange(_ProfileViewModel? previous, _ProfileViewModel vm) {
+    if (!_awaitingSave || vm.isSaving) return;
+    _awaitingSave = false;
+    if (vm.errorMessage == null) {
+      setState(() => _isEditing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your profile is saved')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    return StoreConnector<AppState, _ProfileViewModel>(
+      converter: _ProfileViewModel.fromStore,
+      onWillChange: _onChange,
+      builder: (context, vm) {
+        final doctor = vm.doctor;
+        if (doctor != null && !_prefilled) {
+          _fill(doctor);
+          _prefilled = true;
+        }
+        return _buildScreen(context, vm);
+      },
+    );
+  }
+
+  Widget _buildScreen(BuildContext context, _ProfileViewModel vm) {
     return Scaffold(
       backgroundColor: const Color(0xFFE8F8F8),
       body: Row(
@@ -98,65 +201,41 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
           // ── Settings sidebar ──────────────────────────────────────────────
           SettingsSidebar(
             selectedItemId: 'personal_information',
-            onMenuItemSelected: (id) => _navigate(context, id),
+            onMenuItemSelected: (id) => const AccountSettings()._navigate(context, id),
           ),
-          // ── Content area ────────────────────────────────────────────────
+          // ── Content area ──────────────────────────────────────────────────
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: SettingsContentCard(
                 title: 'Profile Details',
                 children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 9,
-              child: Column(
-                children: [
-                  const _ProfilePhoto(),
-                  const SizedBox(height: 10),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 22),
-                      child: Text('About', style: TextStyle(fontSize: 16)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    height: 154,
-                    margin: const EdgeInsets.only(right: 18),
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                    decoration: BoxDecoration(
-                      color: SettingsShell.panelMint,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFCFECEE)),
-                    ),
-                    child: const Stack(
-                      children: [
-                        Align(
-                          alignment: Alignment.topLeft,
-                          child: Text(
-                            'Write a Bio about yourself for patients\nto know your background',
-                            style: TextStyle(
-                                fontSize: 12, color: SettingsShell.muted),
-                          ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 9,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Center(child: _ProfilePhoto()),
+                            const SizedBox(height: 14),
+                            const Text('About', style: TextStyle(fontSize: 16)),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Patients read this on your page in the app.',
+                              style: TextStyle(fontSize: 12, color: SettingsShell.muted),
+                            ),
+                            const SizedBox(height: 8),
+                            _bioField(),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 26),
+                      Expanded(flex: 12, child: _form(vm)),
+                    ],
                   ),
                 ],
-              ),
-            ),
-                        const SizedBox(width: 26),
-            const Expanded(
-              flex: 12,
-              child: _ProfileForm(),
-            ),
-          ],
-        ),
-      ],
               ),
             ),
           ),
@@ -165,56 +244,120 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
     );
   }
 
-  void _navigate(BuildContext context, String id) {
-    switch (id) {
-      case 'personal_information':
-        context.go(AppRoutes.doctorSettingsProfile);
-        break;
-      case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
-        break;
-      case 'fees_setup':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
-        break;
-      case 'practice_settings':
-        context.go(AppRoutes.doctorSettingsPractice);
-        break;
-      case 'notification_settings':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
-        break;
-      case 'notification_center':
-        context.go(AppRoutes.doctorNotifications);
-        break;
-      case 'security_settings':
-        context.go(AppRoutes.doctorSettingsSecurity);
-        break;
-      case 'device_management':
-        context.go(AppRoutes.doctorSettingsDevices);
-        break;
-      case 'login_activity':
-        context.go(AppRoutes.doctorSettingsLoginActivity);
-        break;
-      case 'preferences_settings':
-        context.go(AppRoutes.doctorSettingsPreferences);
-        break;
-      case 'linked_services':
-        context.go(AppRoutes.doctorSettingsLinkedServices);
-        break;
-      case 'help_center':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
-        break;
-      case 'privacy_policy':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
-        break;
-      case 'terms_of_service':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
-        break;
-      case 'contact_support':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
-        break;
-      default:
-        break;
-    }
+  Widget _bioField() {
+    return Padding(
+      padding: const EdgeInsets.only(right: 18),
+      child: TextField(
+        key: const ValueKey('bio'),
+        controller: _bio,
+        readOnly: !_isEditing,
+        minLines: 6,
+        maxLines: 10,
+        maxLength: bioLimit,
+        style: const TextStyle(fontSize: 13),
+        decoration: InputDecoration(
+          hintText: 'Your training, the care you focus on, and languages you '
+              'consult in.',
+          hintStyle: const TextStyle(fontSize: 12, color: SettingsShell.muted),
+          filled: true,
+          fillColor: SettingsShell.panelMint,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFFCFECEE)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFFCFECEE)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _form(_ProfileViewModel vm) {
+    final error = _problem ?? (_awaitingSave ? null : vm.errorMessage);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SettingsSectionTitle('Personal Information', muted: true),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _Field(
+                  label: 'First Name', controller: _firstName, readOnly: !_isEditing),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: _Field(
+                  label: 'Last Name', controller: _lastName, readOnly: !_isEditing),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        const SettingsSectionTitle('Contact Information', muted: true),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            // The endpoint strips email before writing, so it is shown but
+            // never editable rather than silently discarded on save.
+            Expanded(
+              child: _Field(label: 'Email Address', controller: _email, readOnly: true),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: _Field(
+                label: 'Phone Number',
+                hint: '0821234567',
+                controller: _phone,
+                readOnly: !_isEditing,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Your email is how you sign in, so it cannot be changed here.',
+          style: TextStyle(fontSize: 12, color: SettingsShell.muted),
+        ),
+        const SizedBox(height: 26),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(error, style: const TextStyle(fontSize: 13, color: Color(0xFFCC1111))),
+          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (_isEditing) ...[
+              SettingsButton(
+                'Cancel',
+                width: 110,
+                height: 34,
+                filled: false,
+                onTap: vm.isSaving ? null : () => _cancel(vm.doctor),
+              ),
+              const SizedBox(width: 12),
+            ],
+            SettingsButton(
+              _isEditing ? (vm.isSaving ? 'Saving…' : 'Save Changes') : 'Edit',
+              icon: _isEditing ? Icons.save_outlined : Icons.edit_outlined,
+              width: 150,
+              height: 34,
+              onTap: vm.isSaving
+                  ? null
+                  : _isEditing
+                      ? _save
+                      : () => setState(() => _isEditing = true),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
@@ -405,229 +548,6 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
   }
 }
 
-class _ProfileForm extends StatefulWidget {
-  const _ProfileForm();
-
-  @override
-  State<_ProfileForm> createState() => _ProfileFormState();
-}
-
-class _ProfileFormState extends State<_ProfileForm> {
-  bool isEditing = false;
-
-  final _firstName = TextEditingController();
-  final _lastName = TextEditingController();
-  final _email = TextEditingController();
-  final _phone = TextEditingController();
-
-  /// True once the fields hold the loaded profile, so a later store update
-  /// does not overwrite something being typed.
-  bool _prefilled = false;
-
-  @override
-  void dispose() {
-    _firstName.dispose();
-    _lastName.dispose();
-    _email.dispose();
-    _phone.dispose();
-    super.dispose();
-  }
-
-  void _prefill(Doctor? doctor) {
-    if (doctor == null || _prefilled) return;
-    _firstName.text = doctor.firstName;
-    _lastName.text = doctor.lastName;
-    _email.text = doctor.email;
-    _phone.text = doctor.phone ?? '';
-    _prefilled = true;
-  }
-
-  void _save() {
-    StoreProvider.of<AppState>(context).dispatch(
-      UpdateDoctorProfileAction(
-        firstName: _firstName.text.trim(),
-        lastName: _lastName.text.trim(),
-        phone: _phone.text.trim(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StoreConnector<AppState, _ProfileViewModel>(
-      converter: _ProfileViewModel.fromStore,
-      builder: (context, vm) {
-        _prefill(vm.doctor);
-        return _buildForm(context, vm);
-      },
-    );
-  }
-
-  Widget _buildForm(BuildContext context, _ProfileViewModel vm) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SettingsSectionTitle('Personal Information', muted: true),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _Field(label: 'First Name', controller: _firstName),
-            ),
-            const SizedBox(width: 22),
-            Expanded(
-              child: _Field(label: 'Last Name', controller: _lastName),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        const SettingsSectionTitle('Contact Information', muted: true),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            // The endpoint strips email before writing, so it is shown but
-            // not editable rather than silently discarded on save.
-            Expanded(
-              child: _Field(
-                label: 'Email Address',
-                controller: _email,
-                readOnly: true,
-              ),
-            ),
-            const SizedBox(width: 22),
-            Expanded(child: _Field(label: 'Phone Number', hint: '0123456789',
-            controller: _phone,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],)),
-          ],
-        ),
-        const SizedBox(height: 26),
-        const SettingsSectionTitle('Additional Information', muted: true),
-        const SizedBox(height: 4),
-        // There are no columns behind any of these four on the doctor record,
-        // so nothing typed here could ever be saved. They are shown disabled
-        // rather than accepting a value and losing it on the next reload,
-        // which is the harder fault to spot.
-        const Text(
-          'Not stored yet — these four are part of the design but have '
-          'nowhere to be saved, so they are switched off for now.',
-          style: TextStyle(fontSize: 13, color: Color(0xFF8A9E9E)),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            const Expanded(
-                child: _Field(
-                    label: 'Date of Birth',
-                    hint: 'Select Date',
-                    readOnly: true,
-                    icon: Icons.calendar_month)),
-            const SizedBox(width: 22),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Gender', 
-                    style: TextStyle(fontSize: 16)
-                    ),
-                  const SizedBox(height: 5),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0xFFEAF8F8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(7),
-                        borderSide: const BorderSide (
-                          color: Color(0xFFCFECEE)),
-                      ),
-                    ),
-                  hint: const Text('Select Gender'),
-                  items: const [
-                    DropdownMenuItem(value: 'male', child: Text('Male'),),
-                    DropdownMenuItem(value: 'female', child: Text('Female'),),
-                    DropdownMenuItem(value: 'other', child: Text('Other'),),
-                    DropdownMenuItem(value: 'prefer_not_to_say', child: Text('Prefer not to say'),),
-                  ],
-                  onChanged: null,
-              ),
-            ],
-          ),
-        ),
-          ]),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Nationality',
-        style: TextStyle(fontSize: 16),
-      ),
-      const SizedBox(height: 5),
-      DropdownButtonFormField<String>(
-        isExpanded: true,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: const Color(0xFFEAF8F8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-          ),
-        ),
-        hint: const Text('South African'),
-        items: const [
-          DropdownMenuItem(value: 'South African',child: Text('South African'),),
-          DropdownMenuItem(value: 'Zimbabwean',child: Text('Zimbabwean'),),
-          DropdownMenuItem(value: 'Botswanan',child: Text('Botswanan'),),
-          DropdownMenuItem(value: 'Namibian',child: Text('Namibian'),),
-          DropdownMenuItem(value: 'Mozambican',child: Text('Mozambican'),),
-          DropdownMenuItem(value: 'Lesotho',child: Text('Lesotho'),),
-          DropdownMenuItem(value: 'Eswatini',child: Text('Eswatini'),),
-          DropdownMenuItem(value: 'Other',child: Text('Other'),),
-        ],
-        onChanged: null,
-      ),
-    ],
-  ),
-),
-            const SizedBox(width: 22),
-            Expanded(child: _Field(label: 'ID Number', hint: '0123456789012', readOnly: true, inputFormatters: [FilteringTextInputFormatter.digitsOnly,LengthLimitingTextInputFormatter(13)],)),
-          ],
-        ),
-        const SizedBox(height: 26),
-        if (vm.errorMessage != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              vm.errorMessage!,
-              style: const TextStyle(fontSize: 13, color: Color(0xFFCC1111)),
-            ),
-          ),
-        Align(
-  alignment: Alignment.centerRight,
-  child: SettingsButton(
-    isEditing ? 'Save Changes' : 'Edit',
-    icon: isEditing
-        ? Icons.save_outlined
-        : Icons.edit_outlined,
-    width: 140,
-    height: 34,
-    onTap: vm.isSaving
-        ? null
-        : () {
-            // Leaving edit mode is the save.
-            if (isEditing) _save();
-            setState(() => isEditing = !isEditing);
-          },
-  ),
-),
-      ],
-    );
-  }
-}
-
 class _ProfessionalDetails extends StatefulWidget {
   const _ProfessionalDetails();
 
@@ -636,7 +556,7 @@ class _ProfessionalDetails extends StatefulWidget {
 }
 
 class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
-  final _licenseNumber = TextEditingController();
+  final _qualification = TextEditingController();
   final _hpcsa = TextEditingController();
   final _experience = TextEditingController();
   final _clinicName = TextEditingController();
@@ -648,6 +568,9 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   String? _province;
   bool _prefilled = false;
   String? _problem;
+
+  /// Set when this screen sends a save, so the answer can be reported here.
+  bool _awaitingSave = false;
 
   /// Catalogue ids of the schemes this doctor accepts.
   Set<int> _medicalAidIds = {};
@@ -716,7 +639,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
 
   @override
   void dispose() {
-    _licenseNumber.dispose();
+    _qualification.dispose();
     _hpcsa.dispose();
     _experience.dispose();
     _clinicName.dispose();
@@ -729,6 +652,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   void _prefill(Doctor? doctor) {
     if (doctor == null || _prefilled) return;
     _hpcsa.text = doctor.hpcsaNumber ?? '';
+    _qualification.text = doctor.qualification ?? '';
     _experience.text = doctor.experience?.toString() ?? '';
     _clinicName.text = doctor.clinicName ?? '';
     _clinicAddress.text = doctor.clinicAddress ?? '';
@@ -789,10 +713,12 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
       return;
     }
     setState(() => _problem = null);
+    _awaitingSave = true;
 
     StoreProvider.of<AppState>(context).dispatch(
       UpdateDoctorProfileAction(
         specialization: _specialization,
+        qualification: _qualification.text.trim(),
         experience: experience,
         clinicName: _clinicName.text.trim(),
         clinicAddress: _clinicAddress.text.trim(),
@@ -809,11 +735,24 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   Widget build(BuildContext context) {
     return StoreConnector<AppState, _ProfileViewModel>(
       converter: _ProfileViewModel.fromStore,
+      onWillChange: _onChange,
       builder: (context, vm) {
         _prefill(vm.doctor);
         return _buildScreen(context, vm);
       },
     );
+  }
+
+  /// Reports how a save this screen sent turned out, once it has. Saving
+  /// used to give no sign either way.
+  void _onChange(_ProfileViewModel? previous, _ProfileViewModel vm) {
+    if (!_awaitingSave || vm.isSaving) return;
+    _awaitingSave = false;
+    if (vm.errorMessage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your professional details are saved')),
+      );
+    }
   }
 
   Widget _buildScreen(BuildContext context, _ProfileViewModel vm) {
@@ -843,12 +782,15 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  // No column on the doctors table, so this is not sent on
-                  // save. Left visible rather than removed from their design.
+                  // There was a "Medical License Number" here with nowhere to
+                  // be stored; in South Africa the HPCSA number is the
+                  // registration. Qualification has a column, and goes out
+                  // with the doctor's name.
                   Expanded(
                     child: _Field(
-                      label: 'Medical License Number',
-                      controller: _licenseNumber,
+                      label: 'Qualification',
+                      hint: 'MBChB (UCT)',
+                      controller: _qualification,
                     ),
                   ),
                   const SizedBox(width: 48),
@@ -932,8 +874,6 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
                       label: 'City',
                       hint: 'Johannesburg',
                       controller: _city,
-                      trailing: const Icon(Icons.keyboard_arrow_down,
-                          color: Color(0xFF748486)),
                     ),
                   ),
                   const SizedBox(width: 48),
@@ -1013,7 +953,8 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _SignatureArea(
             onSave: vm.isSaving ? null : _save,
-            errorMessage: _problem ?? vm.errorMessage,
+            isSaving: vm.isSaving,
+            errorMessage: _problem ?? (_awaitingSave ? null : vm.errorMessage),
           ),
         ),
       ],
@@ -1260,59 +1201,56 @@ class _TimeBoxState extends State<_TimeBox> {
   }
 }
 
+/// The foot of Professional Details: how prescriptions are signed, where the
+/// doctor's registration stands, and the Save button for the whole screen.
+///
+/// It used to offer "Draw your signature" (which did nothing), "Upload
+/// Signature" (which picked a file and threw it away), a preview of a made-up
+/// scribble, and a fixed "Not Verified" badge. Nothing stores a signature
+/// image: the server signs each prescription digitally when the doctor
+/// presses Sign, and the PDF carries that signature's fingerprint.
 class _SignatureArea extends StatelessWidget {
-  const _SignatureArea({this.onSave, this.errorMessage});
+  const _SignatureArea({this.onSave, this.errorMessage, this.isSaving = false});
 
-  /// The Save Changes button at the foot of this section saves the whole
-  /// Professional Details screen, not just the signature.
   final VoidCallback? onSave;
   final String? errorMessage;
+  final bool isSaving;
 
   @override
   Widget build(BuildContext context) {
+    const note = TextStyle(fontSize: 12, color: Color(0xFF748486), height: 1.4);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionTitle('Digital Signature', muted: true),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            const SettingsButton('Draw your signature',
-                icon: Icons.draw_outlined, width: 190, filled: false),
-            const SizedBox(width: 42),
-            SettingsButton(
-              'Upload Signature',
-              onTap: () async {
-                await FilePicker.platform.pickFiles(
-                  type: FileType.image,
-                );
-              },
-            ),
-          ],
+        const SettingsSectionTitle('Signing Prescriptions', muted: true),
+        const SizedBox(height: 8),
+        const Text(
+          'You sign each prescription digitally when you press Sign on it, '
+          'while signed in. Nothing needs drawing or uploading: the PDF carries '
+          'a fingerprint of that signature, which a pharmacy can check.',
+          style: note,
         ),
-        const SizedBox(height: 30),
-        const SettingsSectionTitle('Digital Preview', muted: true),
-        const SizedBox(height: 16),
-        const SizedBox(
-          width: 110,
-          height: 86,
-          child: CustomPaint(painter: _SignaturePainter()),
-        ),
-        const SizedBox(height: 18),
-        const SettingsSectionTitle('Verification Status', muted: true),
-        const SizedBox(height: 14),
+        const SizedBox(height: 22),
+        const SettingsSectionTitle('HPCSA Registration', muted: true),
+        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           decoration: BoxDecoration(
-            color: const Color(0xFFFF6F72),
+            color: const Color(0xFFFFF4D6),
             borderRadius: BorderRadius.circular(4),
           ),
           child: const Text(
-            'Not Verified',
-            style: TextStyle(fontSize: 11, color: Color(0xFFCC1111)),
+            'Not checked yet',
+            style: TextStyle(fontSize: 11, color: Color(0xFF8A6D00)),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
+        const Text(
+          'Pholders does not check HPCSA numbers against the register yet. '
+          'To correct yours, contact support.',
+          style: note,
+        ),
+        const SizedBox(height: 22),
         if (errorMessage != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -1323,8 +1261,8 @@ class _SignatureArea extends StatelessWidget {
           ),
         Align(
           alignment: Alignment.centerRight,
-          child: SettingsButton('Save Changes',
-              width: 150, filled: false, height: 30, onTap: onSave),
+          child: SettingsButton(isSaving ? 'Saving…' : 'Save Changes',
+              icon: Icons.save_outlined, width: 160, height: 34, onTap: onSave),
         ),
       ],
     );
@@ -1335,8 +1273,6 @@ class _Field extends StatelessWidget {
   const _Field({
     required this.label,
     this.hint,
-    this.icon,
-    this.trailing,
     this.inputFormatters,
     this.controller,
     this.readOnly = false,
@@ -1344,8 +1280,6 @@ class _Field extends StatelessWidget {
 
   final String label;
   final String? hint;
-  final IconData? icon;
-  final Widget? trailing;
   final List<TextInputFormatter>? inputFormatters;
 
   /// Supplied for fields that are actually saved. Without one the field stays
@@ -1365,8 +1299,6 @@ class _Field extends StatelessWidget {
         const SizedBox(height: 5),
         SettingsInput(
           hint: hint,
-          icon: icon,
-          trailing: trailing,
           inputFormatters: inputFormatters,
           controller: controller,
           readOnly: readOnly,
@@ -1374,49 +1306,6 @@ class _Field extends StatelessWidget {
       ],
     );
   }
-}
-
-class _SignaturePainter extends CustomPainter {
-  const _SignaturePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF12C7C8)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final corner = Paint()
-      ..color = const Color(0xFF12C7C8)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(const Offset(4, 4), const Offset(26, 4), corner);
-    canvas.drawLine(const Offset(4, 4), const Offset(4, 26), corner);
-    canvas.drawLine(
-        Offset(size.width - 4, 4), Offset(size.width - 26, 4), corner);
-    canvas.drawLine(
-        Offset(size.width - 4, 4), Offset(size.width - 4, 26), corner);
-    canvas.drawLine(
-        Offset(4, size.height - 4), Offset(26, size.height - 4), corner);
-    canvas.drawLine(
-        Offset(4, size.height - 4), Offset(4, size.height - 26), corner);
-    canvas.drawLine(Offset(size.width - 4, size.height - 4),
-        Offset(size.width - 26, size.height - 4), corner);
-    canvas.drawLine(Offset(size.width - 4, size.height - 4),
-        Offset(size.width - 4, size.height - 26), corner);
-
-    final path = Path()
-      ..moveTo(28, 60)
-      ..cubicTo(40, 20, 40, 20, 46, 62)
-      ..cubicTo(54, 45, 55, 45, 58, 65)
-      ..cubicTo(66, 48, 70, 48, 78, 59)
-      ..cubicTo(86, 68, 94, 54, 100, 57);
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // Store bindings ------------------------------------------------------------

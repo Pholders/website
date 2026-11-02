@@ -206,6 +206,8 @@ List<Middleware<AppState>> createAuthMiddleware({
         city: action.city,
         province: action.province,
         zipCode: action.zipCode,
+        qualification: action.qualification,
+        bio: action.bio,
         consultationFee: action.consultationFee,
         medicalAidIds: action.medicalAidIds,
         availability: action.availability,
