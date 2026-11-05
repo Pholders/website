@@ -6,6 +6,7 @@ import '../../core/routing/app_routes.dart';
 import '../../features/doctor/notifications/data/doctor_notifications_repository.dart';
 import '../../shared/constants/app_constants.dart';
 import '../theme/app_theme.dart';
+import 'doctor_search_scope.dart';
 
 /// The horizontal top navigation bar matching Figma design.
 ///
@@ -21,7 +22,10 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onMenuTap;
 
   @override
-  Size get preferredSize => const Size.fromHeight(64);
+  Size get preferredSize => const Size.fromHeight(height);
+
+  /// From the Figma frame: the page panel starts 98px down.
+  static const double height = 98;
 
   String _getPageName(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
@@ -39,6 +43,13 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
     return 'Dashboard';
   }
 
+  /// The doctor pages whose patients table the top bar's search filters.
+  static bool _searchesPatients(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+    return location == AppRoutes.doctorDashboard ||
+        location == AppRoutes.doctorPatients;
+  }
+
   String _getSearchHint() => 'Search for patient or medication...';
 
   @override
@@ -47,11 +58,11 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
     final isPharmacy = role == AppConstants.rolePharmacy;
 
     return Container(
-      height: 64,
+      height: height,
       decoration: const BoxDecoration(
         color: AppTheme.surface,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.only(left: 32, right: 38),
       child: Row(
         children: [
           // Hamburger (mobile only)
@@ -67,26 +78,17 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
           // Breadcrumb
           const Text(
             'Pholders',
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
+            style: TextStyle(fontSize: 17, color: Color(0xFF8A8A8A)),
           ),
-          const SizedBox(width: 6),
-          const Text(
-            '>',
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
-          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right, size: 20, color: Color(0xFF8A8A8A)),
           const SizedBox(width: 6),
           Text(
             pageName,
             style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
+              fontSize: 21,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
             ),
           ),
 
@@ -123,7 +125,15 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
 
-          const SizedBox(width: 16),
+          // The doctor's search, on the two pages that read it: the dashboard
+          // and the Patients list, where it filters the patients table. Shown
+          // only inside a shell that shares the query with the page, so it
+          // always searches something.
+          if (!isPharmacy && _searchesPatients(context))
+            if (DoctorSearchScope.maybeOf(context) case final query?)
+              _DoctorSearchField(query: query),
+
+          const SizedBox(width: 26),
 
           // Notification bell
           InkWell(
@@ -137,8 +147,8 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
                   padding: EdgeInsets.all(8.0),
                   child: Image(
                     image: AssetImage('assets/bell-icon.png'),
-                    width: 24,
-                    height: 24,
+                    width: 32,
+                    height: 32,
                   ),
                 ),
                 if (isPharmacy)
@@ -148,6 +158,82 @@ class AppTopNavbar extends StatelessWidget implements PreferredSizeWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The pale teal search pill from the design, a real text field.
+class _DoctorSearchField extends StatefulWidget {
+  const _DoctorSearchField({required this.query});
+
+  final ValueNotifier<String> query;
+
+  @override
+  State<_DoctorSearchField> createState() => _DoctorSearchFieldState();
+}
+
+class _DoctorSearchFieldState extends State<_DoctorSearchField> {
+  late final _controller = TextEditingController(text: widget.query.value);
+
+  @override
+  void initState() {
+    super.initState();
+    widget.query.addListener(_follow);
+  }
+
+  @override
+  void dispose() {
+    widget.query.removeListener(_follow);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Keeps the box in step when the shell clears the query.
+  void _follow() {
+    if (_controller.text != widget.query.value) {
+      _controller.text = widget.query.value;
+    }
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 410,
+      height: 41,
+      padding: const EdgeInsets.only(left: 14, right: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F7F8),
+        borderRadius: BorderRadius.circular(21),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.search, size: 24, color: Color(0xFF1F2A2C)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              onChanged: (v) => widget.query.value = v,
+              style: const TextStyle(fontSize: 15),
+              decoration: const InputDecoration(
+                hintText: 'Search for patient name, ID, or visit reason...',
+                hintStyle: TextStyle(fontSize: 15, color: Color(0xFFA3B1B3)),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          if (widget.query.value.isNotEmpty)
+            IconButton(
+              tooltip: 'Clear search',
+              visualDensity: VisualDensity.compact,
+              iconSize: 18,
+              onPressed: () => widget.query.value = '',
+              icon: const Icon(Icons.close, color: Color(0xFF7C8B8D)),
+            ),
         ],
       ),
     );

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patient_scope.dart';
 
 /// PatientPrescriptionDetailPage — one prescription, reached from a patient.
@@ -10,7 +10,6 @@ import 'package:pholders_app/features/doctor/patients/presentation/patient_scope
 /// from the Prescriptions page, so this says where to find it rather than
 /// standing in for it.
 class PatientPrescriptionDetailPage extends StatelessWidget {
-
   const PatientPrescriptionDetailPage({
     super.key,
     required this.patientId,

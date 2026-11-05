@@ -7,7 +7,6 @@ import 'package:pholders_app/features/doctor/patients/presentation/documents_scr
 /// The patient comes from the id in the address, resolved against the
 /// doctor's own list. It used to be a fixed, invented record.
 class PatientDocumentsPage extends StatelessWidget {
-
   const PatientDocumentsPage({super.key, required this.patientId});
   final String patientId;
 

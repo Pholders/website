@@ -15,6 +15,8 @@ import 'features/auth/data/doctor_auth_repository.dart';
 import 'features/auth/data/pharmacy_auth_repository.dart';
 import 'features/doctor/appointments/data/appointments_repository.dart';
 import 'features/doctor/appointments/redux/appointments_middleware.dart';
+import 'features/doctor/patients/data/patient_record_repository.dart';
+import 'features/doctor/patients/redux/patient_records_middleware.dart';
 import 'features/doctor/prescriptions/data/prescriptions_repository.dart';
 import 'features/doctor/prescriptions/redux/prescriptions_middleware.dart';
 import 'features/doctor/reviews/data/reviews_repository.dart';
@@ -24,6 +26,7 @@ import 'features/pharmacy/dispensing_queue/redux/dispensing_middleware.dart';
 import 'features/pharmacy/orders/data/orders_repository.dart';
 import 'features/pharmacy/orders/redux/orders_middleware.dart';
 import 'shared/theme/app_theme.dart';
+import 'shared/widgets/splash_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +63,10 @@ Future<void> main() async {
       ...createPharmacyOrdersMiddleware(
         repository: sl<OrdersRepository>(),
       ),
+      // Each patient's record, fetched once in the background after sign-in.
+      ...createPatientRecordsMiddleware(
+        repository: sl<PatientRecordRepository>(),
+      ),
     ],
   );
 
@@ -79,7 +86,6 @@ Future<void> main() async {
 /// Provides the Redux [Store] to the entire widget tree via [StoreProvider],
 /// and configures the [MaterialApp.router] with GoRouter.
 class PholdersApp extends StatefulWidget {
-
   const PholdersApp({super.key, required this.store});
   final Store<AppState> store;
 
@@ -99,6 +105,8 @@ class _PholdersAppState extends State<PholdersApp> {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: _router,
+        // The splash screen stands in as the loader while a session starts.
+        builder: (context, child) => SplashGate(child: child!),
       ),
     );
   }

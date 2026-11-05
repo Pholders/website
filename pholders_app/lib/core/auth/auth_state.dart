@@ -7,13 +7,14 @@ import '../../features/auth/data/models/doctor.dart';
 /// This is the single source of truth for the current user's auth status,
 /// JWT token, and resolved role.
 class AuthState extends Equatable {
-
   const AuthState({
     this.token,
     this.role,
     this.userName,
     this.doctor,
     this.isLoading = false,
+    this.isSigningIn = false,
+    this.isSigningOut = false,
     this.errorMessage,
     this.isRestoring = true,
     this.signupEmail,
@@ -46,6 +47,15 @@ class AuthState extends Equatable {
   /// True while an auth request (login / signup) is in flight.
   final bool isLoading;
 
+  /// True only while a login request is in flight. Unlike [isLoading], which
+  /// profile saves and sign-up also set, this means "signing in", and the
+  /// splash screen shows for it.
+  final bool isSigningIn;
+
+  /// True from the click on sign out until the server has ended the
+  /// session. The local session is gone already; the splash covers the wait.
+  final bool isSigningOut;
+
   /// Non-null when the last auth operation failed.
   final String? errorMessage;
 
@@ -77,6 +87,8 @@ class AuthState extends Equatable {
     String? userName,
     Doctor? doctor,
     bool? isLoading,
+    bool? isSigningIn,
+    bool? isSigningOut,
     String? errorMessage,
     bool? isRestoring,
     String? signupEmail,
@@ -93,6 +105,8 @@ class AuthState extends Equatable {
       userName: clearToken ? null : (userName ?? this.userName),
       doctor: clearToken ? null : (doctor ?? this.doctor),
       isLoading: isLoading ?? this.isLoading,
+      isSigningIn: isSigningIn ?? this.isSigningIn,
+      isSigningOut: isSigningOut ?? this.isSigningOut,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       isRestoring: isRestoring ?? this.isRestoring,
       signupEmail: clearSignup ? null : (signupEmail ?? this.signupEmail),
@@ -104,7 +118,19 @@ class AuthState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [token, role, userName, doctor, isLoading, errorMessage, isRestoring,
-       signupEmail, devOtpCode, isEmailVerified, medicalAidCatalogue];
+  List<Object?> get props => [
+        token,
+        role,
+        userName,
+        doctor,
+        isLoading,
+        isSigningIn,
+        isSigningOut,
+        errorMessage,
+        isRestoring,
+        signupEmail,
+        devOtpCode,
+        isEmailVerified,
+        medicalAidCatalogue
+      ];
 }

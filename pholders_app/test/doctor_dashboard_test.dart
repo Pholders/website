@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patient_table.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pholders_app/app/app_reducer.dart';
 import 'package:pholders_app/app/app_state.dart';
@@ -38,24 +39,39 @@ Appointment appt(
 
 final appointments = [
   // today
-  appt(1, 20, 'Naledi Khumalo', DateTime(2026, 10, 30), slot: '14:00', reason: 'Cough'),
-  appt(2, 21, 'Sipho Dube', DateTime(2026, 10, 30), slot: '09:30', accepted: false),
-  appt(3, 22, 'Ayanda Zulu', DateTime(2026, 10, 30), slot: '11:00', status: 'cancelled'),
+  appt(1, 20, 'Naledi Khumalo', DateTime(2026, 10, 30),
+      slot: '14:00', reason: 'Cough'),
+  appt(2, 21, 'Sipho Dube', DateTime(2026, 10, 30),
+      slot: '09:30', accepted: false),
+  appt(3, 22, 'Ayanda Zulu', DateTime(2026, 10, 30),
+      slot: '11:00', status: 'cancelled'),
   // earlier this month and last month
-  appt(4, 20, 'Naledi Khumalo', DateTime(2026, 10, 2), status: 'completed', reason: 'Flu'),
+  appt(4, 20, 'Naledi Khumalo', DateTime(2026, 10, 2),
+      status: 'completed', reason: 'Flu'),
   appt(5, 23, 'Lerato Molefe', DateTime(2026, 9, 15), status: 'completed'),
   appt(6, 23, 'Lerato Molefe', DateTime(2026, 9, 20), status: 'completed'),
   // ahead
-  appt(7, 23, 'Lerato Molefe', DateTime(2026, 11, 4), slot: '08:00', accepted: false),
+  appt(7, 23, 'Lerato Molefe', DateTime(2026, 11, 4),
+      slot: '08:00', accepted: false),
 ];
+
+/// A filter chip by its label. The rows' status pills use the same words.
+Finder chip(String label) => find.descendant(
+    of: find.byType(PatientFilterChips), matching: find.text(label));
+
+/// A patient's name in the table, not elsewhere on the dashboard.
+Finder row(String name) => find.descendant(
+    of: find.byType(PatientTableList), matching: find.text(name));
 
 void main() {
   group('the numbers', () {
-    test("today's appointments leave out cancelled ones and run earliest first", () {
+    test("today's appointments leave out cancelled ones and run earliest first",
+        () {
       expect(todaysAppointments(appointments, now).map((a) => a.id), [2, 1]);
     });
 
-    test('bookings waiting to be accepted are paid, unaccepted and not past', () {
+    test('bookings waiting to be accepted are paid, unaccepted and not past',
+        () {
       expect(awaitingAcceptance(appointments, now), 2);
       expect(
         awaitingAcceptance(
@@ -64,9 +80,10 @@ void main() {
         reason: 'a past booking can no longer be accepted',
       );
       expect(
-        awaitingAcceptance(
-            [appt(9, 30, 'Unpaid', DateTime(2026, 11, 1), accepted: false, status: 'pending_payment')],
-            now),
+        awaitingAcceptance([
+          appt(9, 30, 'Unpaid', DateTime(2026, 11, 1),
+              accepted: false, status: 'pending_payment')
+        ], now),
         0,
         reason: 'the doctor accepts only after payment',
       );
@@ -81,8 +98,8 @@ void main() {
 
     test('new patients are the ones whose first booking is this month', () {
       // Ayanda's only booking was cancelled, but she did book, and the
-    // Patients page lists her too.
-    expect(newPatientsThisMonth(appointments, now), 3);
+      // Patients page lists her too.
+      expect(newPatientsThisMonth(appointments, now), 3);
     });
 
     test('last visit is the latest on or before today', () {
@@ -100,9 +117,18 @@ void main() {
       expect(months.last.label, 'Oct');
       expect((months.last.appointments, months.last.patients), (3, 2));
       expect(months[months.length - 2].label, 'Sep');
-      expect((months[months.length - 2].appointments, months[months.length - 2].patients), (2, 1));
-      expect(activityTrend(appointments, TrendPeriod.weekly, now).last.label, 'Fri');
-      expect(activityTrend(appointments, TrendPeriod.yearly, now).map((b) => b.label),
+      expect((
+        months[months.length - 2].appointments,
+        months[months.length - 2].patients
+      ), (
+        2,
+        1
+      ));
+      expect(activityTrend(appointments, TrendPeriod.weekly, now).last.label,
+          'Fri');
+      expect(
+          activityTrend(appointments, TrendPeriod.yearly, now)
+              .map((b) => b.label),
           ['2022', '2023', '2024', '2025', '2026']);
     });
   });
@@ -115,38 +141,48 @@ void main() {
       final reportError = FlutterError.onError;
       FlutterError.onError = (details) {
         // The test font draws every letter as a wide block.
-        if (!details.toString().contains('overflowed')) reportError?.call(details);
+        if (!details.toString().contains('overflowed'))
+          reportError?.call(details);
       };
       addTearDown(() => FlutterError.onError = reportError);
 
-      final store = Store<AppState>(appReducer, initialState: AppState.initial())
-        ..dispatch(AppointmentsLoadedAction(appointments: list));
+      final store =
+          Store<AppState>(appReducer, initialState: AppState.initial())
+            ..dispatch(AppointmentsLoadedAction(appointments: list));
       final router = GoRouter(initialLocation: '/doctor/dashboard', routes: [
         GoRoute(
           path: '/doctor/dashboard',
-          builder: (_, __) => Scaffold(body: DoctorDashboardPage(clock: () => now)),
+          builder: (_, __) =>
+              Scaffold(body: DoctorDashboardPage(clock: () => now)),
         ),
-        GoRoute(path: '/doctor/appointments', builder: (_, __) => const Text('Appointments page')),
-        GoRoute(path: '/doctor/patients', builder: (_, __) => const Text('Patients page')),
+        GoRoute(
+            path: '/doctor/appointments',
+            builder: (_, __) => const Text('Appointments page')),
+        GoRoute(
+            path: '/doctor/patients',
+            builder: (_, __) => const Text('Patients page')),
         GoRoute(
           path: '/doctor/patients/:id',
           builder: (_, state) => Text('Patient ${state.pathParameters['id']}'),
         ),
       ]);
-      await tester.pumpWidget(
-          StoreProvider(store: store, child: MaterialApp.router(routerConfig: router)));
+      await tester.pumpWidget(StoreProvider(
+          store: store, child: MaterialApp.router(routerConfig: router)));
       await tester.pumpAndSettle();
     }
 
-    testWidgets("shows today's real date, appointments and totals", (tester) async {
+    testWidgets("shows today's real date, appointments and totals",
+        (tester) async {
       await show(tester, appointments);
 
       expect(find.text('Friday, 30th October'), findsOneWidget);
       expect(find.text('Sipho Dube'), findsWidgets);
       expect(find.text('Naledi Khumalo'), findsWidgets);
-      expect(find.text('2 bookings are waiting for you to accept'), findsOneWidget);
+      expect(find.text('2 bookings are waiting for you to accept'),
+          findsOneWidget);
       expect(find.text('+50%'), findsOneWidget);
-      expect(find.text('Lerato Molefe'), findsOneWidget, reason: 'in recent patients');
+      expect(find.text('Lerato Molefe'), findsOneWidget,
+          reason: 'in recent patients');
 
       expect(find.text('Maria Wilson'), findsNothing);
       expect(find.text('72'), findsNothing);
@@ -155,29 +191,60 @@ void main() {
       expect(find.byTooltip('Delete patient'), findsNothing);
     });
 
-    testWidgets('the waiting-bookings alert opens Appointments', (tester) async {
+    testWidgets('the waiting-bookings alert opens Appointments',
+        (tester) async {
       await show(tester, appointments);
       await tester.tap(find.text('2 bookings are waiting for you to accept'));
       await tester.pumpAndSettle();
       expect(find.text('Appointments page'), findsOneWidget);
     });
 
-    testWidgets("a recent patient's row opens their record", (tester) async {
+    testWidgets("a recent patient's row opens their actions, as on Patients",
+        (tester) async {
       await show(tester, appointments);
-      await tester.tap(find.text('Lerato Molefe'));
+      expect(find.text('Action'), findsOneWidget);
+
+      // A click on the row opens the menu, not the record.
+      await tester.tap(find.text('Lerato Molefe').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Patient 23'), findsNothing);
+      expect(find.text('Create Prescription'), findsOneWidget);
+
+      await tester.tap(find.text('View Patient Profile'));
       await tester.pumpAndSettle();
       expect(find.text('Patient 23'), findsOneWidget);
     });
 
-    testWidgets('the upcoming filter keeps only patients with a visit ahead', (tester) async {
+    testWidgets("a row's three dots open the same actions", (tester) async {
       await show(tester, appointments);
-      await tester.tap(find.text('With an upcoming visit'));
+      await tester.tap(find.byTooltip('More actions').first);
       await tester.pumpAndSettle();
-      expect(find.text('Lerato Molefe'), findsOneWidget);
-      expect(find.text('Ayanda Zulu'), findsNothing);
+      expect(find.text('View Patient Profile'), findsOneWidget);
     });
 
-    testWidgets('an empty day says so and names the next appointment', (tester) async {
+    testWidgets('it offers the Patients page filters', (tester) async {
+      await show(tester, appointments);
+      for (final filter in PatientFilter.values) {
+        expect(chip(filter.label), findsOneWidget);
+      }
+    });
+
+    testWidgets('a filter keeps only patients with that status',
+        (tester) async {
+      await show(tester, appointments);
+      await tester.tap(chip('Awaiting acceptance'));
+      await tester.pumpAndSettle();
+      expect(row('Lerato Molefe'), findsWidgets);
+      expect(row('Naledi Khumalo'), findsNothing);
+
+      await tester.tap(chip('Visit today'));
+      await tester.pumpAndSettle();
+      expect(row('Lerato Molefe'), findsNothing);
+      expect(row('Naledi Khumalo'), findsWidgets);
+    });
+
+    testWidgets('an empty day says so and names the next appointment',
+        (tester) async {
       await show(tester, [appointments.last]);
       expect(find.textContaining('No appointments today.'), findsOneWidget);
       expect(find.textContaining('Next: Lerato Molefe'), findsOneWidget);
@@ -185,8 +252,17 @@ void main() {
 
     testWidgets('a new doctor sees no invented patients', (tester) async {
       await show(tester, const []);
-      expect(find.text('Patients appear here once they book with you'), findsOneWidget);
+      expect(find.text('Patients appear here once they book with you'),
+          findsOneWidget);
       expect(find.textContaining('waiting for you to accept'), findsNothing);
+    });
+    testWidgets('the table has an always-visible scrollbar', (tester) async {
+      await show(tester, appointments);
+      final bar = tester.widget<RawScrollbar>(find.descendant(
+          of: find.byType(PatientTableList),
+          matching: find.byType(RawScrollbar)));
+      expect(bar.thumbVisibility, isTrue);
+      expect(bar.trackVisibility, isTrue);
     });
   });
 }

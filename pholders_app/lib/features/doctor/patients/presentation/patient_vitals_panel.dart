@@ -5,6 +5,7 @@ import 'package:pholders_app/core/network/api_exception.dart';
 import 'package:pholders_app/features/doctor/patients/data/patient_record_repository.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patient_profile_screen.dart'
     show AppProfileColors;
+import 'package:pholders_app/features/doctor/patients/presentation/record_card.dart';
 
 /// The Vitals tab of a patient's profile.
 ///
@@ -80,75 +81,28 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppProfileColors.border),
+    return RecordCard(
+      icon: Icons.monitor_heart_outlined,
+      title: 'Vitals',
+      subtitle: 'Readings taken at consultations, newest first',
+      trailing: RecordAction(
+        label: 'Record vitals',
+        onTap: _loading || _error != null ? null : _record,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.monitor_heart_outlined,
-                  size: 18, color: AppProfileColors.teal),
-              const SizedBox(width: 8),
-              const Text('Vitals',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppProfileColors.textPrimary)),
-              const Spacer(),
-              if (!_loading)
-                IconButton(
-                  tooltip: 'Refresh',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.refresh_rounded,
-                      size: 18, color: AppProfileColors.textSecondary),
-                  onPressed: _load,
-                ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: _loading || _error != null ? null : _record,
-                style: FilledButton.styleFrom(
-                    backgroundColor: AppProfileColors.teal),
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('Record vitals'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _body(),
-        ],
-      ),
+      child: _body(),
     );
   }
 
   Widget _body() {
-    if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: AppProfileColors.teal),
-          ),
-        ),
-      );
-    }
+    if (_loading) return const RecordMessage();
     if (_error != null) {
-      return _Message(
-        text: _error!,
+      return RecordMessage(
+        text: _error,
         action: TextButton(onPressed: _load, child: const Text('Try again')),
       );
     }
     return _vitals.isEmpty
-        ? const _Message(
+        ? const RecordMessage(
             text: 'No vitals recorded yet. Use “Record vitals” to add the '
                 'readings you take at this consultation.')
         : _VitalsView(vitals: _vitals);
@@ -156,7 +110,20 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
 }
 
 String _day(DateTime d) {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ];
   return '${d.day} ${months[d.month - 1]} ${d.year}';
 }
 
@@ -169,32 +136,14 @@ String? _fmt(double? v) {
   return s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
 }
 
-class _Message extends StatelessWidget {
-  const _Message({required this.text, this.action});
-  final String text;
-  final Widget? action;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(text,
-            style: const TextStyle(
-                fontSize: 13, height: 1.5, color: AppProfileColors.textSecondary)),
-        if (action != null) ...[const SizedBox(height: 12), action!],
-      ],
-    );
-  }
-}
-
 class _VitalsView extends StatelessWidget {
   const _VitalsView({required this.vitals});
 
   /// Newest first.
   final List<PatientVital> vitals;
 
-  ({String value, DateTime at})? _latest(String? Function(PatientVital v) pick) {
+  ({String value, DateTime at})? _latest(
+      String? Function(PatientVital v) pick) {
     for (final v in vitals) {
       final s = pick(v);
       if (s != null) return (value: s, at: v.measuredAt);
@@ -217,6 +166,12 @@ class _VitalsView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text('Latest',
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: RecordColors.ink)),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -224,92 +179,98 @@ class _VitalsView extends StatelessWidget {
             for (final (label, unit, pick) in tiles)
               if (_latest(pick) case final latest?)
                 Container(
-                  width: 150,
-                  padding: const EdgeInsets.all(12),
+                  width: 160,
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                   decoration: BoxDecoration(
-                    color: AppProfileColors.tealLight,
-                    borderRadius: BorderRadius.circular(12),
+                    color: RecordColors.pale,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: RecordColors.paleEdge),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(label,
                           style: const TextStyle(
-                              fontSize: 11, color: AppProfileColors.textSecondary)),
-                      const SizedBox(height: 4),
+                              fontSize: 13, color: RecordColors.muted)),
+                      const SizedBox(height: 6),
                       Text.rich(TextSpan(children: [
                         TextSpan(
                             text: latest.value,
                             style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w700,
-                                color: AppProfileColors.textPrimary)),
+                                color: RecordColors.ink)),
                         if (unit.isNotEmpty)
                           TextSpan(
                               text: ' $unit',
                               style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppProfileColors.textSecondary)),
+                                  fontSize: 12, color: RecordColors.muted)),
                       ])),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(_day(latest.at),
                           style: const TextStyle(
-                              fontSize: 10, color: AppProfileColors.textSecondary)),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: RecordColors.label)),
                     ],
                   ),
                 ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Text('All readings (${vitals.length})',
             style: const TextStyle(
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppProfileColors.textPrimary)),
-        const SizedBox(height: 6),
+                color: RecordColors.ink)),
+        const SizedBox(height: 10),
         for (final v in vitals.take(20))
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppProfileColors.border)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 140,
-                  child: Text(_dayTime(v.measuredAt),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: RecordTile(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 150,
+                    child: Text(_dayTime(v.measuredAt),
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: RecordColors.ink)),
+                  ),
+                  Expanded(
+                    child: Text(
+                      [
+                        if (v.bloodPressure != null) 'BP ${v.bloodPressure}',
+                        if (v.heartRate != null) 'HR ${v.heartRate} bpm',
+                        if (v.weightKg != null) '${_fmt(v.weightKg)} kg',
+                        if (v.bloodGlucose != null)
+                          'Glucose ${_fmt(v.bloodGlucose)} mmol/L',
+                        if (v.oxygenSaturation != null)
+                          'SpO₂ ${_fmt(v.oxygenSaturation)}%',
+                        if (v.temperatureC != null)
+                          '${_fmt(v.temperatureC)} °C',
+                        if (v.notes != null) '“${v.notes}”',
+                      ].join(' · '),
                       style: const TextStyle(
-                          fontSize: 12, color: AppProfileColors.textSecondary)),
-                ),
-                Expanded(
-                  child: Text(
-                    [
-                      if (v.bloodPressure != null) 'BP ${v.bloodPressure}',
-                      if (v.heartRate != null) 'HR ${v.heartRate} bpm',
-                      if (v.weightKg != null) '${_fmt(v.weightKg)} kg',
-                      if (v.bloodGlucose != null) 'Glucose ${_fmt(v.bloodGlucose)} mmol/L',
-                      if (v.oxygenSaturation != null) 'SpO₂ ${_fmt(v.oxygenSaturation)}%',
-                      if (v.temperatureC != null) '${_fmt(v.temperatureC)} °C',
-                      if (v.notes != null) '“${v.notes}”',
-                    ].join(' · '),
-                    style: const TextStyle(
-                        fontSize: 12, color: AppProfileColors.textPrimary),
+                          fontSize: 13, color: RecordColors.ink),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 150,
-                  child: Text(
-                    // Readings from before doctors took over recording were
-                    // typed in by the patient and have no doctor.
-                    v.recordedByName ?? 'Logged by the patient',
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppProfileColors.textSecondary),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 160,
+                    child: Text(
+                      // Readings from before doctors took over recording
+                      // were typed in by the patient and have no doctor.
+                      v.recordedByName ?? 'Logged by the patient',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                          fontSize: 12, color: RecordColors.muted),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
       ],
@@ -392,7 +353,8 @@ class _RecordVitalsDialogState extends State<_RecordVitalsDialog> {
       setState(() => _error = 'Enter at least one reading.');
       return;
     }
-    if (values.containsKey('systolic_bp') != values.containsKey('diastolic_bp')) {
+    if (values.containsKey('systolic_bp') !=
+        values.containsKey('diastolic_bp')) {
       setState(() => _error = 'Enter both blood pressure numbers, or neither.');
       return;
     }

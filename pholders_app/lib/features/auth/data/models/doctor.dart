@@ -87,7 +87,8 @@ class Doctor extends Equatable {
       emailVerified: json['email_verified'] == true,
       medicalAids: _schemesFrom(json['medicalAids'] ?? json['medical_aids']),
       availability: _availabilityFrom(json['availability']),
-      notificationPreferences: _preferencesFrom(json['notification_preferences']),
+      notificationPreferences:
+          _preferencesFrom(json['notification_preferences']),
     );
   }
 

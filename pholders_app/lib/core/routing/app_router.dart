@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:redux/redux.dart';
 
@@ -9,8 +9,6 @@ import 'app_routes.dart';
 // ─── Auth pages ──────────────────────────────────────────────────────────────
 import '../../features/auth/presentation/splash_page.dart';
 import '../../features/auth/presentation/landing_page.dart';
-import '../../features/auth/presentation/login_page.dart';
-import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/doctor_register_step2_page.dart';
 import '../../features/auth/data/models/doctor_registration_draft.dart';
 import '../../features/auth/presentation/verify_account_page.dart';
@@ -77,6 +75,17 @@ import '../../shared/widgets/shell_layout.dart';
 int _tab(GoRouterState state) =>
     int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
 
+/// /get-started, /login and /register share this page key. The Navigator
+/// then treats them as one page and updates it in place rather than replacing
+/// it, so [LandingPage] keeps its state and animates between the doctors, the
+/// sign-in form and the signup form.
+const _landingPageKey = ValueKey('public-landing');
+
+Page<void> _landingPage(LandingPanel panel) => NoTransitionPage(
+      key: _landingPageKey,
+      child: LandingPage(panel: panel),
+    );
+
 GoRouter createRouter(Store<AppState> store) {
   return GoRouter(
     // Let GoRouter use the browser URL instead of forcing splash.
@@ -92,9 +101,12 @@ GoRouter createRouter(Store<AppState> store) {
         path: AppRoutes.splash,
         builder: (context, state) => const SplashPage(),
       ),
+      // Landing, Login and Signup are one page: [_landingPage] keeps it under
+      // a single key, so moving between them swaps the teal circle's contents
+      // in place.
       GoRoute(
         path: AppRoutes.landing,
-        builder: (context, state) => const LandingPage(),
+        pageBuilder: (context, state) => _landingPage(LandingPanel.landing),
       ),
       // Public: opened by scanning a prescription QR or following its link.
       // Outside the shell and outside the guard, which only covers /doctor
@@ -107,11 +119,11 @@ GoRouter createRouter(Store<AppState> store) {
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => const LoginPage(),
+        pageBuilder: (context, state) => _landingPage(LandingPanel.login),
       ),
       GoRoute(
         path: AppRoutes.register,
-        builder: (context, state) => const RegisterPage(),
+        pageBuilder: (context, state) => _landingPage(LandingPanel.signup),
       ),
       GoRoute(
         path: AppRoutes.registerStep2,
@@ -300,7 +312,8 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.doctorSettingsDevices,
             // Without the tab the Device Management link opened Security
             // Settings.
-            builder: (context, state) => const SecuritySettingsPage(initialTab: 1),
+            builder: (context, state) =>
+                const SecuritySettingsPage(initialTab: 1),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsLoginActivity,

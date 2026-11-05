@@ -82,12 +82,14 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image.asset('assets/inverted-commas-icon.png', width: 24, height: 24),
+                  Image.asset('assets/inverted-commas-icon.png',
+                      width: 24, height: 24),
                   const SizedBox(height: 4),
                   const Text(
                     'Access patient records, create secure digital prescriptions,\nand monitor health updates all in one platform.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+                    style: TextStyle(
+                        fontSize: 13, color: Colors.black54, height: 1.4),
                   ),
                 ],
               ),
@@ -134,7 +136,8 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                           const Text(
                             'Join the platform to manage patients, prescriptions, and consultations securely.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 11, color: Colors.black54),
+                            style:
+                                TextStyle(fontSize: 11, color: Colors.black54),
                           ),
                           const SizedBox(height: 16),
 
@@ -142,19 +145,34 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                           const Align(
                             alignment: Alignment.centerLeft,
                             child: Text('Professional Information',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black)),
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black)),
                           ),
                           const SizedBox(height: 8),
                           Row(children: [
-                            Expanded(child: _Field(controller: _clinicNameController, hint: 'Clinic Name')),
+                            Expanded(
+                                child: _Field(
+                                    controller: _clinicNameController,
+                                    hint: 'Clinic Name')),
                             const SizedBox(width: 10),
-                            Expanded(child: _Field(controller: _hpcsaController, hint: 'HPCSA Number')),
+                            Expanded(
+                                child: _Field(
+                                    controller: _hpcsaController,
+                                    hint: 'HPCSA Number')),
                           ]),
                           const SizedBox(height: 8),
                           Row(children: [
-                            Expanded(child: _Field(controller: _specializationController, hint: 'Specialization')),
+                            Expanded(
+                                child: _Field(
+                                    controller: _specializationController,
+                                    hint: 'Specialization')),
                             const SizedBox(width: 10),
-                            Expanded(child: _Field(controller: _experienceController, hint: 'Years of Experience')),
+                            Expanded(
+                                child: _Field(
+                                    controller: _experienceController,
+                                    hint: 'Years of Experience')),
                           ]),
                           const SizedBox(height: 14),
 
@@ -162,7 +180,10 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                           const Align(
                             alignment: Alignment.centerLeft,
                             child: Text('Practice Information',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black)),
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black)),
                           ),
                           const SizedBox(height: 8),
                           Row(children: [
@@ -187,7 +208,8 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                                 disabledHint: 'Select a province first',
                                 value: _selectedCity,
                                 items: SaLocations.citiesFor(_selectedProvince),
-                                onChanged: (v) => setState(() => _selectedCity = v),
+                                onChanged: (v) =>
+                                    setState(() => _selectedCity = v),
                               ),
                             ),
                           ]),
@@ -197,9 +219,20 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.4))),
+                              Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color:
+                                          Colors.white.withValues(alpha: 0.4))),
                               const SizedBox(width: 6),
-                              Container(width: 10, height: 10, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF6DD0D8))),
+                              Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Color(0xFF6DD0D8))),
                             ],
                           ),
                           const SizedBox(height: 10),
@@ -218,21 +251,27 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                                     color: const Color(0xFF1A5C5F),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Icon(Icons.arrow_back, size: 16, color: Colors.white),
+                                  child: const Icon(Icons.arrow_back,
+                                      size: 16, color: Colors.white),
                                 ),
                               ),
                               // Register button
                               GestureDetector(
-                                onTap: () => context.go(AppRoutes.verifyAccount),
+                                onTap: () =>
+                                    context.go(AppRoutes.verifyAccount),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF1A5C5F),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: const Text(
                                     'Register',
-                                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500),
                                   ),
                                 ),
                               ),
@@ -245,7 +284,8 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
                     // Mascot inside the semi-circle
                     Positioned(
                       top: 12,
-                      child: Image.asset('assets/PHolders-icon.png', width: 55, height: 55),
+                      child: Image.asset('assets/PHolders-icon.png',
+                          width: 55, height: 55),
                     ),
                   ],
                 ),
@@ -261,7 +301,6 @@ class _RegisterStep2PageState extends State<RegisterStep2Page> {
 // ─── Form field ───────────────────────────────────────────────────────────────
 
 class _Field extends StatelessWidget {
-
   const _Field({required this.controller, required this.hint});
   final TextEditingController controller;
   final String hint;
@@ -270,7 +309,8 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 36,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(6)),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: TextField(
         controller: controller,
@@ -290,7 +330,6 @@ class _Field extends StatelessWidget {
 // ─── Dropdown field ───────────────────────────────────────────────────────────
 
 class _DropdownField extends StatelessWidget {
-
   const _DropdownField({
     required this.hint,
     required this.value,
@@ -320,7 +359,8 @@ class _DropdownField extends StatelessWidget {
 
     return Container(
       height: 36,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(6)),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -334,7 +374,8 @@ class _DropdownField extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, color: Colors.black38),
           ),
-          icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.black38),
+          icon: const Icon(Icons.keyboard_arrow_down,
+              size: 18, color: Colors.black38),
           style: const TextStyle(fontSize: 12, color: Colors.black87),
           items: [
             for (final item in items)

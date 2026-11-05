@@ -27,7 +27,8 @@ class RoleSelectionPage extends StatelessWidget {
             const SizedBox(height: 40),
             _RoleCard(
               title: 'Doctor',
-              subtitle: 'Access patient records, create prescriptions, and manage appointments.',
+              subtitle:
+                  'Access patient records, create prescriptions, and manage appointments.',
               icon: Icons.medical_services_outlined,
               color: const Color(0xFF309CA3),
               onTap: () => context.go(AppRoutes.doctorDashboard),
@@ -48,7 +49,6 @@ class RoleSelectionPage extends StatelessWidget {
 }
 
 class _RoleCard extends StatelessWidget {
-
   const _RoleCard({
     required this.title,
     required this.subtitle,

@@ -44,8 +44,18 @@ class DoctorActivity {
     final d = createdAt;
     if (d == null) return '';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final local = d.toLocal();
     final hh = local.hour.toString().padLeft(2, '0');
@@ -87,12 +97,12 @@ class ActiveSession {
       userAgent: device is Map<String, dynamic>
           ? DoctorActivity._asString(device['userAgent'])
           : null,
-      createdAt: DateTime.tryParse(
-          DoctorActivity._asString(json['created_at']) ?? ''),
+      createdAt:
+          DateTime.tryParse(DoctorActivity._asString(json['created_at']) ?? ''),
       lastActivityAt: DateTime.tryParse(
           DoctorActivity._asString(json['last_activity_at']) ?? ''),
-      expiresAt: DateTime.tryParse(
-          DoctorActivity._asString(json['expires_at']) ?? ''),
+      expiresAt:
+          DateTime.tryParse(DoctorActivity._asString(json['expires_at']) ?? ''),
     );
   }
 

@@ -49,16 +49,20 @@ class _Server implements HttpClientAdapter {
   final Object body;
 
   @override
-  Future<ResponseBody> fetch(RequestOptions o, Stream<Uint8List>? s, Future<void>? c) async =>
-      ResponseBody.fromString(jsonEncode(body), status,
-          headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+  Future<ResponseBody> fetch(
+          RequestOptions o, Stream<Uint8List>? s, Future<void>? c) async =>
+      ResponseBody.fromString(jsonEncode(body), status, headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType]
+      });
 
   @override
   void close({bool force = false}) {}
 }
 
-PatientRecordRepository repo(int status, Object body) => PatientRecordRepository(
-    ApiClient(tokenStorage: const _NoSession(), dio: Dio()..httpClientAdapter = _Server(status, body)));
+PatientRecordRepository repo(int status, Object body) =>
+    PatientRecordRepository(ApiClient(
+        tokenStorage: const _NoSession(),
+        dio: Dio()..httpClientAdapter = _Server(status, body)));
 
 String day(int offset) {
   final d = DateTime.now().add(Duration(days: offset));
@@ -91,14 +95,16 @@ Future<void> show(WidgetTester tester, Store<AppState> s, Widget child) async {
   addTearDown(tester.view.reset);
   await tester.pumpWidget(StoreProvider<AppState>(
     store: s,
-    child: MaterialApp(home: Scaffold(body: SingleChildScrollView(child: child))),
+    child:
+        MaterialApp(home: Scaffold(body: SingleChildScrollView(child: child))),
   ));
   await tester.pumpAndSettle();
 }
 
 void main() {
   group('Appointments tab', () {
-    Appointment visit(int id, int patientId, String date, String reason, String status) =>
+    Appointment visit(
+            int id, int patientId, String date, String reason, String status) =>
         Appointment.fromJson({
           'id': id,
           'patientId': patientId,
@@ -109,7 +115,8 @@ void main() {
           'status': status,
         });
 
-    testWidgets("shows only this patient's visits, split upcoming and past", (tester) async {
+    testWidgets("shows only this patient's visits, split upcoming and past",
+        (tester) async {
       await show(
         tester,
         store(appointments: [
@@ -120,15 +127,40 @@ void main() {
         AppointmentsScreen(patient: patient),
       );
 
-      expect(find.text('Upcoming (1)'), findsOneWidget);
-      expect(find.text('Past (1)'), findsOneWidget);
+      expect(find.text('Future visits (1)'), findsOneWidget);
+      expect(find.text('Past Visits (1)'), findsOneWidget);
+      // The day view opens on the next visit's day, the visit in its hour.
+      expect(find.text('9 am'), findsOneWidget);
       expect(find.text('Follow-up'), findsOneWidget);
       expect(find.text('Someone else'), findsNothing);
       expect(find.text('Treatment of diabetes'), findsNothing);
+      expect(find.text('Dr Sam Smith'), findsNothing);
 
-      await tester.tap(find.text('Past (1)'));
+      await tester.tap(find.text('Past Visits (1)'));
       await tester.pumpAndSettle();
       expect(find.text('First visit'), findsOneWidget);
+    });
+
+    testWidgets('the arrows move the day, and Week lists the days',
+        (tester) async {
+      await show(
+        tester,
+        store(appointments: [visit(1, 17, day(1), 'Follow-up', 'scheduled')]),
+        AppointmentsScreen(patient: patient),
+      );
+      expect(find.text('Follow-up'), findsOneWidget);
+
+      // The day after has nothing booked.
+      await tester.tap(find.byTooltip('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('Follow-up'), findsNothing);
+
+      await tester.tap(find.byTooltip('Previous'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Week'));
+      await tester.pumpAndSettle();
+      expect(find.text('Follow-up'), findsOneWidget);
+      expect(find.text('No visits'), findsWidgets);
     });
 
     testWidgets('a patient with no visits is told so', (tester) async {
@@ -138,7 +170,8 @@ void main() {
   });
 
   group('Prescriptions tab', () {
-    api.Prescription rx(int id, int patientId, String diagnosis) => api.Prescription.fromJson({
+    api.Prescription rx(int id, int patientId, String diagnosis) =>
+        api.Prescription.fromJson({
           'id': id,
           'prescriptionNumber': 'RX-$id',
           'patient': 'P$patientId',
@@ -151,7 +184,10 @@ void main() {
     testWidgets("shows only this patient's real prescriptions", (tester) async {
       await show(
         tester,
-        store(prescriptions: [rx(1, 17, 'Hypertension'), rx(2, 99, 'Someone else')]),
+        store(prescriptions: [
+          rx(1, 17, 'Hypertension'),
+          rx(2, 99, 'Someone else')
+        ]),
         PrescriptionsScreen(patient: patient),
       );
       expect(find.text('Hypertension'), findsOneWidget);
@@ -159,17 +195,69 @@ void main() {
       expect(find.text('Isotretinoin'), findsNothing);
     });
 
-    testWidgets('edit and delete, which only changed the list on screen, are gone',
+    testWidgets('a row opens its details in place, with nothing invented',
         (tester) async {
       await show(tester, store(prescriptions: [rx(1, 17, 'Hypertension')]),
           PrescriptionsScreen(patient: patient));
-      expect(find.byIcon(Icons.edit_outlined), findsNothing);
-      expect(find.byIcon(Icons.delete_outline), findsNothing);
+      await tester.tap(find.text('Hypertension'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Details'), findsOneWidget);
+      expect(find.text('Date Issued'), findsNothing); // the table is gone
+      expect(find.text('Hypertension'), findsOneWidget);
+      expect(find.text('RX-1'), findsOneWidget);
+      expect(find.text('29 Oct 2026'), findsOneWidget);
+      // It used to add "once daily" and "30 days" to every prescription.
+      expect(find.textContaining('once daily'), findsNothing);
+      expect(find.text('30 days'), findsNothing);
+
+      await tester.tap(find.text('Back to prescriptions'));
+      await tester.pumpAndSettle();
+      expect(find.text('Date Issued'), findsOneWidget);
+    });
+
+    testWidgets('given a height, only the rows scroll, under the header',
+        (tester) async {
+      await show(
+        tester,
+        store(prescriptions: [
+          for (var i = 1; i <= 25; i++) rx(i, 17, 'Diagnosis $i'),
+        ]),
+        SizedBox(height: 600, child: PrescriptionsScreen(patient: patient)),
+      );
+      expect(find.text('Diagnosis 1'), findsOneWidget);
+      expect(find.text('Diagnosis 25'), findsNothing);
+      final headerTop = tester.getTopLeft(find.text('Date Issued')).dy;
+
+      await tester.drag(find.text('Diagnosis 1'), const Offset(0, -3000));
+      await tester.pumpAndSettle();
+      expect(find.text('Diagnosis 25'), findsOneWidget);
+      // The header and filters stayed where they were.
+      expect(tester.getTopLeft(find.text('Date Issued')).dy, headerTop);
+      expect(find.text('Prescriptions'), findsOneWidget);
+    });
+
+    testWidgets(
+        'the pencil cannot edit, and the bin revokes rather than deletes',
+        (tester) async {
+      await show(tester, store(prescriptions: [rx(1, 17, 'Hypertension')]),
+          PrescriptionsScreen(patient: patient));
+      // They once only changed the list on screen. Now the pencil is shown,
+      // as designed, but does nothing: nothing can edit a prescription.
+      final pencil = tester.widget<IconButton>(
+          find.widgetWithIcon(IconButton, Icons.edit_outlined));
+      expect(pencil.onPressed, isNull);
+
+      // The bin revokes this signed prescription, after asking why.
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+      expect(find.text('Revoke this prescription?'), findsOneWidget);
     });
   });
 
   group('Medication tab', () {
-    testWidgets("shows the patient's current medication from their record", (tester) async {
+    testWidgets("shows the patient's current medication from their record",
+        (tester) async {
       await show(
         tester,
         store(),
@@ -189,20 +277,28 @@ void main() {
           }),
         ),
       );
-      expect(find.text('Amlodipine'), findsOneWidget);
-      expect(find.text('5mg · Once daily'), findsOneWidget);
-      expect(find.textContaining('Prescribed by Dr Pule Doctor'), findsOneWidget);
+      // Name and strength on top, how it is taken in the Dosage pill.
+      expect(find.text('Amlodipine 5mg'), findsOneWidget);
+      expect(find.text('Once daily'), findsWidgets);
+      expect(find.text('Ongoing'), findsWidgets);
+      expect(
+          find.textContaining('Prescribed by Dr Pule Doctor'), findsOneWidget);
       expect(find.text('Isotretinoin'), findsNothing);
       expect(find.textContaining('Liposuction'), findsNothing);
     });
 
     testWidgets('no medication on record says so', (tester) async {
-      await show(tester, store(),
-          MedicationScreen(patient: patient, repository: repo(200, {'success': true, 'data': []})));
+      await show(
+          tester,
+          store(),
+          MedicationScreen(
+              patient: patient,
+              repository: repo(200, {'success': true, 'data': []})));
       expect(find.textContaining('No current medication'), findsOneWidget);
     });
 
-    testWidgets("a doctor the patient never booked sees the server's reason", (tester) async {
+    testWidgets("a doctor the patient never booked sees the server's reason",
+        (tester) async {
       await show(
         tester,
         store(),
@@ -210,17 +306,174 @@ void main() {
           patient: patient,
           repository: repo(403, {
             'success': false,
-            'message': 'You can see the record only of patients who have booked with you',
+            'message':
+                'You can see the record only of patients who have booked with you',
           }),
         ),
       );
-      expect(find.text('You can see the record only of patients who have booked with you'),
-          findsOneWidget);
+      // Both the medications and the medical history say so.
+      expect(
+          find.text(
+              'You can see the record only of patients who have booked with you'),
+          findsWidgets);
+    });
+
+    Map<String, Object?> med(String name, String start, [String? end]) => {
+          'medication_name': name,
+          'dosage': '20mg',
+          'frequency': 'Once daily',
+          'start_date': start,
+          'end_date': end,
+        };
+
+    testWidgets(
+        'the history lists each medication, with how long and whether it is '
+        'still taken', (tester) async {
+      final now = DateTime.now();
+      String on(DateTime d) => DateTime.utc(d.year, d.month, d.day)
+          .toIso8601String()
+          .substring(0, 10);
+      await show(
+        tester,
+        store(),
+        MedicationScreen(
+          patient: patient,
+          repository: repo(200, {
+            'success': true,
+            'data': [
+              med('Isotretinoin', on(now.subtract(const Duration(days: 60))),
+                  on(now.subtract(const Duration(days: 30)))),
+              med('Amlodipine', on(now.subtract(const Duration(days: 5))),
+                  on(now.add(const Duration(days: 25)))),
+            ],
+          }),
+        ),
+      );
+      expect(find.text('Medication history'), findsOneWidget);
+      for (final column in [
+        'Medication',
+        'Dosage',
+        'Frequency',
+        'Duration',
+        'Status'
+      ]) {
+        expect(find.text(column), findsWidgets);
+      }
+      expect(find.text('30 days'), findsNWidgets(2));
+      expect(find.text('Active'), findsWidgets);
+      expect(find.text('Stopped'), findsOneWidget);
+      // Still being taken comes first.
+      expect(tester.getTopLeft(find.text('Amlodipine')).dy,
+          lessThan(tester.getTopLeft(find.text('Isotretinoin')).dy));
+
+      await tester.enterText(find.byType(TextField), 'iso');
+      await tester.pump();
+      expect(find.text('Amlodipine'), findsNothing);
+      expect(find.text('Isotretinoin'), findsOneWidget);
+
+      expect(find.text('Prescribe Medication'), findsOneWidget);
+    });
+
+    testWidgets("a row's actions show what the record holds on it",
+        (tester) async {
+      await show(
+        tester,
+        store(),
+        MedicationScreen(
+          patient: patient,
+          repository: repo(200, {
+            'success': true,
+            'data': [
+              {
+                ...med('Amlodipine', '2026-10-01'),
+                'reason': 'High blood pressure',
+              },
+            ],
+          }),
+        ),
+      );
+      await tester.tap(find.byTooltip('Actions'));
+      await tester.pumpAndSettle();
+      for (final soon in [
+        'Adjust Medication',
+        'Stop Medication',
+        'Send Reminder'
+      ]) {
+        expect(find.text(soon), findsOneWidget);
+      }
+      await tester.tap(find.text('View Details'));
+      await tester.pumpAndSettle();
+      // The tab becomes the medication's details, from the record.
+      expect(find.text('Details'), findsOneWidget);
+      expect(find.text('Medications'), findsNothing);
+      expect(find.text('Amlodipine'), findsOneWidget);
+      expect(find.text('Ongoing'), findsOneWidget);
+      expect(find.text('High blood pressure'), findsOneWidget);
+      expect(find.text('Adherence'), findsNothing);
+
+      await tester.tap(find.text('Back to medications'));
+      await tester.pumpAndSettle();
+      expect(find.text('Medications'), findsOneWidget);
+      expect(find.text('Details'), findsNothing);
+
+      // A click on the medication's card opens the same details.
+      await tester.tap(find.text('Amlodipine 20mg'));
+      await tester.pumpAndSettle();
+      expect(find.text('Details'), findsOneWidget);
+      expect(find.text('High blood pressure'), findsOneWidget);
+    });
+
+    testWidgets('given a height, the history scrolls inside its card',
+        (tester) async {
+      await show(
+        tester,
+        store(),
+        MedicationScreen(
+          patient: patient,
+          height: 700,
+          repository: repo(200, {
+            'success': true,
+            'data': [
+              for (var i = 1; i <= 20; i++)
+                med('Medicine $i', '2026-01-${i.toString().padLeft(2, '0')}'),
+            ],
+          }),
+        ),
+      );
+      // The tab keeps its height however many rows there are.
+      expect(tester.getSize(find.byType(MedicationScreen)).height, 700);
+      // The newest rows show; the oldest wait below, inside the card.
+      expect(find.text('Medicine 20'), findsOneWidget);
+      expect(find.text('Medicine 1'), findsNothing);
+
+      await tester.drag(find.text('Medicine 20'), const Offset(0, -2000));
+      await tester.pumpAndSettle();
+      expect(find.text('Medicine 1'), findsOneWidget);
+      expect(find.text('Medications'), findsOneWidget); // still on screen
+    });
+
+    testWidgets('nothing invented: no adherence or condition categories',
+        (tester) async {
+      await show(
+          tester,
+          store(),
+          MedicationScreen(
+              patient: patient,
+              repository: repo(200, {'success': true, 'data': []})));
+      for (final made in [
+        'Adherence',
+        'Critical',
+        'Chronic disease',
+        'Surgery'
+      ]) {
+        expect(find.text(made), findsNothing, reason: '$made is not recorded');
+      }
     });
   });
 
   group('History tab', () {
-    testWidgets("shows the patient's real visits and prescriptions", (tester) async {
+    testWidgets("shows the patient's real visits and prescriptions",
+        (tester) async {
       await show(
         tester,
         store(),
@@ -247,24 +500,44 @@ void main() {
           }),
         ),
       );
-      expect(find.text('Prescription'), findsOneWidget);
+      expect(find.text('Prescription issued'), findsOneWidget);
       expect(find.text('Hypertension'), findsOneWidget);
-      expect(find.text('Dr Pule Doctor · General Practitioner'), findsOneWidget);
-      expect(find.text('Visit'), findsOneWidget);
-      expect(find.text('Completed'), findsOneWidget);
+      expect(find.text('Visit completed'), findsOneWidget);
+      // Newest first, each day under its date.
+      expect(find.text('Thursday, 29 Oct 2026'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('Prescription issued')).dy,
+          lessThan(tester.getTopLeft(find.text('Visit completed')).dy));
       // No note can be kept on the server yet, so none is offered.
       expect(find.textContaining('Add note'), findsNothing);
+
+      // View opens what the record holds on it.
+      await tester.tap(find.text('View').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Dr Pule Doctor'), findsOneWidget);
+      expect(find.text('General Practitioner'), findsOneWidget);
+
+      // Filters keep one kind.
+      await tester.tap(find.text('Visits'));
+      await tester.pumpAndSettle();
+      expect(find.text('Prescription issued'), findsNothing);
+      expect(find.text('Visit completed'), findsOneWidget);
     });
 
     testWidgets('an empty history says so', (tester) async {
-      await show(tester, store(),
-          MedicalHistoryScreen(patient: patient, repository: repo(200, {'success': true, 'data': []})));
-      expect(find.textContaining('No completed visits or prescriptions'), findsOneWidget);
+      await show(
+          tester,
+          store(),
+          MedicalHistoryScreen(
+              patient: patient,
+              repository: repo(200, {'success': true, 'data': []})));
+      expect(find.textContaining('No completed visits or prescriptions'),
+          findsOneWidget);
     });
   });
 
   group('Documents tab', () {
-    testWidgets("lists the patient's stored files with a download each", (tester) async {
+    testWidgets("lists the patient's stored files with a download each",
+        (tester) async {
       await show(
         tester,
         store(),
@@ -292,9 +565,14 @@ void main() {
     });
 
     testWidgets('no stored documents says so', (tester) async {
-      await show(tester, store(),
-          DocumentsScreen(patient: patient, repository: repo(200, {'success': true, 'data': []})));
-      expect(find.textContaining('has not stored any documents'), findsOneWidget);
+      await show(
+          tester,
+          store(),
+          DocumentsScreen(
+              patient: patient,
+              repository: repo(200, {'success': true, 'data': []})));
+      expect(
+          find.textContaining('has not stored any documents'), findsOneWidget);
     });
   });
 }

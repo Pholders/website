@@ -1,4 +1,5 @@
 import '../../appointments/data/models/appointment.dart';
+import '../../patients/data/doctor_patient.dart';
 
 /// What the doctor's dashboard shows, worked out from their own appointments.
 ///
@@ -29,6 +30,19 @@ List<Appointment> todaysAppointments(List<Appointment> all, DateTime now) {
       .where((a) => !_cancelled(a) && _day(a) == today)
       .toList()
     ..sort((a, b) => startMinutes(a).compareTo(startMinutes(b)));
+}
+
+/// Which of [today] (earliest first, as [todaysAppointments] gives them) the
+/// doctor is in now or will see next: the first whose hour-long slot has not
+/// ended. Null once the day's last one is over.
+int? currentOrNextIndex(List<Appointment> today, DateTime now) {
+  final minutes = now.hour * 60 + now.minute;
+  for (var i = 0; i < today.length; i++) {
+    // Consultations are booked in one-hour blocks ending on the hour.
+    final end = (today[i].hour + 1) * 60;
+    if (end > minutes) return i;
+  }
+  return null;
 }
 
 /// The first appointment after today, to say what is coming when today is
@@ -103,6 +117,82 @@ DateTime? lastVisit(List<Appointment> all, int patientId, DateTime now) {
     if (latest == null || d.isAfter(latest)) latest = d;
   }
   return latest;
+}
+
+/// Where a patient stands with the doctor, from their appointments alone.
+///
+/// The patients table in the design has a Status column ("Attention Needed",
+/// "Monitored"). Nothing records a clinical status, so this says only what
+/// the appointments do.
+enum PatientStatus {
+  /// A booking from them is waiting for the doctor to accept.
+  awaitingAcceptance,
+
+  /// They have an appointment today that is still on.
+  visitToday,
+
+  /// They have an appointment on a later day.
+  upcomingVisit,
+
+  /// Nothing ahead: they have only been seen.
+  seen,
+}
+
+/// The [PatientStatus] of one patient, most pressing first.
+PatientStatus patientStatus(
+  List<Appointment> all,
+  int patientId,
+  DateTime now,
+) {
+  final today = _dayOf(now);
+  var visitToday = false;
+  var upcoming = false;
+  for (final a in all) {
+    if (a.patientId != patientId || _cancelled(a)) continue;
+    final d = _day(a);
+    if (d == null || d.isBefore(today)) continue;
+    final open = a.status == 'scheduled' || a.status == 'rescheduled';
+    if (!a.doctorAccepted && open) return PatientStatus.awaitingAcceptance;
+    if (d == today && open) {
+      visitToday = true;
+    } else if (d.isAfter(today)) {
+      upcoming = true;
+    }
+  }
+  if (visitToday) return PatientStatus.visitToday;
+  if (upcoming) return PatientStatus.upcomingVisit;
+  return PatientStatus.seen;
+}
+
+/// "Today", "Yesterday", "3 days ago", "2 weeks ago", "5 months ago" or
+/// "2 years ago" for a past [day]; "—" when there is none.
+///
+/// Appointments carry a date, not a time, so this counts whole days.
+String daysAgoLabel(DateTime? day, DateTime now) {
+  if (day == null) return '—';
+  final days = _dayOf(now).difference(_dayOf(day.toLocal())).inDays;
+  if (days <= 0) return 'Today';
+  if (days == 1) return 'Yesterday';
+  String ago(int n, String unit) => '$n $unit${n == 1 ? '' : 's'} ago';
+  if (days < 7) return ago(days, 'day');
+  if (days < 30) return ago(days ~/ 7, 'week');
+  if (days < 365) return ago(days ~/ 30, 'month');
+  return ago(days ~/ 365, 'year');
+}
+
+/// Whether [patient] matches the top bar's search: every word of [query]
+/// appears in their name, patient ID, last reason for a visit, email or
+/// phone number. An empty query matches everyone.
+bool patientMatches(DoctorPatient patient, String query) {
+  final words = query.toLowerCase().split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+  final haystack = [
+    patient.name,
+    '${patient.id}',
+    patient.lastReason ?? '',
+    patient.email ?? '',
+    patient.phone ?? '',
+  ].join(' ').toLowerCase();
+  return words.every(haystack.contains);
 }
 
 enum TrendPeriod { weekly, monthly, yearly }
