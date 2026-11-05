@@ -15,7 +15,6 @@ import '../theme/app_theme.dart';
 /// [onNavLinkTap] — optional scroll callback. Pass from [LandingPage] only.
 ///                  On other pages leave null — tapping navigates to /get-started.
 class PublicNavbar extends StatelessWidget {
-
   const PublicNavbar({
     super.key,
     required this.actionLabel,
@@ -78,7 +77,7 @@ class PublicNavbar extends StatelessWidget {
                     onTap: () => _handleTap(context, LandingKeys.howItWorks),
                   ),
                   _NavLinkButton(
-                    label: 'Support',
+                    label: 'Contact',
                     fontSize: linkSize,
                     onTap: () => _handleTap(context, LandingKeys.support),
                   ),
@@ -132,7 +131,7 @@ class PublicNavbar extends StatelessWidget {
       } else if (key == LandingKeys.howItWorks) {
         context.go(AppRoutes.howItWorks);
       } else if (key == LandingKeys.support) {
-        context.go(AppRoutes.support);
+        context.go(AppRoutes.contact);
       }
     } else {
       // On another page — navigate to the corresponding page
@@ -145,7 +144,7 @@ class PublicNavbar extends StatelessWidget {
       } else if (key == LandingKeys.howItWorks) {
         context.go(AppRoutes.howItWorks);
       } else if (key == LandingKeys.support) {
-        context.go(AppRoutes.support);
+        context.go(AppRoutes.contact);
       } else {
         context.go(AppRoutes.landing);
       }
@@ -155,7 +154,6 @@ class PublicNavbar extends StatelessWidget {
 
 /// A tappable nav link with hover underline effect.
 class _NavLinkButton extends StatefulWidget {
-
   const _NavLinkButton({
     required this.label,
     required this.fontSize,

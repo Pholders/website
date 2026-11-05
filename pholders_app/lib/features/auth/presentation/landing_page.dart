@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../shared/constants/landing_keys.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/hide_on_scroll_header.dart';
 import '../../../shared/widgets/public_hero_header.dart';
 import '../../../shared/widgets/public_navbar.dart';
 import 'widgets/login_panel.dart';
@@ -92,50 +93,44 @@ class _LandingPageState extends State<LandingPage>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ── Scrollable body ──────────────────────────────────────────────────
-          SingleChildScrollView(
-            controller: _scrollController,
-            // The forms are laid out to fit the window and must not scroll.
-            // Phones keep scrolling so the on-screen keyboard cannot hide the
-            // fields.
-            physics: panel.isForm && !isMobile
-                ? const NeverScrollableScrollPhysics()
-                : null,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 120),
-                isMobile
-                    ? _MobileContent(panel: panel)
-                    : _DesktopHero(
-                        screenSize: size,
-                        panel: panel,
-                        swap: _swap,
-                      ),
-                SizedBox(key: LandingKeys.features, height: 0),
-                SizedBox(key: LandingKeys.about, height: 0),
-                SizedBox(key: LandingKeys.services, height: 0),
-                SizedBox(key: LandingKeys.howItWorks, height: 0),
-                SizedBox(key: LandingKeys.support, height: 0),
-              ],
-            ),
+      // The navbar slides away on the way down the page and back on the
+      // way up.
+      body: HideOnScrollHeader(
+        top: 36,
+        left: isMobile ? 16 : 80,
+        right: isMobile ? 16 : 80,
+        header: PublicNavbar(
+          actionLabel: toSignup ? 'Signup' : 'Login',
+          actionRoute: toSignup ? AppRoutes.register : AppRoutes.login,
+          onNavLinkTap: _scrollTo,
+        ),
+        body: SingleChildScrollView(
+          controller: _scrollController,
+          // The forms are laid out to fit the window and must not scroll.
+          // Phones keep scrolling so the on-screen keyboard cannot hide the
+          // fields.
+          physics: panel.isForm && !isMobile
+              ? const NeverScrollableScrollPhysics()
+              : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 120),
+              isMobile
+                  ? _MobileContent(panel: panel)
+                  : _DesktopHero(
+                      screenSize: size,
+                      panel: panel,
+                      swap: _swap,
+                    ),
+              SizedBox(key: LandingKeys.features, height: 0),
+              SizedBox(key: LandingKeys.about, height: 0),
+              SizedBox(key: LandingKeys.services, height: 0),
+              SizedBox(key: LandingKeys.howItWorks, height: 0),
+              SizedBox(key: LandingKeys.support, height: 0),
+            ],
           ),
-
-          // ── Fixed top navbar ─────────────────────────────────────────────────
-          Positioned(
-            top: 36,
-            left: isMobile ? 16 : 80,
-            right: isMobile ? 16 : 80,
-            child: PublicNavbar(
-              actionLabel: toSignup ? 'Signup' : 'Login',
-              actionRoute: toSignup ? AppRoutes.register : AppRoutes.login,
-              onNavLinkTap: _scrollTo,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
