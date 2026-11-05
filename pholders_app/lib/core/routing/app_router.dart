@@ -17,7 +17,7 @@ import '../../features/public/presentation/features_page.dart';
 import '../../features/public/presentation/about_page.dart';
 import '../../features/public/presentation/services_page.dart';
 import '../../features/public/presentation/how_it_works_page.dart';
-import '../../features/public/presentation/support_page.dart';
+import '../../features/public/presentation/contact_page.dart';
 
 // ─── Doctor pages ─────────────────────────────────────────────────────────────
 import '../../features/doctor/dashboard/presentation/doctor_dashboard_page.dart';
@@ -157,8 +157,14 @@ GoRouter createRouter(Store<AppState> store) {
         builder: (context, state) => const HowItWorksPage(),
       ),
       GoRoute(
+        // Support is answered by the Contact page, which has the support
+        // inbox; the old link keeps working.
         path: AppRoutes.support,
-        builder: (context, state) => const SupportPage(),
+        builder: (context, state) => const ContactPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.contact,
+        builder: (context, state) => const ContactPage(),
       ),
 
       // ─── Doctor shell (authenticated, role = doctor) ─────────────────────────
