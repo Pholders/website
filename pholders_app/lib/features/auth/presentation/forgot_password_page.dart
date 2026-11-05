@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_routes.dart';
@@ -73,12 +73,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image.asset('assets/inverted-commas-icon.png', width: 24, height: 24),
+                  Image.asset('assets/inverted-commas-icon.png',
+                      width: 24, height: 24),
                   const SizedBox(height: 4),
                   const Text(
                     'Access patient records, create secure digital prescriptions,\nand monitor health updates all in one platform.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+                    style: TextStyle(
+                        fontSize: 13, color: Colors.black54, height: 1.4),
                   ),
                 ],
               ),
@@ -133,7 +135,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           const Text(
                             "Enter your email address and we'll send a password reset link.",
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Colors.black54),
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.black54),
                           ),
                           const SizedBox(height: 24),
 
@@ -148,7 +151,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Row(
                               children: [
-                                const Icon(Icons.email_outlined, size: 14, color: Colors.black38),
+                                const Icon(Icons.email_outlined,
+                                    size: 14, color: Colors.black38),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: TextField(
@@ -156,7 +160,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                     style: const TextStyle(fontSize: 12),
                                     decoration: const InputDecoration(
                                       hintText: 'Email Address',
-                                      hintStyle: TextStyle(fontSize: 12, color: Colors.black38),
+                                      hintStyle: TextStyle(
+                                          fontSize: 12, color: Colors.black38),
                                       border: InputBorder.none,
                                       isDense: true,
                                       contentPadding: EdgeInsets.zero,

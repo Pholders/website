@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_routes.dart';
+import '../../../shared/widgets/splash_view.dart';
 
 /// Splash screen — "Main screen - 1" from Figma.
 ///
@@ -49,58 +50,7 @@ class _SplashPageState extends State<SplashPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // PHolders logo
-              Image.asset(
-                'assets/PHolders-icon.png',
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 24),
-
-              // Brand name
-              const Text(
-                'PHOLDERS',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF309CA3),
-                  letterSpacing: 4,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Tagline
-              const Text(
-                'HEALTHCARE THAT WORKS FOR YOU',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFFFF181C),
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 48),
-
-              // Loading indicator
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Color(0xFF6DD0D8),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: FadeTransition(opacity: _fadeIn, child: const SplashView()),
     );
   }
 }

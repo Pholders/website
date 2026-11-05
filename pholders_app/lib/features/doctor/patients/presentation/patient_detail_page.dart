@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pholders_app/core/routing/app_routes.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patient_profile_screen.dart';
@@ -9,7 +9,6 @@ import 'package:pholders_app/features/doctor/patients/presentation/patient_scope
 /// The patient comes from the id in the address, resolved against the
 /// doctor's own list. It used to be a fixed, invented record.
 class PatientDetailPage extends StatelessWidget {
-
   const PatientDetailPage({super.key, required this.patientId});
   final String patientId;
 

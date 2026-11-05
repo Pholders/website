@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_exception.dart';
 
 /// Where the signed-in doctor stands with one patient's health record.
 ///
@@ -228,10 +229,62 @@ num? _num(dynamic v) {
 /// The doctor's side of the patient health record (PHR).
 ///
 /// The routes live in the backend's userRoutes.js, mounted at /users.
+///
+/// Each patient's vitals, history, medications and documents are fetched
+/// once a session and kept: every screen that asks again gets the same
+/// answer without a request. [prefetch] fills it ahead of time, right after
+/// sign-in, so a profile opens on data already here. Recording vitals
+/// refreshes that patient's vitals; [clear] empties it on sign-out.
+///
+/// A failure is kept only when it will not change on asking again (the
+/// server saying no, or no such record). Anything else, such as a dropped
+/// connection, is forgotten so the next ask, or "Try again", tries afresh.
 class PatientRecordRepository {
-  const PatientRecordRepository(this._api);
+  PatientRecordRepository(this._api);
 
   final ApiClient _api;
+
+  final Map<String, Future<Object?>> _cache = {};
+
+  Future<T> _once<T>(String key, Future<T> Function() load) {
+    final kept = _cache[key];
+    if (kept != null) return kept as Future<T>;
+    final future = load();
+    _cache[key] = future;
+    // Listened to only to decide whether to keep a failure; the caller
+    // still gets the error from [future] itself.
+    future.then<void>((_) {}, onError: (Object e) {
+      final settled =
+          e is ApiException && (e.statusCode == 403 || e.statusCode == 404);
+      if (!settled && identical(_cache[key], future)) _cache.remove(key);
+    });
+    return future;
+  }
+
+  /// Fetches everything a patient's profile shows, so it is here before the
+  /// profile is opened. Never throws: a failure is the screen's to show.
+  Future<void> prefetch(String patientId) async {
+    await Future.wait<Object?>([
+      fetchVitals(patientId),
+      fetchHistory(patientId),
+      fetchMedications(patientId),
+      fetchDocuments(patientId),
+    ].map((f) => f.then<Object?>((v) => v, onError: (_) => null)));
+  }
+
+  /// Whether a patient's record has been asked for this session.
+  bool hasFetched(String patientId) => _cache.containsKey('history:$patientId');
+
+  /// Counts sign-outs, so work started for one session can tell it has
+  /// ended.
+  int get generation => _generation;
+  int _generation = 0;
+
+  /// Forgets everything, for the next doctor to sign in.
+  void clear() {
+    _cache.clear();
+    _generation++;
+  }
 
   Future<RecordAccess> fetchAccess(String patientId) async {
     final data = await _api.get('/users/phr/$patientId/access-status');
@@ -251,7 +304,10 @@ class PatientRecordRepository {
 
   /// Newest first. Any doctor the patient has booked may read these; the
   /// server answers 403 for anyone else.
-  Future<List<PatientVital>> fetchVitals(String patientId, {int limit = 50}) async {
+  Future<List<PatientVital>> fetchVitals(String patientId, {int limit = 50}) =>
+      _once('vitals:$patientId:$limit', () => _fetchVitals(patientId, limit));
+
+  Future<List<PatientVital>> _fetchVitals(String patientId, int limit) async {
     final data = await _api.get(
       '/users/phr/$patientId/vitals',
       queryParameters: {'limit': limit},
@@ -270,12 +326,17 @@ class PatientRecordRepository {
   Future<PatientVital> recordVitals(
       String patientId, Map<String, dynamic> values) async {
     final data = await _api.post('/users/phr/$patientId/vitals', body: values);
+    // The kept readings no longer include the newest one.
+    _cache.removeWhere((key, _) => key.startsWith('vitals:$patientId:'));
     return PatientVital.fromJson(data);
   }
 
   /// The patient's active medications. Any doctor the patient has booked may
   /// read them; the server answers 403 for anyone else.
-  Future<List<PatientMedication>> fetchMedications(String patientId) async {
+  Future<List<PatientMedication>> fetchMedications(String patientId) =>
+      _once('medications:$patientId', () => _fetchMedications(patientId));
+
+  Future<List<PatientMedication>> _fetchMedications(String patientId) async {
     final data = await _api.get('/users/phr/$patientId/medications');
     final rows = data['data'];
     if (rows is! List) return const [];
@@ -286,7 +347,10 @@ class PatientRecordRepository {
   }
 
   /// The patient's completed visits and prescriptions, newest first.
-  Future<List<PatientHistoryEntry>> fetchHistory(String patientId) async {
+  Future<List<PatientHistoryEntry>> fetchHistory(String patientId) =>
+      _once('history:$patientId', () => _fetchHistory(patientId));
+
+  Future<List<PatientHistoryEntry>> _fetchHistory(String patientId) async {
     final data = await _api.get('/users/phr/$patientId/history');
     final rows = data['data'];
     if (rows is! List) return const [];
@@ -297,7 +361,10 @@ class PatientRecordRepository {
   }
 
   /// The files the patient stored, newest first. Metadata only.
-  Future<List<PatientDocument>> fetchDocuments(String patientId) async {
+  Future<List<PatientDocument>> fetchDocuments(String patientId) =>
+      _once('documents:$patientId', () => _fetchDocuments(patientId));
+
+  Future<List<PatientDocument>> _fetchDocuments(String patientId) async {
     final data = await _api.get('/users/phr/$patientId/documents');
     final rows = data['data'];
     if (rows is! List) return const [];

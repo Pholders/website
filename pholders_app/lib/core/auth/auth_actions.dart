@@ -15,22 +15,27 @@ class AppStartedAction {
 
 /// Dispatched when the user submits the login form.
 class LoginRequestAction {
-
   const LoginRequestAction({
     required this.email,
     required this.password,
-    required this.role,
+    this.role,
+    this.rememberMe,
   });
   final String email;
   final String password;
 
-  /// Which login endpoint to use — 'doctor' or 'pharmacy'.
-  final String role;
+  /// True keeps this email and password once they work; false forgets any
+  /// that were kept. Null, as from anywhere but the login form, leaves them.
+  final bool? rememberMe;
+
+  /// Which login endpoint to use — 'doctor' or 'pharmacy'. Null lets the
+  /// middleware work it out: doctor first, then pharmacy if the doctor
+  /// endpoint rejects the credentials.
+  final String? role;
 }
 
 /// Dispatched by the middleware when the REST API returns a successful login.
 class LoginSuccessAction {
-
   const LoginSuccessAction({
     required this.token,
     required this.role,
@@ -47,7 +52,6 @@ class LoginSuccessAction {
 
 /// Dispatched by the middleware when the login REST API call fails.
 class LoginFailureAction {
-
   const LoginFailureAction({required this.errorMessage});
   final String errorMessage;
 }
@@ -57,9 +61,15 @@ class LogoutAction {
   const LogoutAction();
 }
 
+/// Dispatched by the middleware once signing out has finished, the server
+/// session included (or that call has failed). The splash screen covers the
+/// time in between.
+class LogoutCompletedAction {
+  const LogoutCompletedAction();
+}
+
 /// Dispatched when a stored token is loaded from secure storage on app start.
 class RestoreSessionAction {
-
   const RestoreSessionAction({
     required this.token,
     required this.role,
@@ -83,14 +93,12 @@ class SessionExpiredAction {
 
 /// Dispatched when a fresh doctor profile arrives from `GET /doctor/profile`.
 class DoctorProfileLoadedAction {
-
   const DoctorProfileLoadedAction({required this.doctor});
   final Doctor doctor;
 }
 
 /// Dispatched when the doctor registration form is submitted.
 class DoctorSignupRequestAction {
-
   const DoctorSignupRequestAction({
     required this.firstName,
     required this.lastName,
@@ -123,14 +131,12 @@ class DoctorSignupRequestAction {
 /// Dispatched when registration succeeds. The account is created and active;
 /// the user still needs to sign in.
 class DoctorSignupSuccessAction {
-
   const DoctorSignupSuccessAction({required this.email});
   final String email;
 }
 
 /// Dispatched when registration fails.
 class DoctorSignupFailureAction {
-
   const DoctorSignupFailureAction({required this.errorMessage});
   final String errorMessage;
 }
@@ -143,14 +149,12 @@ class ResetSignupAction {
 
 /// Dispatched to ask the backend to email a fresh activation code.
 class RequestVerificationOtpAction {
-
   const RequestVerificationOtpAction({required this.email});
   final String email;
 }
 
 /// Dispatched once the activation code has been requested.
 class VerificationOtpSentAction {
-
   const VerificationOtpSentAction({required this.email, this.devCode});
   final String email;
 
@@ -161,14 +165,12 @@ class VerificationOtpSentAction {
 
 /// Dispatched when requesting an activation code fails.
 class VerificationOtpFailedAction {
-
   const VerificationOtpFailedAction({required this.errorMessage});
   final String errorMessage;
 }
 
 /// Dispatched when the user submits the six-digit activation code.
 class VerifyEmailRequestAction {
-
   const VerifyEmailRequestAction({required this.email, required this.otpCode});
   final String email;
   final String otpCode;
@@ -181,7 +183,6 @@ class VerifyEmailSuccessAction {
 
 /// Dispatched when the activation code is rejected.
 class VerifyEmailFailureAction {
-
   const VerifyEmailFailureAction({required this.errorMessage});
   final String errorMessage;
 }
@@ -256,7 +257,6 @@ class UpdateDoctorProfileAction {
 
 /// Dispatched when a profile save fails.
 class UpdateDoctorProfileFailedAction {
-
   const UpdateDoctorProfileFailedAction({required this.errorMessage});
   final String errorMessage;
 }

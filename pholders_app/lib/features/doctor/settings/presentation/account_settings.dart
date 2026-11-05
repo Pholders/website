@@ -201,7 +201,8 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
           // ── Settings sidebar ──────────────────────────────────────────────
           SettingsSidebar(
             selectedItemId: 'personal_information',
-            onMenuItemSelected: (id) => const AccountSettings()._navigate(context, id),
+            onMenuItemSelected: (id) =>
+                const AccountSettings()._navigate(context, id),
           ),
           // ── Content area ──────────────────────────────────────────────────
           Expanded(
@@ -224,7 +225,8 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
                             const SizedBox(height: 2),
                             const Text(
                               'Patients read this on your page in the app.',
-                              style: TextStyle(fontSize: 12, color: SettingsShell.muted),
+                              style: TextStyle(
+                                  fontSize: 12, color: SettingsShell.muted),
                             ),
                             const SizedBox(height: 8),
                             _bioField(),
@@ -285,12 +287,16 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
           children: [
             Expanded(
               child: _Field(
-                  label: 'First Name', controller: _firstName, readOnly: !_isEditing),
+                  label: 'First Name',
+                  controller: _firstName,
+                  readOnly: !_isEditing),
             ),
             const SizedBox(width: 22),
             Expanded(
               child: _Field(
-                  label: 'Last Name', controller: _lastName, readOnly: !_isEditing),
+                  label: 'Last Name',
+                  controller: _lastName,
+                  readOnly: !_isEditing),
             ),
           ],
         ),
@@ -302,7 +308,8 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
             // The endpoint strips email before writing, so it is shown but
             // never editable rather than silently discarded on save.
             Expanded(
-              child: _Field(label: 'Email Address', controller: _email, readOnly: true),
+              child: _Field(
+                  label: 'Email Address', controller: _email, readOnly: true),
             ),
             const SizedBox(width: 22),
             Expanded(
@@ -328,7 +335,8 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
         if (error != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(error, style: const TextStyle(fontSize: 13, color: Color(0xFFCC1111))),
+            child: Text(error,
+                style: const TextStyle(fontSize: 13, color: Color(0xFFCC1111))),
           ),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -407,7 +415,8 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
 
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _problem = 'That file could not be read. Try another one.');
+      setState(
+          () => _problem = 'That file could not be read. Try another one.');
       return;
     }
 
@@ -485,15 +494,14 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
               child: SizedBox(
                 width: 190,
                 height: 180,
+                // No photo yet, or one that will not load: a plain
+                // silhouette, never a stock photo of someone else.
                 child: url == null || url.isEmpty
-                    ? Image.asset('assets/doctors.png', fit: BoxFit.cover)
+                    ? const _NoPhoto()
                     : Image.network(
                         url,
                         fit: BoxFit.cover,
-                        // A photo that will not load should not leave a broken
-                        // box where the doctor's face belongs.
-                        errorBuilder: (context, _, __) =>
-                            Image.asset('assets/doctors.png', fit: BoxFit.cover),
+                        errorBuilder: (context, _, __) => const _NoPhoto(),
                       ),
               ),
             ),
@@ -526,7 +534,8 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
                 child: Text(
                   _problem!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111)),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFFCC1111)),
                 ),
               ),
             ],
@@ -537,7 +546,8 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
                 child: Text(
                   _note!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF9A7B22)),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF9A7B22)),
                 ),
               ),
             ],
@@ -586,7 +596,13 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   final Map<String, List<String>> _extraWindows = {};
 
   static const _weekdays = [
-    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
   ];
 
   /// The options the screen ships with. A doctor whose stored value is not on
@@ -700,9 +716,11 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
     }
     return null;
   }
+
   void _save() {
     final experienceText = _experience.text.trim();
-    final experience = experienceText.isEmpty ? null : int.tryParse(experienceText);
+    final experience =
+        experienceText.isEmpty ? null : int.tryParse(experienceText);
     if (experienceText.isNotEmpty && experience == null) {
       setState(() => _problem = 'Years of experience must be a number.');
       return;
@@ -761,10 +779,11 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-                    // ── Settings sidebar ──────────────────────────────────────────────
+          // ── Settings sidebar ──────────────────────────────────────────────
           SettingsSidebar(
             selectedItemId: 'professional',
-            onMenuItemSelected: (id) => const AccountSettings()._navigate(context, id),
+            onMenuItemSelected: (id) =>
+                const AccountSettings()._navigate(context, id),
           ),
           // ── Content area ────────────────────────────────────────────────
           Expanded(
@@ -773,195 +792,208 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
               child: SettingsContentCard(
                 title: 'Professional Details',
                 children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SettingsSectionTitle('Medical Credentials', muted: true),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  // There was a "Medical License Number" here with nowhere to
-                  // be stored; in South Africa the HPCSA number is the
-                  // registration. Qualification has a column, and goes out
-                  // with the doctor's name.
-                  Expanded(
-                    child: _Field(
-                      label: 'Qualification',
-                      hint: 'MBChB (UCT)',
-                      controller: _qualification,
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                  // The endpoint strips hpcsa_number before writing, so an
-                  // editable field would discard whatever was typed.
-                  Expanded(
-                    child: _Field(
-                      label: 'HPCSA Number',
-                      controller: _hpcsa,
-                      readOnly: true,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Specialization',
-        style: TextStyle(fontSize: 16),
-      ),
-      const SizedBox(height: 5),
-      DropdownButtonFormField<String>(
-        isExpanded: true,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: const Color(0xFFEAF8F8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-          ),
-        ),
-        hint: const Text('Select Specialization'),
-        value: _specialization,
-        items: [
-          for (final s in _specializations)
-            DropdownMenuItem(value: s, child: Text(s)),
-        ],
-        onChanged: (value) => setState(() => _specialization = value),
-      ),
-    ],
-  ),
-),
-                  const SizedBox(width: 48),
-                  Expanded(
-                    child: _Field(
-                      label: 'Years of Experience',
-                      controller: _experience,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              const SettingsSectionTitle('Practice Information', muted: true),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _Field(
-                      label: 'Practice Name',
-                      controller: _clinicName,
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                  Expanded(
-                    child: _Field(
-                      label: 'Practice Address',
-                      controller: _clinicAddress,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _Field(
-                      label: 'City',
-                      hint: 'Johannesburg',
-                      controller: _city,
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                  Expanded(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
                     child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Province',
-        style: TextStyle(fontSize: 16),
-      ),
-      const SizedBox(height: 5),
-      DropdownButtonFormField<String>(
-        isExpanded: true,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: const Color(0xFFEAF8F8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-          ),
-        ),
-        hint: const Text('Gauteng'),
-        value: _province,
-        items: [
-          for (final p in _provinces)
-            DropdownMenuItem(value: p, child: Text(p)),
-        ],
-        onChanged: (value) => setState(() => _province = value),
-      ),
-    ],
-  ),
-),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SettingsSectionTitle('Medical Credentials',
+                            muted: true),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            // There was a "Medical License Number" here with nowhere to
+                            // be stored; in South Africa the HPCSA number is the
+                            // registration. Qualification has a column, and goes out
+                            // with the doctor's name.
+                            Expanded(
+                              child: _Field(
+                                label: 'Qualification',
+                                hint: 'MBChB (UCT)',
+                                controller: _qualification,
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                            // The endpoint strips hpcsa_number before writing, so an
+                            // editable field would discard whatever was typed.
+                            Expanded(
+                              child: _Field(
+                                label: 'HPCSA Number',
+                                controller: _hpcsa,
+                                readOnly: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Specialization',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  DropdownButtonFormField<String>(
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFFEAF8F8),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                    ),
+                                    hint: const Text('Select Specialization'),
+                                    value: _specialization,
+                                    items: [
+                                      for (final s in _specializations)
+                                        DropdownMenuItem(
+                                            value: s, child: Text(s)),
+                                    ],
+                                    onChanged: (value) =>
+                                        setState(() => _specialization = value),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                            Expanded(
+                              child: _Field(
+                                label: 'Years of Experience',
+                                controller: _experience,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+                        const SettingsSectionTitle('Practice Information',
+                            muted: true),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _Field(
+                                label: 'Practice Name',
+                                controller: _clinicName,
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                            Expanded(
+                              child: _Field(
+                                label: 'Practice Address',
+                                controller: _clinicAddress,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _Field(
+                                label: 'City',
+                                hint: 'Johannesburg',
+                                controller: _city,
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Province',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  DropdownButtonFormField<String>(
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFFEAF8F8),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                    ),
+                                    hint: const Text('Gauteng'),
+                                    value: _province,
+                                    items: [
+                                      for (final p in _provinces)
+                                        DropdownMenuItem(
+                                            value: p, child: Text(p)),
+                                    ],
+                                    onChanged: (value) =>
+                                        setState(() => _province = value),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                            width: 210,
+                            child: _Field(
+                              label: 'Postal Code',
+                              hint: '2001',
+                              controller: _zipCode,
+                            )),
+                        const SizedBox(height: 28),
+                        const SettingsSectionTitle('Medical Aids Accepted',
+                            muted: true),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Patients searching for a doctor covered by their plan will '
+                          'only see you if you accept their scheme.',
+                          style:
+                              TextStyle(fontSize: 12, color: Color(0xFF748486)),
+                        ),
+                        const SizedBox(height: 10),
+                        _MedicalAidPicker(
+                          catalogue: vm.medicalAidCatalogue,
+                          selected: _medicalAidIds,
+                          onChanged: (ids) =>
+                              setState(() => _medicalAidIds = ids),
+                        ),
+                        const SizedBox(height: 28),
+                        const SettingsSectionTitle('Consulting Hours',
+                            muted: true),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'The hours patients can book you for. Untick a day to show as '
+                          'closed.',
+                          style:
+                              TextStyle(fontSize: 12, color: Color(0xFF748486)),
+                        ),
+                        const SizedBox(height: 10),
+                        for (final day in _weekdays)
+                          _DayHoursRow(
+                            day: day,
+                            window: _hours[day],
+                            onChanged: (window) =>
+                                setState(() => _hours[day] = window),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 44),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _SignatureArea(
+                      onSave: vm.isSaving ? null : _save,
+                      isSaving: vm.isSaving,
+                      errorMessage:
+                          _problem ?? (_awaitingSave ? null : vm.errorMessage),
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                  width: 210,
-                  child: _Field(
-                    label: 'Postal Code',
-                    hint: '2001',
-                    controller: _zipCode,
-                  )),
-              const SizedBox(height: 28),
-              const SettingsSectionTitle('Medical Aids Accepted', muted: true),
-              const SizedBox(height: 4),
-              const Text(
-                'Patients searching for a doctor covered by their plan will '
-                'only see you if you accept their scheme.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF748486)),
-              ),
-              const SizedBox(height: 10),
-              _MedicalAidPicker(
-                catalogue: vm.medicalAidCatalogue,
-                selected: _medicalAidIds,
-                onChanged: (ids) => setState(() => _medicalAidIds = ids),
-              ),
-              const SizedBox(height: 28),
-              const SettingsSectionTitle('Consulting Hours', muted: true),
-              const SizedBox(height: 4),
-              const Text(
-                'The hours patients can book you for. Untick a day to show as '
-                'closed.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF748486)),
-              ),
-              const SizedBox(height: 10),
-              for (final day in _weekdays)
-                _DayHoursRow(
-                  day: day,
-                  window: _hours[day],
-                  onChanged: (window) => setState(() => _hours[day] = window),
-                ),
-            ],
-          ),
-        ),
-                const SizedBox(height: 44),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _SignatureArea(
-            onSave: vm.isSaving ? null : _save,
-            isSaving: vm.isSaving,
-            errorMessage: _problem ?? (_awaitingSave ? null : vm.errorMessage),
-          ),
-        ),
-      ],
               ),
             ),
           ),
-                ],
+        ],
       ),
     );
   }
@@ -1118,7 +1150,8 @@ class _DayHoursRow extends StatelessWidget {
               checked: open,
               // Reopening a day lands on the usual working window rather than
               // two empty boxes the doctor has to fill in from scratch.
-              onTap: () => onChanged(open ? null : const _Window('08:00', '17:00')),
+              onTap: () =>
+                  onChanged(open ? null : const _Window('08:00', '17:00')),
             ),
           ),
           if (open) ...[
@@ -1332,4 +1365,20 @@ class _ProfileViewModel {
   final Doctor? doctor;
   final String? errorMessage;
   final List<MedicalAidScheme> medicalAidCatalogue;
+}
+
+/// Where the doctor's photo goes before they have uploaded one.
+class _NoPhoto extends StatelessWidget {
+  const _NoPhoto();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      key: ValueKey('no-photo'),
+      color: Color(0xFFE3F5F6),
+      child: Center(
+        child: Icon(Icons.person, size: 110, color: Color(0xFFA9C9CC)),
+      ),
+    );
+  }
 }

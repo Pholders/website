@@ -1,16 +1,19 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
-import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
+import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart'
+    show Patient;
 import 'package:pholders_app/features/doctor/patients/presentation/medication_screen.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescriptions_screen.dart';
 import 'package:pholders_app/features/doctor/appointments/presentation/appointments_screen.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/documents_screen.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/medical_history_screen.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patient_overview.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patient_vitals_panel.dart';
 
 // ─── Patient Profile Screen ───────────────────────────────────────────────────
 class PatientProfileScreen extends StatefulWidget {
-
   const PatientProfileScreen({
     super.key,
     required this.patient,
@@ -41,71 +44,24 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     return Column(
       children: [
         _buildTopBar(),
-        // ── Tab bar pinned — lives OUTSIDE the scroll view so it never scrolls away
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              _buildProfileTabs(),
-              const Divider(height: 1, thickness: 1, color: AppProfileColors.border),
-            ],
-          ),
-        ),
+        // As in the design, the tabs and what they show share one pale teal
+        // panel on the white page. The tabs stay put; the content scrolls.
         Expanded(
           child: Container(
-            color: AppProfileColors.bg,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _panelBg,
+                borderRadius: BorderRadius.circular(24),
+              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Tab content ──────────────────────────────────────────
-                  if (_tabIndex == 0) ...[
-                    const SizedBox(height: 20),
-                    _buildProfileCard(),
-                    const SizedBox(height: 20),
-                    // A scheduled-visits list and a diagnosis timeline used to
-                    // sit here, both filled with invented entries — three
-                    // identical diabetes appointments, and a history running
-                    // back to 2021 — shown against whichever real patient had
-                    // been opened.
-                    const _RecordNotice(
-                      title: 'Past and planned visits',
-                      detail: 'Their bookings with you are under the '
-                          'Appointments tab. A full visit history across every '
-                          'doctor is part of the patient’s own record, which is '
-                          'a later phase.',
-                    ),
-                  ] else if (_tabIndex == 1) ...[
-                    const SizedBox(height: 20),
-                    MedicationScreen(patient: widget.patient),
-                  ] else if (_tabIndex == 2) ...[
-                    const SizedBox(height: 20),
-                    PrescriptionsScreen(patient: widget.patient),
-                  ] else if (_tabIndex == 3) ...[
-                    const SizedBox(height: 20),
-                    AppointmentsScreen(patient: widget.patient),
-                  ] else if (_tabIndex == 4) ...[
-                    const SizedBox(height: 20),
-                    DocumentsScreen(patient: widget.patient),
-                  ] else if (_tabIndex == 5) ...[
-                    const SizedBox(height: 20),
-                    MedicalHistoryScreen(patient: widget.patient),
-                  ] else if (_tabIndex == 6) ...[
-                    const SizedBox(height: 20),
-                    PatientVitalsPanel(patientId: widget.patient.id),
-                  ] else ...[
-                    const SizedBox(height: 40),
-                    Center(
-                      child: Text(
-                        '${_profileTabs[_tabIndex]} — coming soon',
-                        style: const TextStyle(
-                            color: AppProfileColors.textSecondary,
-                            fontSize: 15),
-                      ),
-                    ),
-                  ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                    child: _buildProfileTabs(),
+                  ),
+                  Expanded(child: _tabContent()),
                 ],
               ),
             ),
@@ -113,6 +69,68 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         ),
       ],
     );
+  }
+
+  Widget _tabContent() {
+    // The profile tab fills the panel, so its visit and timeline panels
+    // reach the bottom; it scrolls only when the window is shorter than the
+    // overview needs.
+    return _tabIndex == 0
+        ? LayoutBuilder(
+            builder: (context, c) => SingleChildScrollView(
+              child: PatientOverview(
+                patient: widget.patient,
+                framed: false,
+                height: math.max(c.maxHeight, PatientOverview.minHeight),
+              ),
+            ),
+          )
+        : _tabIndex == 1
+            // The medication history scrolls inside its own card, so the
+            // tab is given the panel's height like the profile tab.
+            ? LayoutBuilder(
+                builder: (context, c) => SingleChildScrollView(
+                  padding: const EdgeInsets.all(18),
+                  child: MedicationScreen(
+                    patient: widget.patient,
+                    height:
+                        math.max(c.maxHeight - 36, MedicationScreen.minHeight),
+                  ),
+                ),
+              )
+            : _tabIndex >= 2 && _tabIndex <= 6
+                // These tabs scroll inside their cards, under fixed
+                // headers, so they are given the panel's height.
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                    child: switch (_tabIndex) {
+                      2 => PrescriptionsScreen(patient: widget.patient),
+                      3 => AppointmentsScreen(patient: widget.patient),
+                      4 => DocumentsScreen(patient: widget.patient),
+                      5 => MedicalHistoryScreen(patient: widget.patient),
+                      _ => PatientVitalsPanel(patientId: widget.patient.id),
+                    },
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Tab content ──────────────────────────────────────────
+                        ...[
+                          const SizedBox(height: 40),
+                          Center(
+                            child: Text(
+                              '${_profileTabs[_tabIndex]} — coming soon',
+                              style: const TextStyle(
+                                  color: AppProfileColors.textSecondary,
+                                  fontSize: 15),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
   }
 
   // ── Top bar ──────────────────────────────────────────────────────────────────
@@ -126,7 +144,8 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             onTap: widget.onBack,
             child: Row(
               children: [
-                const Icon(Icons.arrow_back_rounded, color: AppProfileColors.teal, size: 20),
+                const Icon(Icons.arrow_back_rounded,
+                    color: AppProfileColors.teal, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   widget.patient.name,
@@ -147,133 +166,59 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   }
 
   // ── Profile tabs ─────────────────────────────────────────────────────────────
+  /// The design's tabs: the active one dark teal and bold, with a thick
+  /// rounded bar under it, all over a thin line across the panel.
   Widget _buildProfileTabs() {
-    return Row(
-      children: List.generate(_profileTabs.length, (i) {
-        final active = i == _tabIndex;
-        return GestureDetector(
-          onTap: () => setState(() => _tabIndex = i),
-          child: Container(
-            margin: const EdgeInsets.only(right: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: active ? AppProfileColors.teal : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-            ),
-            child: Text(
-              _profileTabs[i],
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                color: active ? AppProfileColors.teal : AppProfileColors.textSecondary,
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-
-  // ── Profile card ─────────────────────────────────────────────────────────────
-  Widget _buildProfileCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppProfileColors.border),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left: avatar + name + email + edit
-          SizedBox(
-            width: 200,
-            child: Column(
-              children: [
-                Container(
-                  width: 160,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: AppProfileColors.tealLight,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: widget.patient.avatarUrl == null
-                        ? const Icon(Icons.person, size: 80, color: AppProfileColors.teal)
-                        : Image.network(
-                            widget.patient.avatarUrl!,
-                            fit: BoxFit.cover,
-                            // A photo that will not load falls back to the
-                            // placeholder rather than a broken-image box.
-                            errorBuilder: (_, __, ___) => const Icon(Icons.person,
-                                size: 80, color: AppProfileColors.teal),
+    return Stack(
+      alignment: Alignment.bottomLeft,
+      children: [
+        Container(height: 2, color: _tabLine),
+        Row(
+          children: List.generate(_profileTabs.length, (i) {
+            final active = i == _tabIndex;
+            return InkWell(
+              onTap: () => setState(() => _tabIndex = i),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 24),
+                child: IntrinsicWidth(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          _profileTabs[i],
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight:
+                                active ? FontWeight.w600 : FontWeight.w400,
+                            color: active ? _darkTeal : _tabIdle,
                           ),
+                        ),
+                      ),
+                      Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: active ? _darkTeal : Colors.transparent,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  widget.patient.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppProfileColors.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.patient.email ?? 'No email on file',
-                  style: const TextStyle(color: AppProfileColors.teal, fontSize: 12),
-                ),
-                const SizedBox(height: 14),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 32),
-
-          // Right: info grid + vitals
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Only what a booking actually tells us. Gender, age, blood
-                // group, department and a bed number used to be printed here
-                // as fixed values, so every real patient read as a 32-year-old
-                // woman in Cardiology on bed #00125.
-                Wrap(
-                  spacing: 32,
-                  runSpacing: 16,
-                  children: [
-                    _InfoField(
-                        label: 'Email',
-                        value: widget.patient.email ?? 'Not given'),
-                    _InfoField(
-                        label: 'Phone',
-                        value: widget.patient.phone ?? 'Not given'),
-                    _InfoField(
-                        label: 'Last visit',
-                        value: widget.patient.lastActivity),
-                    _InfoField(
-                        label: 'Reason', value: widget.patient.condition),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
-
-
 }
+
+const _panelBg = Color(0xFFE3F5F6);
+const _darkTeal = Color(0xFF2E9FA5);
+const _tabIdle = Color(0xFF8A8A8A);
+const _tabLine = Color(0xFFCFE3E5);
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 class AppProfileColors {
@@ -289,91 +234,4 @@ class AppProfileColors {
   static const aboveBg = Color(0xFFFFEEEE);
   static const scheduledBg = Color(0xFFD9F3F3);
   static const purple = Color(0xFF9B59B6);
-}
-
-// ─── Data classes ─────────────────────────────────────────────────────────────
-// ─── Info field ───────────────────────────────────────────────────────────────
-class _InfoField extends StatelessWidget {
-  const _InfoField({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 120,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 11,
-                  color: AppProfileColors.textSecondary,
-                  fontWeight: FontWeight.w400)),
-          const SizedBox(height: 4),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppProfileColors.textPrimary)),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Record notice ────────────────────────────────────────────────────────────
-
-/// Stands where invented clinical data used to be drawn, and says plainly
-/// that there is nothing here rather than filling the space with a number.
-class _RecordNotice extends StatelessWidget {
-  const _RecordNotice({required this.title, required this.detail});
-
-  final String title;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppProfileColors.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline_rounded,
-              size: 18, color: AppProfileColors.textSecondary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppProfileColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  detail,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: AppProfileColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -10,7 +10,6 @@ import 'package:pholders_app/features/doctor/prescriptions/presentation/prescrip
 
 // ─── Prescription Details Screen ──────────────────────────────────────────────
 class PrescriptionDetailsScreen extends StatefulWidget {
-
   const PrescriptionDetailsScreen({
     super.key,
     required this.prescription,
@@ -72,197 +71,216 @@ class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: RxColors.border),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Card header ──────────────────────────────────────────────────
-            Row(
-              children: [
-                // Back arrow + title
-                GestureDetector(
-                  onTap: widget.onBack,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      color: RxColors.tealLight,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.arrow_back_rounded,
-                        size: 16, color: RxColors.teal),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Details',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: RxColors.textPrimary,
-                  ),
-                ),
-                const Spacer(),
-
-                // Approved badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _statusBg(prescription.status),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _statusLabel(prescription.status),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _statusColor(prescription.status),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                // Share and print both fetch the real document from the
-                // server — the same PDF the patient gets, not a copy drawn
-                // here, so the two can never disagree.
-                //
-                // There is no edit button. A signed prescription may not be
-                // altered; revoking it is the only way back, and that lives
-                // on the row's menu in the list.
-                _IconBtn(
-                  icon: Icons.share_outlined,
-                  tooltip: 'Download a copy',
-                  onTap: _serverId == null || _busy ? null : _share,
-                ),
-                const SizedBox(width: 8),
-
-                _IconBtn(
-                  icon: Icons.print_outlined,
-                  tooltip: 'Print',
-                  onTap: _serverId == null || _busy ? null : _print,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 28),
-
-            // ── Detail fields ────────────────────────────────────────────────
-            _PxDetailField(
-              label: 'Patient',
-              value: prescription.patientName,
-            ),
-            const SizedBox(height: 14),
-            _PxDetailField(
-              label: 'Medication',
-              value: prescription.medication,
-            ),
-            const SizedBox(height: 14),
-            _PxDetailField(
-              label: 'Dosage',
-              value: '${prescription.dosage} once daily',
-            ),
-            const SizedBox(height: 14),
-            const _PxDetailField(
-              label: 'Duration',
-              value: '30 days',
-            ),
-            const SizedBox(height: 14),
-            _PxDetailField(
-              label: 'Date Issued',
-              value: '${prescription.dateIssued} 2026',
-            ),
-            const SizedBox(height: 14),
-            _PxDetailField(
-              label: 'Status',
-              value: _statusLabel(prescription.status),
-            ),
-          ],
+    final rx = prescription;
+    final issued = rx.issuedOn;
+    final facts = <Widget>[
+      _PxDetailField(label: 'Patient', value: rx.patientName),
+      // The list the app reads carries no medicines; the diagnosis and the
+      // reference are what it does carry. The medicines are in the PDF.
+      _PxDetailField(label: 'Diagnosis', value: rx.medication),
+      _PxDetailField(label: 'Reference', value: rx.dosage),
+      _PxDetailField(
+        label: 'Date issued',
+        value: issued == null ? rx.dateIssued : _longDate(issued),
+      ),
+      _PxDetailField(
+        label: 'Status',
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: _StatusPill(status: rx.status),
         ),
       ),
+      if (rx.note != null)
+        _PxDetailField(
+          label: rx.status == RxStatus.revoked ? 'Revoked' : 'Dispensing',
+          value: rx.note!,
+        ),
+      const Padding(
+        padding: EdgeInsets.only(top: 4),
+        child: Text(
+          'The medicines on this prescription are in its document: '
+          'download or print it with the buttons above.',
+          style: TextStyle(fontSize: 13, color: RxColors.textSecondary),
+        ),
+      ),
+    ];
+
+    return LayoutBuilder(builder: (context, c) {
+      // Given a height, the card fills it and its fields scroll inside;
+      // otherwise the card grows with them.
+      final fill = c.hasBoundedHeight && c.maxHeight >= 360;
+      final card = Container(
+        padding: const EdgeInsets.only(left: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF6DD0D8),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              // ── Card header ──────────────────────────────────────────────
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: RxColors.tealLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.medication,
+                        size: 20, color: RxColors.textPrimary),
+                  ),
+                  const SizedBox(width: 14),
+                  const Text('Details',
+                      style:
+                          TextStyle(fontSize: 20, color: RxColors.textPrimary)),
+                  const Spacer(),
+                  // Share and print both fetch the real document from the
+                  // server: the same PDF the patient gets, so the two can
+                  // never disagree. There is no edit: a written prescription
+                  // cannot be altered; revoking it is the way back.
+                  _IconBtn(
+                    icon: Icons.share_outlined,
+                    tooltip: 'Download a copy',
+                    onTap: _serverId == null || _busy ? null : _share,
+                  ),
+                  const SizedBox(width: 8),
+                  _IconBtn(
+                    icon: Icons.print_outlined,
+                    tooltip: 'Print',
+                    onTap: _serverId == null || _busy ? null : _print,
+                  ),
+                  const SizedBox(width: 12),
+                  TextButton.icon(
+                    onPressed: widget.onBack,
+                    icon: const Icon(Icons.arrow_back,
+                        size: 18, color: Color(0xFF2E9FA5)),
+                    label: const Text('Back to prescriptions',
+                        style:
+                            TextStyle(fontSize: 15, color: Color(0xFF2E9FA5))),
+                  ),
+                ],
+              ),
+              const Divider(height: 22, thickness: 1.5, color: RxColors.border),
+              if (fill)
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(right: 12, bottom: 8),
+                    children: facts,
+                  ),
+                )
+              else
+                ...facts,
+            ],
+          ),
+        ),
+      );
+
+      return Material(
+        color: Colors.transparent,
+        child: fill
+            ? Padding(padding: const EdgeInsets.all(4), child: card)
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(4), child: card),
+      );
+    });
+  }
+
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  /// "22 Oct 2026".
+  static String _longDate(DateTime d) {
+    final l = d.toLocal();
+    return '${l.day} ${_months[l.month - 1]} ${l.year}';
+  }
+}
+
+/// The status as the table shows it: a solid pill, white text.
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+  final RxStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, label) = switch (status) {
+      RxStatus.approved => (const Color(0xFF6DD0D8), 'Approved'),
+      RxStatus.pending => (const Color(0xFFF2B648), 'Pending'),
+      RxStatus.dispensed => (const Color(0xFF5DBB7B), 'Dispensed'),
+      RxStatus.revoked => (const Color(0xFFEE8A8A), 'Revoked'),
+      RxStatus.expired => (const Color(0xFFEE8A8A), 'Expired'),
+    };
+    return Container(
+      width: 104,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
     );
-  }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────────
-  String _statusLabel(RxStatus s) {
-    switch (s) {
-      case RxStatus.approved: return 'Approved';
-      case RxStatus.pending: return 'Pending';
-      case RxStatus.dispensed: return 'Dispensed';
-      case RxStatus.expired: return 'Expired';
-      case RxStatus.revoked: return 'Revoked';
-    }
-  }
-
-  Color _statusBg(RxStatus s) {
-    switch (s) {
-      case RxStatus.approved: return RxColors.approvedBg;
-      case RxStatus.pending: return RxColors.pendingBg;
-      case RxStatus.dispensed: return RxColors.dispensedBg;
-      case RxStatus.expired: return RxColors.expiredBg;
-      case RxStatus.revoked: return RxColors.expiredBg;
-    }
-  }
-
-  Color _statusColor(RxStatus s) {
-    switch (s) {
-      case RxStatus.approved: return RxColors.approvedText;
-      case RxStatus.pending: return RxColors.pendingText;
-      case RxStatus.dispensed: return RxColors.dispensedText;
-      case RxStatus.expired: return RxColors.expiredText;
-      case RxStatus.revoked: return RxColors.expiredText;
-    }
   }
 }
 
 // ─── Detail field ─────────────────────────────────────────────────────────────
+/// A label over its pale teal box, as on a medication's details.
 class _PxDetailField extends StatelessWidget {
-
-  const _PxDetailField({required this.label, required this.value});
+  const _PxDetailField({required this.label, this.value, this.child})
+      : assert(value != null || child != null);
   final String label;
-  final String value;
+  final String? value;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: RxColors.textSecondary,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: RxColors.bg,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: RxColors.border),
-          ),
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              color: RxColors.textPrimary,
-              fontWeight: FontWeight.w400,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(fontSize: 15, color: Color(0xFF8A8A8A))),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            alignment: Alignment.centerLeft,
+            decoration: BoxDecoration(
+              color: const Color(0xFFDDF3F5),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFFC9E9EC)),
             ),
+            child: child ??
+                SelectableText(value!,
+                    style: const TextStyle(
+                        fontSize: 18, color: Color(0xFF6C7A7B))),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -315,9 +333,7 @@ class _IconBtnState extends State<_IconBtn> {
 
     if (widget.tooltip == null) return button;
     return Tooltip(
-      message: enabled
-          ? widget.tooltip!
-          : '${widget.tooltip!} — not available for sample data',
+      message: enabled ? widget.tooltip! : '${widget.tooltip!}: please wait',
       child: button,
     );
   }

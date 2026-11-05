@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patient_scope.dart';
 
 /// PatientMedicationDetailPage — a single medication on a patient's record.
@@ -11,7 +11,6 @@ import 'package:pholders_app/features/doctor/patients/presentation/patient_scope
 /// figure for whichever id was in the address, which reads as a real clinical
 /// record rather than as nothing.
 class PatientMedicationDetailPage extends StatelessWidget {
-
   const PatientMedicationDetailPage({
     super.key,
     required this.patientId,

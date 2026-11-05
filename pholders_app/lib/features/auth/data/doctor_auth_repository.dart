@@ -175,11 +175,13 @@ class DoctorAuthRepository {
   }) async {
     final slash = contentType.indexOf('/');
     final media = slash > 0
-        ? DioMediaType(contentType.substring(0, slash), contentType.substring(slash + 1))
+        ? DioMediaType(
+            contentType.substring(0, slash), contentType.substring(slash + 1))
         : DioMediaType('image', 'jpeg');
 
     final form = FormData.fromMap({
-      'image': MultipartFile.fromBytes(bytes, filename: filename, contentType: media),
+      'image': MultipartFile.fromBytes(bytes,
+          filename: filename, contentType: media),
     });
 
     final data = await _api.putMultipart(
@@ -190,7 +192,8 @@ class DoctorAuthRepository {
     final url = data['profile_image'];
     if (url is! String || url.isEmpty) {
       throw const ApiException(
-        message: 'The image was uploaded but the server did not say where it lives.',
+        message:
+            'The image was uploaded but the server did not say where it lives.',
         kind: ApiErrorKind.badResponse,
       );
     }

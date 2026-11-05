@@ -31,48 +31,55 @@ class PublicNavbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width >= AppTheme.tabletBreakpoint;
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width >= AppTheme.tabletBreakpoint;
+    // The Figma frame is 1440 wide; narrower desktops shrink the type.
+    final linkSize = width >= 1280 ? 22.0 : 18.0;
 
     return Container(
-      height: 64,
+      height: isDesktop ? 88 : 64,
       decoration: BoxDecoration(
-        color: const Color(0xFF6DD0D8).withValues(alpha: 0.2),
+        color: AppTheme.landingAqua.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(25),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         children: [
           // ── Nav links + icon (desktop only) ─────────────────────────────────
           if (isDesktop)
             Expanded(
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _NavLinkButton(
                     label: 'Features',
+                    fontSize: linkSize,
                     onTap: () => _handleTap(context, LandingKeys.features),
                   ),
                   _NavLinkButton(
                     label: 'About',
+                    fontSize: linkSize,
                     onTap: () => _handleTap(context, LandingKeys.about),
                   ),
                   _NavLinkButton(
                     label: 'Services',
+                    fontSize: linkSize,
                     onTap: () => _handleTap(context, LandingKeys.services),
                   ),
                   // PHolders icon between Services and How It Works
                   Image.asset(
                     'assets/PHolders-icon.png',
-                    height: 40,
+                    height: 64,
                     fit: BoxFit.contain,
                   ),
                   _NavLinkButton(
                     label: 'How It Works',
+                    fontSize: linkSize,
                     onTap: () => _handleTap(context, LandingKeys.howItWorks),
                   ),
                   _NavLinkButton(
                     label: 'Support',
+                    fontSize: linkSize,
                     onTap: () => _handleTap(context, LandingKeys.support),
                   ),
                 ],
@@ -81,25 +88,29 @@ class PublicNavbar extends StatelessWidget {
           else
             const Spacer(),
 
-          const SizedBox(width: 16),
+          SizedBox(width: isDesktop ? 52 : 16),
 
           // ── Action button (Login / Signup) ───────────────────────────────────
-          GestureDetector(
-            onTap: () => context.go(actionRoute),
-            child: Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6DD0D8),
-                borderRadius: BorderRadius.circular(25),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                actionLabel,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => context.go(actionRoute),
+              child: Container(
+                height: isDesktop ? 48 : 40,
+                padding: EdgeInsets.symmetric(horizontal: isDesktop ? 34 : 24),
+                decoration: BoxDecoration(
+                  color: AppTheme.landingAqua,
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(color: AppTheme.landingTeal),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  actionLabel,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isDesktop ? linkSize : 16,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
             ),
@@ -145,8 +156,13 @@ class PublicNavbar extends StatelessWidget {
 /// A tappable nav link with hover underline effect.
 class _NavLinkButton extends StatefulWidget {
 
-  const _NavLinkButton({required this.label, required this.onTap});
+  const _NavLinkButton({
+    required this.label,
+    required this.fontSize,
+    required this.onTap,
+  });
   final String label;
+  final double fontSize;
   final VoidCallback onTap;
 
   @override
@@ -167,12 +183,12 @@ class _NavLinkButtonState extends State<_NavLinkButton> {
         child: AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 150),
           style: TextStyle(
-            fontSize: 15,
+            fontSize: widget.fontSize,
             fontWeight: FontWeight.w400,
-            color: _hovered ? const Color(0xFF309CA3) : Colors.black87,
+            color: _hovered ? AppTheme.landingTeal : Colors.black,
             decoration:
                 _hovered ? TextDecoration.underline : TextDecoration.none,
-            decorationColor: const Color(0xFF309CA3),
+            decorationColor: AppTheme.landingTeal,
           ),
           child: Text(widget.label),
         ),
