@@ -141,6 +141,45 @@ class DoctorSignupFailureAction {
   final String errorMessage;
 }
 
+/// Dispatched when a pharmacy submits the signup form.
+///
+/// Every field is required by the backend, which also checks the password's
+/// strength. The fields follow controllers/pharmacyController.js; the
+/// Swagger docs (name/email/password) are out of date.
+class PharmacySignupRequestAction {
+  const PharmacySignupRequestAction({
+    required this.pharmacyName,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.phone,
+    required this.password,
+    required this.licenseNumber,
+    required this.city,
+    required this.province,
+  });
+
+  final String pharmacyName;
+  final String firstName;
+  final String lastName;
+  final String email;
+  final String phone;
+  final String password;
+  final String licenseNumber;
+  final String city;
+  final String province;
+}
+
+/// Dispatched when a pharmacy's registration succeeds. The account waits on
+/// the code the backend has emailed.
+class PharmacySignupSuccessAction {
+  const PharmacySignupSuccessAction({required this.email, this.devCode});
+  final String email;
+
+  /// The code itself, when the backend hands it back instead of emailing it.
+  final String? devCode;
+}
+
 /// Dispatched when the registration form is opened, so a previous run's
 /// result does not immediately bounce the user to the verification screen.
 class ResetSignupAction {

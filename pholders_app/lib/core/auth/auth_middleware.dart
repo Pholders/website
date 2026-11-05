@@ -200,12 +200,41 @@ List<Middleware<AppState>> createAuthMiddleware({
     }
   }
 
+  Future<void> handlePharmacySignup(
+    Store<AppState> store,
+    PharmacySignupRequestAction action,
+  ) async {
+    try {
+      // Unlike the doctor's, this signup emails its own code.
+      final devCode = await pharmacyAuth.signup(
+        pharmacyName: action.pharmacyName,
+        firstName: action.firstName,
+        lastName: action.lastName,
+        email: action.email,
+        phone: action.phone,
+        password: action.password,
+        licenseNumber: action.licenseNumber,
+        city: action.city,
+        province: action.province,
+      );
+      store.dispatch(
+          PharmacySignupSuccessAction(email: action.email, devCode: devCode));
+    } on ApiException catch (e) {
+      store.dispatch(DoctorSignupFailureAction(
+        errorMessage: [e.message, ...?e.fieldErrors].join('\n'),
+      ));
+    }
+  }
+
   Future<void> requestOtp(
     Store<AppState> store,
     RequestVerificationOtpAction action,
   ) async {
     try {
-      final devCode = await doctorAuth.resendVerification(email: action.email);
+      // A pharmacy and a doctor resend their codes at different endpoints.
+      final devCode = store.state.authState.isPharmacySignup
+          ? await pharmacyAuth.resendVerification(email: action.email)
+          : await doctorAuth.resendVerification(email: action.email);
       store.dispatch(
         VerificationOtpSentAction(email: action.email, devCode: devCode),
       );
@@ -219,10 +248,17 @@ List<Middleware<AppState>> createAuthMiddleware({
     VerifyEmailRequestAction action,
   ) async {
     try {
-      await doctorAuth.verifyEmail(
-        email: action.email,
-        otpCode: action.otpCode,
-      );
+      if (store.state.authState.isPharmacySignup) {
+        await pharmacyAuth.verifyOtp(
+          email: action.email,
+          otpCode: action.otpCode,
+        );
+      } else {
+        await doctorAuth.verifyEmail(
+          email: action.email,
+          otpCode: action.otpCode,
+        );
+      }
       store.dispatch(const VerifyEmailSuccessAction());
     } on ApiException catch (e) {
       store.dispatch(VerifyEmailFailureAction(errorMessage: e.message));
@@ -330,6 +366,8 @@ List<Middleware<AppState>> createAuthMiddleware({
       handleLogin(store, action);
     } else if (action is DoctorSignupRequestAction) {
       handleSignup(store, action);
+    } else if (action is PharmacySignupRequestAction) {
+      handlePharmacySignup(store, action);
     } else if (action is LoadMedicalAidCatalogueAction) {
       loadMedicalAidCatalogue(store);
     } else if (action is UpdateDoctorProfileAction) {

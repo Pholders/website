@@ -16,7 +16,8 @@ AuthState authReducer(AuthState state, dynamic action) {
     );
   }
 
-  if (action is DoctorSignupRequestAction) {
+  if (action is DoctorSignupRequestAction ||
+      action is PharmacySignupRequestAction) {
     return state.copyWith(isLoading: true, clearError: true);
   }
 
@@ -104,6 +105,17 @@ AuthState authReducer(AuthState state, dynamic action) {
     return state.copyWith(
       isLoading: false,
       signupEmail: action.email,
+      signupRole: 'doctor',
+      clearError: true,
+    );
+  }
+
+  if (action is PharmacySignupSuccessAction) {
+    return state.copyWith(
+      isLoading: false,
+      signupEmail: action.email,
+      signupRole: 'pharmacy',
+      devOtpCode: action.devCode,
       clearError: true,
     );
   }

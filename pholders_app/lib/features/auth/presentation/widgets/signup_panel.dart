@@ -5,20 +5,28 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_state.dart';
 import '../../../../core/auth/auth_actions.dart';
 import '../../../../core/routing/app_routes.dart';
-import '../../../../shared/constants/app_constants.dart';
 import '../../data/models/doctor_registration_draft.dart';
+import 'pharmacy_details_form.dart';
+import 'practice_details_form.dart';
+import 'signup_kit.dart';
+import 'verify_code_form.dart';
 
-/// Step 1 of registration, drawn for the teal circle — Figma "Doctor Create
-/// account 1". [LandingPage] shows it in place of the doctors on /register.
+/// Step 1 of registration, on a white card in the teal circle.
+/// [LandingPage] shows it in place of the doctors on /register.
 ///
-/// Collects the personal and security details, then hands them to step 2
-/// (/register/step-2) as a [DoctorRegistrationDraft]; step 2 submits both
-/// halves in one signup call.
+/// Collects the personal and security details, then shows step 2 in its
+/// place with them as a [DoctorRegistrationDraft]: the practice for a doctor
+/// ([PracticeDetailsForm]), the pharmacy for a pharmacy
+/// ([PharmacyDetailsForm]). Step 2 submits both halves in one signup call.
+/// Back from step 2 returns here with everything still filled in.
+///
+/// Once the account is created, step 3 ([VerifyCodeForm]) takes step 2's
+/// place: the emailed code that activates it. There is no going back from
+/// there, since the account exists.
 class SignupPanel extends StatefulWidget {
   const SignupPanel({super.key, this.compact = false});
 
-  /// Phones: the two columns share the width instead of the design's fixed
-  /// 193px columns with a wide gap.
+  /// Phones: one column, the card the width of the screen.
   final bool compact;
 
   @override
@@ -32,10 +40,21 @@ class _SignupPanelState extends State<SignupPanel> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  String _role = AppConstants.roleDoctor;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  String? _error;
+
+  /// Step 1's details once they pass: step 2 shows while set.
+  DoctorRegistrationDraft? _draft;
+
+  /// The account was created: step 3, the emailed code, shows.
+  bool _registered = false;
+
+  /// Signing up a pharmacy rather than a doctor.
+  bool _pharmacy = false;
+
+  /// Set once Continue has been pressed: from then on each field says what
+  /// is wrong with it as it is corrected.
+  bool _tried = false;
 
   @override
   void initState() {
@@ -47,6 +66,9 @@ class _SignupPanelState extends State<SignupPanel> {
         StoreProvider.of<AppState>(context).dispatch(const ResetSignupAction());
       }
     });
+    for (final c in [_passwordController, _confirmPasswordController]) {
+      c.addListener(() => setState(() {}));
+    }
   }
 
   @override
@@ -60,436 +82,377 @@ class _SignupPanelState extends State<SignupPanel> {
     super.dispose();
   }
 
-  /// Validates step 1 and carries the details through to step 2.
+  // ── Checks ────────────────────────────────────────────────────────────────
+
+  String? get _firstNameProblem =>
+      _firstNameController.text.trim().isEmpty ? 'Enter your first name' : null;
+  String? get _lastNameProblem =>
+      _lastNameController.text.trim().isEmpty ? 'Enter your last name' : null;
+  String? get _phoneProblem =>
+      _phoneController.text.trim().isEmpty ? 'Enter your phone number' : null;
+  String? get _emailProblem {
+    final e = _emailController.text.trim();
+    return (!e.contains('@') || !e.contains('.'))
+        ? 'Enter a valid email address'
+        : null;
+  }
+
+  String? get _passwordProblem =>
+      _passwordController.text.isEmpty ? 'Choose a password' : null;
+  String? get _confirmProblem =>
+      _confirmPasswordController.text != _passwordController.text
+          ? 'The passwords do not match'
+          : null;
+
+  /// Validates step 1 and moves on to step 2 with its details.
   void _next() {
-    final firstName = _firstNameController.text.trim();
-    final lastName = _lastNameController.text.trim();
-    final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
-    final password = _passwordController.text;
-    final confirm = _confirmPasswordController.text;
+    setState(() => _tried = true);
+    final problems = [
+      _firstNameProblem,
+      _lastNameProblem,
+      _phoneProblem,
+      _emailProblem,
+      _passwordProblem,
+      _confirmProblem,
+    ];
+    if (problems.any((p) => p != null)) return;
 
-    String? problem;
-    if (firstName.isEmpty || lastName.isEmpty) {
-      problem = 'Please enter your first and last name.';
-    } else if (!email.contains('@') || !email.contains('.')) {
-      problem = 'Please enter a valid email address.';
-    } else if (phone.isEmpty) {
-      problem = 'Please enter your phone number.';
-    } else if (password.isEmpty) {
-      problem = 'Please choose a password.';
-    } else if (password != confirm) {
-      problem = 'The two passwords do not match.';
-    } else if (_role != AppConstants.roleDoctor) {
-      // Only the doctor signup endpoint is wired up so far.
-      problem =
-          'Pharmacy registration is not connected yet — please choose Doctor.';
-    }
-
-    setState(() => _error = problem);
-    if (problem != null) return;
-
-    context.go(
-      AppRoutes.registerStep2,
-      extra: DoctorRegistrationDraft(
-        firstName: firstName,
-        lastName: lastName,
-        email: email,
-        phone: phone,
-        password: password,
-      ),
-    );
+    setState(() => _draft = DoctorRegistrationDraft(
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          email: _emailController.text.trim(),
+          phone: _phoneController.text.trim(),
+          password: _passwordController.text,
+        ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final isPharmacy = _role == AppConstants.rolePharmacy;
+    final compact = widget.compact;
+    String? shown(String? problem) => _tried ? problem : null;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Image.asset('assets/pill-icon.png', height: 104, fit: BoxFit.contain),
-        const SizedBox(height: 6),
-        const Text(
-          'Create Account',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.w400,
-            color: Colors.black,
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Join the platform to manage patients, prescriptions, and consultations securely.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 15,
-            color: _mutedOnTeal,
-            letterSpacing: 0.3,
-            height: 1.4,
-          ),
-        ),
-        const SizedBox(height: 18),
+    Widget pair(Widget a, Widget b) => compact
+        ? Column(children: [a, const SizedBox(height: 12), b])
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: a),
+              const SizedBox(width: 12),
+              Expanded(child: b),
+            ],
+          );
 
-        _pair(
-          _RoleOption(
-            label: 'Doctor',
-            selected: !isPharmacy,
-            onTap: () => setState(() => _role = AppConstants.roleDoctor),
-          ),
-          _RoleOption(
-            label: 'Pharmacy',
-            selected: isPharmacy,
-            onTap: () => setState(() => _role = AppConstants.rolePharmacy),
-          ),
-        ),
-        const SizedBox(height: 20),
+    final confirm = _confirmPasswordController.text;
+    final matches = confirm.isNotEmpty && confirm == _passwordController.text;
 
-        _section('Personal Information'),
-        _pair(
-          _SignupField(
-            controller: _firstNameController,
-            hint: 'First Name',
-            icon: Icons.person_outline,
+    final card = SignupCard(
+      compact: compact,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SignupProgress(step: 1, of: 3, label: 'Your details'),
+          const SizedBox(height: 20),
+          SignupHeading(
+            title: 'Create your account',
+            subtitle: _pharmacy
+                ? 'Receive, check and dispense prescriptions securely, in '
+                    'one place.'
+                : 'Manage patients, prescriptions and consultations '
+                    'securely, in one place.',
+            compact: compact,
           ),
-          _SignupField(
-            controller: _lastNameController,
-            hint: 'Last Name',
-            icon: Icons.person_outline,
+          const SizedBox(height: 20),
+          _RoleSwitch(
+            pharmacy: _pharmacy,
+            onChanged: (pharmacy) => setState(() => _pharmacy = pharmacy),
           ),
-        ),
-        const SizedBox(height: 11),
-        _pair(
-          _SignupField(
-            controller: _phoneController,
-            hint: isPharmacy ? 'Pharmacy Number' : 'Phone Number',
-            icon: Icons.phone_outlined,
-            keyboardType: TextInputType.phone,
-          ),
-          _SignupField(
-            controller: _emailController,
-            hint: 'Email address',
-            icon: Icons.email_outlined,
-            keyboardType: TextInputType.emailAddress,
-          ),
-        ),
-        const SizedBox(height: 22),
-
-        _section('Security Information'),
-        _pair(
-          _SignupField(
-            controller: _passwordController,
-            hint: 'Password',
-            icon: Icons.lock_outline,
-            obscureText: _obscurePassword,
-            onToggleObscure: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
-          ),
-          _SignupField(
-            controller: _confirmPasswordController,
-            hint: 'Confirm password',
-            icon: Icons.lock_outline,
-            obscureText: _obscureConfirm,
-            onToggleObscure: () =>
-                setState(() => _obscureConfirm = !_obscureConfirm),
-            onSubmitted: (_) => _next(),
-          ),
-        ),
-
-        if (_error != null) ...[
+          const SizedBox(height: 22),
+          const SignupSectionLabel('Personal information'),
           const SizedBox(height: 10),
-          SizedBox(
-            width: _rowWidth,
-            child: Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF7A1010),
-                fontWeight: FontWeight.w600,
-              ),
+          pair(
+            SignupField(
+              controller: _firstNameController,
+              label: 'First name',
+              icon: Icons.person_outline_rounded,
+              error: shown(_firstNameProblem),
+              onChanged: _tried ? (_) => setState(() {}) : null,
+              autofillHints: const [AutofillHints.givenName],
+            ),
+            SignupField(
+              controller: _lastNameController,
+              label: 'Last name',
+              icon: Icons.person_outline_rounded,
+              error: shown(_lastNameProblem),
+              onChanged: _tried ? (_) => setState(() {}) : null,
+              autofillHints: const [AutofillHints.familyName],
             ),
           ),
-        ],
-        const SizedBox(height: 22),
-
-        // Step dots, with Next at the right-hand edge of the form.
-        SizedBox(
-          width: _rowWidth,
-          height: 38,
-          child: Stack(
-            alignment: Alignment.center,
+          const SizedBox(height: 12),
+          pair(
+            SignupField(
+              controller: _phoneController,
+              label: 'Phone number',
+              icon: Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+              error: shown(_phoneProblem),
+              onChanged: _tried ? (_) => setState(() {}) : null,
+              autofillHints: const [AutofillHints.telephoneNumber],
+            ),
+            SignupField(
+              controller: _emailController,
+              label: 'Email address',
+              icon: Icons.alternate_email_rounded,
+              keyboardType: TextInputType.emailAddress,
+              error: shown(_emailProblem),
+              onChanged: _tried ? (_) => setState(() {}) : null,
+              autofillHints: const [AutofillHints.email],
+            ),
+          ),
+          const SizedBox(height: 20),
+          const SignupSectionLabel('Security'),
+          const SizedBox(height: 10),
+          pair(
+            SignupField(
+              controller: _passwordController,
+              label: 'Password',
+              icon: Icons.lock_outline_rounded,
+              obscure: _obscurePassword,
+              onToggleObscure: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+              error: shown(_passwordProblem),
+              autofillHints: const [AutofillHints.newPassword],
+            ),
+            SignupField(
+              controller: _confirmPasswordController,
+              label: 'Confirm password',
+              icon: Icons.lock_outline_rounded,
+              obscure: _obscureConfirm,
+              onToggleObscure: () =>
+                  setState(() => _obscureConfirm = !_obscureConfirm),
+              error: shown(_confirmProblem),
+              onSubmitted: (_) => _next(),
+              trailingOk: matches,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _Strength(password: _passwordController.text),
+          const SizedBox(height: 24),
+          SignupButton(label: 'Continue', onTap: _next),
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Positioned(top: 0, child: _StepDots(current: 0)),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: _NextButton(onPressed: _next),
+              const Text('Already have an account?',
+                  style: TextStyle(fontSize: 14, color: SignupColors.body)),
+              TextButton(
+                onPressed: () => context.go(AppRoutes.login),
+                style: TextButton.styleFrom(
+                  foregroundColor: SignupColors.teal,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(0, 32),
+                ),
+                child: const Text('Log in',
+                    style:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
+        ],
+      ),
+    );
+
+    final draft = _draft;
+    final step = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, a) => FadeTransition(
+        opacity: a,
+        child: SlideTransition(
+          // Later steps come in from the right; back, step 1 from the left.
+          position: Tween(
+            begin: Offset(child.key == const ValueKey(1) ? -0.08 : 0.08, 0),
+            end: Offset.zero,
+          ).animate(a),
+          child: child,
         ),
-      ],
+      ),
+      layoutBuilder: (current, previous) => Stack(
+        alignment: Alignment.topCenter,
+        children: [...previous, if (current != null) current],
+      ),
+      child: _registered
+          ? KeyedSubtree(
+              key: const ValueKey(3),
+              child: VerifyCodeForm(compact: compact),
+            )
+          : draft == null
+              ? KeyedSubtree(key: const ValueKey(1), child: card)
+              : KeyedSubtree(
+                  key: const ValueKey(2),
+                  child: _pharmacy
+                      ? PharmacyDetailsForm(
+                          draft: draft,
+                          compact: compact,
+                          onBack: () => setState(() => _draft = null),
+                          onRegistered: () =>
+                              setState(() => _registered = true),
+                        )
+                      : PracticeDetailsForm(
+                          draft: draft,
+                          compact: compact,
+                          onBack: () => setState(() => _draft = null),
+                          onRegistered: () =>
+                              setState(() => _registered = true),
+                        ),
+                ),
+    );
+
+    return AutofillGroup(
+      child: compact ? step : Center(child: SizedBox(width: 600, child: step)),
     );
   }
+}
 
-  // ── Layout helpers ─────────────────────────────────────────────────────────
+// ─── Doctor / Pharmacy ────────────────────────────────────────────────────────
 
-  static const double _columnWidth = 193;
-  static const double _designGap = 73;
+/// Doctor or Pharmacy on a track, the chosen one dark.
+class _RoleSwitch extends StatelessWidget {
+  const _RoleSwitch({required this.pharmacy, required this.onChanged});
 
-  /// Dark teal for secondary text on the teal circle.
-  static const Color _mutedOnTeal = Color(0xFF1E6B70);
+  final bool pharmacy;
+  final ValueChanged<bool> onChanged;
 
-  double? get _rowWidth =>
-      widget.compact ? null : _columnWidth * 2 + _designGap;
-
-  /// Two controls side by side, as the design's two columns.
-  Widget _pair(Widget left, Widget right) {
-    if (widget.compact) {
-      return Row(
-        children: [
-          Expanded(child: left),
-          const SizedBox(width: 10),
-          Expanded(child: right),
-        ],
+  @override
+  Widget build(BuildContext context) {
+    Widget option(String label, IconData icon, bool isPharmacy) {
+      final on = pharmacy == isPharmacy;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: on,
+          label: label,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => onChanged(isPharmacy),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              height: 44,
+              decoration: BoxDecoration(
+                color: on ? SignupColors.ink : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: on
+                    ? [
+                        BoxShadow(
+                          color: SignupColors.ink.withValues(alpha: 0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon,
+                      size: 18, color: on ? Colors.white : SignupColors.body),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: on ? Colors.white : SignupColors.body,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       );
     }
-    return SizedBox(
-      width: _rowWidth,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          SizedBox(width: _columnWidth, child: left),
-          SizedBox(width: _columnWidth, child: right),
-        ],
-      ),
-    );
-  }
 
-  /// "Personal Information" style heading over the left column.
-  Widget _section(String title) {
-    return SizedBox(
-      width: _rowWidth,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 13, color: Colors.black),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Doctor / Pharmacy option ─────────────────────────────────────────────────
-
-/// A translucent pill with a radio dot: black when chosen, white when not.
-class _RoleOption extends StatelessWidget {
-  const _RoleOption({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: selected ? 0.28 : 0.16),
-              borderRadius: BorderRadius.circular(17),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: selected ? 0.7 : 0.35),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: selected ? Colors.black : Colors.white,
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 15, color: Colors.black),
-                  ),
-                ),
-                // Balances the dot so the label sits in the middle.
-                const SizedBox(width: 10),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Field ────────────────────────────────────────────────────────────────────
-
-/// White rounded field with a leading icon and, for passwords, an eye toggle.
-class _SignupField extends StatelessWidget {
-  const _SignupField({
-    required this.controller,
-    required this.hint,
-    required this.icon,
-    this.obscureText = false,
-    this.onToggleObscure,
-    this.keyboardType,
-    this.onSubmitted,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final IconData icon;
-  final bool obscureText;
-
-  /// Shows the eye toggle when set.
-  final VoidCallback? onToggleObscure;
-  final TextInputType? keyboardType;
-  final ValueChanged<String>? onSubmitted;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFFF1F6F7),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: SignupColors.hairline),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 17, color: Colors.black87),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              obscureText: obscureText,
-              keyboardType: keyboardType,
-              onSubmitted: onSubmitted,
-              style: const TextStyle(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: hint,
-                hintStyle: const TextStyle(fontSize: 12, color: Colors.black54),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          if (onToggleObscure != null)
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: onToggleObscure,
-                child: Icon(
-                  obscureText
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  size: 14,
-                  color: Colors.black54,
-                ),
-              ),
-            ),
+          option('Doctor', Icons.medical_services_outlined, false),
+          option('Pharmacy', Icons.local_pharmacy_outlined, true),
         ],
       ),
     );
   }
 }
 
-// ─── Step dots ────────────────────────────────────────────────────────────────
+// ─── Password strength ────────────────────────────────────────────────────────
 
-/// Which of the two registration steps this is: filled for the current one.
-class _StepDots extends StatelessWidget {
-  const _StepDots({required this.current});
+/// How strong the password is, from its length and the kinds of character
+/// in it: four bars and a word. A guide only; the server sets the rules.
+class _Strength extends StatelessWidget {
+  const _Strength({required this.password});
+  final String password;
 
-  final int current;
+  /// 0 for none, then 1 (weak) to 4 (strong).
+  static int score(String p) {
+    if (p.isEmpty) return 0;
+    var s = 0;
+    if (p.length >= 8) s++;
+    if (p.length >= 12) s++;
+    if (RegExp('[a-z]').hasMatch(p) && RegExp('[A-Z]').hasMatch(p)) s++;
+    if (RegExp(r'\d').hasMatch(p)) s++;
+    if (RegExp(r'[^A-Za-z0-9]').hasMatch(p)) s++;
+    return s.clamp(1, 4);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final s = score(password);
+    const words = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+    const colors = [
+      Color(0xFFE6EEEF),
+      SignupColors.danger,
+      Color(0xFFE59A2F),
+      Color(0xFF3FB3BC),
+      Color(0xFF2E9D57),
+    ];
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        for (var i = 0; i < 2; i++) ...[
-          if (i > 0) const SizedBox(width: 9),
-          Container(
-            width: 21,
-            height: 16,
-            decoration: BoxDecoration(
-              color: i == current ? const Color(0xFF6DD0D8) : null,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF6DD0D8)),
+        for (var i = 1; i <= 4; i++) ...[
+          if (i > 1) const SizedBox(width: 5),
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              height: 5,
+              decoration: BoxDecoration(
+                color: i <= s ? colors[s] : const Color(0xFFE6EEEF),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
         ],
-      ],
-    );
-  }
-}
-
-// ─── Next ─────────────────────────────────────────────────────────────────────
-
-class _NextButton extends StatelessWidget {
-  const _NextButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF45AFB4),
-            borderRadius: BorderRadius.circular(19),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Next',
-                style: TextStyle(color: Colors.white, fontSize: 15),
-              ),
-              SizedBox(width: 6),
-              Icon(Icons.east, size: 18, color: Colors.white),
-            ],
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 118,
+          child: Text(
+            s == 0 ? 'Password strength' : words[s],
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: s == 0 ? SignupColors.body : colors[s],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
