@@ -18,6 +18,7 @@ class AuthState extends Equatable {
     this.errorMessage,
     this.isRestoring = true,
     this.signupEmail,
+    this.signupRole,
     this.devOtpCode,
     this.isEmailVerified = false,
     this.medicalAidCatalogue = const [],
@@ -64,9 +65,16 @@ class AuthState extends Equatable {
   /// already-signed-in user to the login page on a page refresh.
   final bool isRestoring;
 
-  /// The email a doctor just registered with, so the verification screen can
-  /// prefill it.
+  /// The email an account was just registered with, so the verification
+  /// screen can prefill it.
   final String? signupEmail;
+
+  /// Who registered with [signupEmail]: 'doctor' or 'pharmacy'. The two
+  /// verify and resend their codes at different endpoints.
+  final String? signupRole;
+
+  /// True when the account being verified is a pharmacy's.
+  bool get isPharmacySignup => signupRole == 'pharmacy';
 
   /// The activation code, when the backend returns it instead of emailing it.
   /// The deployed API does this while it runs with NODE_ENV=development.
@@ -92,6 +100,7 @@ class AuthState extends Equatable {
     String? errorMessage,
     bool? isRestoring,
     String? signupEmail,
+    String? signupRole,
     String? devOtpCode,
     bool? isEmailVerified,
     List<MedicalAidScheme>? medicalAidCatalogue,
@@ -110,6 +119,7 @@ class AuthState extends Equatable {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       isRestoring: isRestoring ?? this.isRestoring,
       signupEmail: clearSignup ? null : (signupEmail ?? this.signupEmail),
+      signupRole: clearSignup ? null : (signupRole ?? this.signupRole),
       devOtpCode: clearSignup ? null : (devOtpCode ?? this.devOtpCode),
       isEmailVerified:
           clearSignup ? false : (isEmailVerified ?? this.isEmailVerified),
@@ -129,6 +139,7 @@ class AuthState extends Equatable {
         errorMessage,
         isRestoring,
         signupEmail,
+        signupRole,
         devOtpCode,
         isEmailVerified,
         medicalAidCatalogue
