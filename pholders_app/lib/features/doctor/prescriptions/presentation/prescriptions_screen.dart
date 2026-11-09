@@ -936,24 +936,20 @@ class _RxRowState extends State<_RxRow> {
                   ],
                 ),
               ),
-              // Actions: edit, revoke, more.
+              // Actions: revoke, more.
+              //
+              // The design also has a pencil and a bin. Neither is offered:
+              // a written prescription cannot be edited (the server has no
+              // way to, and a signed one is fixed by law), and nothing is
+              // ever deleted. Revoking is what the record does instead, so
+              // it gets its own icon rather than a bin that implies delete.
               SizedBox(
                 width: _actionsWidth,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // There is no editing a written prescription: the server
-                    // has no way to, and a signed one is fixed by law. So the
-                    // pencil is shown, as designed, but cannot be used.
-                    const _RxIconAction(
-                      icon: Icons.edit_outlined,
-                      tooltip: 'A written prescription cannot be edited. '
-                          'Revoke it and write a new one.',
-                    ),
-                    // Revoking is the record's delete: it keeps the
-                    // prescription but stops it being dispensed.
                     _RxIconAction(
-                      icon: Icons.delete_outline,
+                      icon: Icons.block,
                       tooltip: widget.onRevoke != null
                           ? 'Revoke prescription'
                           : 'Only a signed prescription not yet dispensed '

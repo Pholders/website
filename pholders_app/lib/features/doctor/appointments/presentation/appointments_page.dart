@@ -571,17 +571,27 @@ class _TimeGrid extends StatelessWidget {
 
         // An hour label in the gutter, a thin line down the gutter's edge,
         // and a rule under each hour, as in the design.
-        return IntrinsicHeight(
-          child: Container(
+        // The gutter line is laid over the row rather than sized with it, so
+        // the row is exactly as tall as its cards (measuring the cards'
+        // intrinsic height under-counted wrapped text and overflowed).
+        return Container(
           constraints: const BoxConstraints(minHeight: 150),
           decoration: const BoxDecoration(
             border: Border(bottom: BorderSide(color: _rule, width: 2)),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 72,
+                top: 0,
+                bottom: 0,
+                child: Container(width: 1.5, color: const Color(0xFFC9DADB)),
+              ),
+              Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 72,
+                width: 73.5,
                 child: Padding(
                   padding: const EdgeInsets.only(top: 14, left: 16),
                   child: Text(
@@ -590,7 +600,6 @@ class _TimeGrid extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(width: 1.5, color: const Color(0xFFC9DADB)),
               // Appointment cards
               Expanded(
                 child: appts.isEmpty
@@ -607,6 +616,7 @@ class _TimeGrid extends StatelessWidget {
               ),
             ],
           ),
+            ],
           ),
         );
       }),
