@@ -68,17 +68,19 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // As the patients page: white round the edge, the pale rounded panel
+    // filling the rest.
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Colors.white,
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(31, 0, 38, 26),
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFF6DD0D8).withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
+            color: _panelBg,
+            borderRadius: BorderRadius.circular(32),
           ),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(33, 30, 33, 22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -92,19 +94,14 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                       children: [
                         Text(
                           'Appointments',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 30, color: Colors.black),
                         ),
-                        SizedBox(height: 4),
+                        SizedBox(height: 6),
                         Text(
                           'Stay organized and on track with your calendar',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.textSecondary,
-                          ),
+                          style: TextStyle(fontSize: 18, color: _muted),
                         ),
                       ],
                     ),
@@ -143,13 +140,10 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
               const SizedBox(height: 20),
 
               // ── Calendar content ───────────────────────────────────────────
+              // Straight on the panel, as in the design: no box round it.
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.divider),
-                  ),
+                child: SizedBox(
+                  width: double.infinity,
                   child: Column(
                     children: [
                       _CalendarHeader(
@@ -164,7 +158,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                         onViewModeChanged: (v) =>
                             setState(() => _viewMode = v),
                       ),
-                      const Divider(height: 1, color: AppTheme.divider),
+                      const Divider(height: 2, thickness: 2, color: _rule),
                       Expanded(
                         child: StoreConnector<AppState, _AppointmentsViewModel>(
                           converter: _AppointmentsViewModel.fromStore,
@@ -190,6 +184,19 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
     );
   }
 }
+
+// The design's colours, shared with the patients, prescriptions and billing
+// pages.
+const Color _panelBg = Color(0xFFE3F5F6);
+const Color _muted = Color(0xFF7C8B8D);
+const Color _rule = Color(0xFFD3E6E7);
+const Color _teal = Color(0xFF309CA3);
+const Color _aqua = Color(0xFF6DD0D8);
+
+/// The soft lift the design gives the view toggle and the date chip.
+const List<BoxShadow> _lift = [
+  BoxShadow(color: Color(0x22000000), blurRadius: 6, offset: Offset(0, 2)),
+];
 
 // ─── Search ────────────────────────────────────────────────────────────────────
 
@@ -348,11 +355,11 @@ class _TabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tabs = labels;
-    const activeColor = Color(0xFF309CA3);
+    const activeColor = _teal;
 
     return Container(
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppTheme.divider)),
+        border: Border(bottom: BorderSide(color: _rule, width: 2)),
       ),
       child: Row(
         children: List.generate(tabs.length, (i) {
@@ -360,7 +367,7 @@ class _TabBar extends StatelessWidget {
           return GestureDetector(
             onTap: () => onTabChanged(i),
             child: Padding(
-              padding: const EdgeInsets.only(right: 32),
+              padding: const EdgeInsets.only(left: 4, right: 72),
               child: Column(
                 children: [
                   Padding(
@@ -369,14 +376,14 @@ class _TabBar extends StatelessWidget {
                       tabs[i],
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                        color: isSelected ? activeColor : AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? activeColor : _muted,
                       ),
                     ),
                   ),
                   Container(
-                    height: 5,
-                    width: 80,
+                    height: 6,
+                    width: 110,
                     decoration: BoxDecoration(
                       color: isSelected ? activeColor : Colors.transparent,
                       borderRadius: const BorderRadius.only(
@@ -422,54 +429,52 @@ class _CalendarHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(0, 28, 0, 14),
       child: Row(
         children: [
           IconButton(
             tooltip: 'Previous ${viewMode.toLowerCase()}',
             visualDensity: VisualDensity.compact,
             onPressed: onPrevious,
-            icon: const Icon(Icons.chevron_left,
-                size: 22, color: AppTheme.textSecondary),
+            icon: const Icon(Icons.chevron_left, size: 28, color: _muted),
           ),
           IconButton(
             tooltip: 'Next ${viewMode.toLowerCase()}',
             visualDensity: VisualDensity.compact,
             onPressed: onNext,
-            icon: const Icon(Icons.chevron_right,
-                size: 22, color: AppTheme.textSecondary),
+            icon: const Icon(Icons.chevron_right, size: 28, color: _muted),
           ),
           const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textPrimary,
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 22, color: _muted),
             ),
           ),
-          const Spacer(),
-          _ViewToggle(selected: viewMode, onChanged: onViewModeChanged),
           const SizedBox(width: 12),
+          _ViewToggle(selected: viewMode, onChanged: onViewModeChanged),
+          const SizedBox(width: 16),
           InkWell(
             onTap: onPickDate,
             borderRadius: BorderRadius.circular(20),
             child: Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.divider),
+                boxShadow: _lift,
               ),
               child: Row(
                 children: [
                   Image.asset('assets/calender.png',
-                      width: 14, height: 14),
-                  const SizedBox(width: 6),
+                      width: 18, height: 18),
+                  const SizedBox(width: 8),
                   Text(
                     chipLabel,
-                    style: const TextStyle(
-                        fontSize: 13, color: AppTheme.textSecondary),
+                    style: const TextStyle(fontSize: 16, color: _muted),
                   ),
                 ],
               ),
@@ -490,13 +495,16 @@ class _ViewToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const options = ['Day', 'Week', 'Month'];
-    const activeColor = Color(0xFF309CA3);
+    const activeColor = _teal;
 
+    // A white pill holding the three choices; the chosen one is a raised
+    // teal pill inside it.
     return Container(
-      height: 36,
+      height: 40,
       decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.divider),
+        boxShadow: _lift,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -505,19 +513,20 @@ class _ViewToggle extends StatelessWidget {
           return GestureDetector(
             onTap: () => onChanged(opt),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              height: 40,
               decoration: BoxDecoration(
                 color: isSelected ? activeColor : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
+                boxShadow: isSelected ? _lift : null,
               ),
               alignment: Alignment.center,
               child: Text(
                 opt,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 16,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? Colors.white : AppTheme.textSecondary,
+                  color: isSelected ? Colors.white : _muted,
                 ),
               ),
             ),
@@ -560,34 +569,34 @@ class _TimeGrid extends StatelessWidget {
         final label = _hourLabel(hour);
         final appts = appointments.where((a) => a.hour == hour).toList();
 
-        return Container(
-          constraints: const BoxConstraints(minHeight: 140),
+        // An hour label in the gutter, a thin line down the gutter's edge,
+        // and a rule under each hour, as in the design.
+        return IntrinsicHeight(
+          child: Container(
+          constraints: const BoxConstraints(minHeight: 150),
           decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AppTheme.divider)),
+            border: Border(bottom: BorderSide(color: _rule, width: 2)),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                width: 60,
+                width: 72,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 12, left: 12),
+                  padding: const EdgeInsets.only(top: 14, left: 16),
                   child: Text(
                     label,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
+                    style: const TextStyle(fontSize: 16, color: _muted),
                   ),
                 ),
               ),
-              Container(width: 1, color: AppTheme.divider),
+              Container(width: 1.5, color: const Color(0xFFC9DADB)),
               // Appointment cards
               Expanded(
                 child: appts.isEmpty
                     ? const SizedBox.shrink()
                     : Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.fromLTRB(32, 28, 16, 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: appts
@@ -597,6 +606,7 @@ class _TimeGrid extends StatelessWidget {
                       ),
               ),
             ],
+          ),
           ),
         );
       }),
@@ -624,110 +634,100 @@ class _AppointmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const tealLight = Color(0xFFE0F5F5);
-    const tealBorder = Color(0xFF309CA3);
-
-    const bgColor = tealLight;
-    const leftBorder = tealBorder;
+    // The design's card: pale teal with a solid teal edge, four columns
+    // split by thin grey rules.
+    const bgColor = Color(0xFFCDEFF1);
+    const leftBorder = _teal;
+    const label = TextStyle(fontSize: 13, color: _muted);
+    const value = TextStyle(fontSize: 12, color: Colors.black);
+    Widget rule() => Container(
+          width: 1,
+          height: 44,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          color: const Color(0xFF9FB2B4),
+        );
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 580),
+      constraints: const BoxConstraints(maxWidth: 560),
       child: GestureDetector(
         onTap: () => _openActions(context),
         behavior: HitTestBehavior.opaque,
         child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: const Border(
-            left: BorderSide(color: leftBorder, width: 3),
+            left: BorderSide(color: leftBorder, width: 4),
           ),
         ),
       child: Row(
         children: [
           // Time + Date
           SizedBox(
-            width: 100,
+            width: 96,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  data.timeRange,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
+                Text(data.timeRange,
+                    style: const TextStyle(fontSize: 14, color: _muted)),
                 const SizedBox(height: 2),
                 Text(
                   data.formattedDate,
                   style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
                   ),
                 ),
               ],
             ),
           ),
-          Container(width: 1, height: 40, color: AppTheme.divider),
-          const SizedBox(width: 16),
+          rule(),
 
           // Service
-          SizedBox(
-            width: 120,
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Service',
-                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                const SizedBox(height: 2),
+                const Text('Service', style: label),
+                const SizedBox(height: 4),
                 Text(data.reason ?? 'Consultation',
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.textPrimary)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: value),
               ],
             ),
           ),
-          Container(width: 1, height: 40, color: AppTheme.divider),
-          const SizedBox(width: 16),
+          rule(),
 
           // Patient
-          SizedBox(
-            width: 120,
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Patient',
-                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                const SizedBox(height: 2),
+                const Text('Patient', style: label),
+                const SizedBox(height: 4),
                 Text(data.patientName,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.textPrimary)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: value),
               ],
             ),
           ),
-          Container(width: 1, height: 40, color: AppTheme.divider),
-          const SizedBox(width: 16),
+          rule(),
 
           // Status
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Status',
-                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+              const Text('Status', style: label),
               const SizedBox(height: 4),
               _StatusBadge(status: data.statusLabel),
             ],
           ),
-
-        
+          const SizedBox(width: 6),
 
           // Action icon
           Image.asset(
@@ -750,10 +750,10 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFF6DD0D8),
-        borderRadius: BorderRadius.circular(12),
+        color: _aqua,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
