@@ -1,197 +1,233 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import '../../reviews/redux/reviews_actions.dart';
-import '../../reviews/redux/reviews_state.dart';
-import '../../reviews/data/models/rating_summary.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:go_router/go_router.dart';
+import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
+import '../../../../core/routing/app_routes.dart';
 import '../../../../shared/utils/greeting.dart';
+import '../../../../shared/widgets/doctor_search_scope.dart';
+import '../../appointments/data/models/appointment.dart';
+import '../../appointments/redux/appointments_actions.dart';
+import '../../appointments/redux/appointments_state.dart';
+import '../../patients/data/doctor_patient.dart';
+import '../../reviews/redux/reviews_actions.dart';
+import '../../reviews/redux/reviews_state.dart';
+import '../data/dashboard_summary.dart';
+import '../../patients/presentation/patient_table.dart';
+
+/// The doctor's home: today's appointments, what is waiting on them, how busy
+/// they have been, and the patients they saw most recently. Laid out to the
+/// Figma "Dashboard" frame.
+///
+/// All of it is worked out from the doctor's own appointments, the list the
+/// Appointments and Patients pages load. It used to be invented: four
+/// "Maria Wilson" appointments on 14 March, a "72 appointments, +12%" tile,
+/// a medication alert about a made-up patient, a fixed chart, and a patient
+/// table with conditions, statuses and priorities nobody recorded, whose add,
+/// edit and delete changed only the screen. The table keeps the design's
+/// columns where there is data for them: the last reason for a visit stands
+/// in for Condition, and Status says what the appointments do.
+/// How the header greets the doctor: "Dr. Thandi Nkosi", or "Doctor" before
+/// a name is known. A name that already carries "Dr" or "Dr." keeps one.
+String greetingName(String? name) {
+  final bare = (name ?? '')
+      .trim()
+      .replaceFirst(RegExp(r'^dr\.?\s+', caseSensitive: false), '')
+      .trim();
+  return bare.isEmpty ? 'Doctor' : 'Dr. $bare';
+}
 
 class DoctorDashboardPage extends StatefulWidget {
-  const DoctorDashboardPage({super.key});
+  const DoctorDashboardPage({super.key, this.clock});
+
+  /// Stands in for the time of day in tests.
+  final DateTime Function()? clock;
 
   @override
   State<DoctorDashboardPage> createState() => _DoctorDashboardPageState();
 }
 
 class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
-  @override
-  void initState() {
-    super.initState();
+  TrendPeriod selectedTrend = TrendPeriod.monthly;
+
+  /// The patient table's filter, the same ones the Patients page offers.
+  PatientFilter patientFilter = PatientFilter.all;
+
+  DateTime get _now => widget.clock?.call() ?? DateTime.now();
+
+  // ─── Palette from the design ──────────────────────────────────────────────
+  static const Color aqua = Color(0xFF6DD0D8);
+  static const Color darkTeal = Color(0xFF2E9FA5);
+  static const Color panelBg = Color(0xFFE3F5F6);
+  static const Color mint = Color(0xFFE0F4F5);
+  static const Color lavender = Color(0xFFE9E4FB);
+  static const Color muted = Color(0xFF7C8B8D);
+  static const Color faint = Color(0xFF9AA7A9);
+  static const Color orange = Color(0xFFFFA51E);
+
+  static const _months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  static const _weekdays = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  void _refresh(Store<AppState> store) {
+    store.dispatch(const LoadAppointmentsAction());
     // The reviews routes carry no role guard, so the doctor's own id has to
     // be passed rather than inferred from the token.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final store = StoreProvider.of<AppState>(context);
-      final doctorId = store.state.authState.doctor?.id;
-      if (doctorId != null && doctorId > 0) {
-        store.dispatch(LoadRatingSummaryAction(doctorId: doctorId));
-      }
-    });
+    final doctorId = store.state.authState.doctor?.id;
+    if (doctorId != null && doctorId > 0) {
+      store.dispatch(LoadRatingSummaryAction(doctorId: doctorId));
+    }
   }
-
-  bool showAlert = true;
-  String selectedTrend = 'Monthly';
-  String selectedPatientFilter = 'All';
-  final DateTime dashboardDate = DateTime(2026, 3, 14);
-
-  final List<Map<String, dynamic>> appointments = const [
-    {'time': '08:00', 'patient': 'Maria Wilson', 'duration': '08:25 - 09:00'},
-    {'time': '09:00', 'patient': 'Maria Wilson', 'duration': '09:45 - 10:30'},
-    {'time': '11:00', 'patient': 'Maria Wilson', 'duration': '11:20 - 11:45'},
-    {'time': '14:00', 'patient': 'Maria Wilson', 'duration': '14:20 - 14:45'},
-  ];
-
-  final List<Map<String, dynamic>> patients = [
-    {
-      'name': 'Maria Wilson',
-      'condition': 'Acne Treatment',
-      'activity': '2 hours ago',
-      'status': 'Attention Needed',
-      'priority': 'High',
-      'type': 'All',
-      'avatar': 'assets/doctors.png',
-    },
-    {
-      'name': 'Maria Wilson',
-      'condition': 'Statin therapy',
-      'activity': '2 hours ago',
-      'status': 'Monitored',
-      'priority': 'Low',
-      'type': 'Outpatients',
-      'avatar': 'assets/doctors.png',
-    },
-  ];
-
-  static const Color primaryTeal = Color(0xFF48BFC4);
-  static const Color darkTeal = Color(0xFF2E9FA5);
-  static const Color lightTealBg = Color(0xFFE4F8F9);
-  static const Color cardMint = Color(0xFFE2F6F7);
-  static const Color pageText = Color(0xFF102025);
-  static const Color orange = Color(0xFFFFA51E);
-  static const Color lavender = Color(0xFFEDE3FF);
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.of(context).size.width;
-        final height = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : 720.0;
+    return StoreConnector<AppState, AppointmentsState>(
+      onInit: _refresh,
+      converter: (store) => store.state.appointmentsState,
+      builder: (context, state) => LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : MediaQuery.of(context).size.width;
+          final height =
+              constraints.maxHeight.isFinite ? constraints.maxHeight : 720.0;
 
-        final compact = width < 860;
-        final contentHeight = height < 620 ? 620.0 : height;
-        final dashboardHeight = contentHeight - 48;
-        final shouldScroll = compact || height < 700;
+          final compact = width < 860;
+          const outer = EdgeInsets.fromLTRB(31, 0, 38, 26);
+          final shouldScroll = compact || height < 700;
+          final panelHeight = math.max(height, 700.0) - outer.vertical;
 
-        final dashboardPanel = Container(
-          padding: const EdgeInsets.fromLTRB(26, 18, 26, 22),
-          decoration: BoxDecoration(
-            color: lightTealBg,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: compact
-              ? _compactLayout()
-              : SizedBox(height: dashboardHeight, child: _desktopLayout()),
-        );
+          final dashboardPanel = Container(
+            padding: const EdgeInsets.fromLTRB(25, 32, 33, 18),
+            decoration: BoxDecoration(
+              color: panelBg,
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: compact
+                ? _compactLayout(state)
+                : SizedBox(
+                    height: panelHeight - 50, child: _desktopLayout(state)),
+          );
 
-        return Container(
-          color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-          child: shouldScroll
-              ? SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: contentHeight - 8),
+          return Container(
+            color: Colors.white,
+            padding: compact ? const EdgeInsets.fromLTRB(8, 0, 8, 8) : outer,
+            child: shouldScroll
+                ? SingleChildScrollView(child: dashboardPanel)
+                : SizedBox(
+                    height: height - outer.vertical,
+                    width: double.infinity,
                     child: dashboardPanel,
                   ),
-                )
-              : SizedBox(
-                  height: contentHeight - 8,
-                  width: double.infinity,
-                  child: dashboardPanel,
-                ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  Widget _desktopLayout() {
+  Widget _desktopLayout(AppointmentsState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _headerRow(),
-        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: _headerRow(state),
+        ),
+        const SizedBox(height: 19),
         Expanded(
-          flex: 3,
+          flex: 486,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(width: 255, child: _appointmentsSection()),
-              const SizedBox(width: 20),
+              SizedBox(width: 306, child: _appointmentsSection(state)),
+              const SizedBox(width: 27),
               Expanded(
                 child: Column(
                   children: [
-                    SizedBox(height: 124, child: _statsRow()),
-                    const SizedBox(height: 14),
-                    Expanded(child: _activitySection()),
+                    SizedBox(height: 157, child: _statsRow(state)),
+                    const SizedBox(height: 12),
+                    Expanded(child: _activitySection(state)),
                   ],
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        Expanded(flex: 2, child: _patientsSection()),
+        const SizedBox(height: 20),
+        Expanded(flex: 255, child: _patientsSection(state)),
       ],
     );
   }
 
-  Widget _compactLayout() {
+  Widget _compactLayout(AppointmentsState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _headerRow(),
-        const SizedBox(height: 12),
-        SizedBox(height: 280, child: _appointmentsSection()),
+        _headerRow(state),
+        const SizedBox(height: 16),
+        SizedBox(height: 360, child: _appointmentsSection(state)),
         const SizedBox(height: 14),
-        SizedBox(height: 124, child: _statsRow()),
+        SizedBox(height: 157, child: _statsRow(state)),
         const SizedBox(height: 14),
-        SizedBox(height: 210, child: _activitySection()),
+        SizedBox(height: 280, child: _activitySection(state)),
         const SizedBox(height: 14),
-        SizedBox(height: 180, child: _patientsSection()),
+        SizedBox(height: 300, child: _patientsSection(state)),
       ],
     );
   }
 
-  Widget _headerRow() {
+  // ─── Header ────────────────────────────────────────────────────────────────
+
+  Widget _headerRow(AppointmentsState state) {
+    final today = _now;
     final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _dashboardDateLabel,
-
-          style: const TextStyle(
-            fontSize: 12,
-
-            color: Color(0xFF7C8B8D),
-          ),
+          '${_weekdays[today.weekday - 1]}, '
+          '${today.day}${_ordinalSuffix(today.day)} ${_months[today.month - 1]}',
+          style: const TextStyle(fontSize: 17, color: muted),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 6),
         StoreConnector<AppState, String?>(
-          converter: (store) => store.state.authState.userName,
-          builder: (context, userName) {
-            final name = userName?.trim() ?? '';
+          // The full profile's name once it has loaded; the login summary's
+          // until then.
+          converter: (store) =>
+              store.state.authState.doctor?.fullName ??
+              store.state.authState.userName,
+          builder: (context, name) {
             return Text(
-              '${timeOfDayGreeting()} ${name.isEmpty ? 'Doctor' : name}',
+              '${timeOfDayGreeting(today)} ${greetingName(name)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF102025),
+                fontSize: 34,
+                fontWeight: FontWeight.w400,
+                color: Colors.black,
+                height: 1.2,
               ),
             );
           },
@@ -199,12 +235,21 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
       ],
     );
 
+    final waiting = awaitingAcceptance(state.appointments, today);
     final actions = Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (showAlert) _alertPill(),
-        const SizedBox(height: 10),
-        _dashboardMenu(),
+        if (waiting > 0) _alertBar(waiting) else const SizedBox(height: 26),
+        const SizedBox(height: 4),
+        StoreConnector<AppState, VoidCallback>(
+          converter: (store) => () => _refresh(store),
+          builder: (context, refresh) => IconButton(
+            tooltip: 'Refresh dashboard',
+            onPressed: state.isLoading ? null : refresh,
+            icon: const Icon(Icons.refresh_rounded,
+                size: 26, color: Colors.black),
+          ),
+        ),
       ],
     );
 
@@ -216,107 +261,94 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
             children: [
               title,
               const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: actions,
-              ),
+              Align(alignment: Alignment.centerRight, child: actions),
             ],
           );
         }
-
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: title),
-            actions,
-          ],
+          children: [Expanded(child: title), actions],
         );
       },
     );
   }
 
-  Widget _alertPill() {
-    return Container(
-      width: 280,
-      height: 24,
-      padding: const EdgeInsets.only(left: 8),
-      color: const Color(0xFFFFE760),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, size: 14, color: orange),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Prince Mashumu skipped medication for 2 days',
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 8, color: Color(0xFF9B8500)),
-            ),
-          ),
-          PopupMenuButton<String>(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 34, height: 24),
-            icon: const Icon(Icons.more_horiz, size: 15, color: Colors.black),
-            onSelected: (value) {
-              if (value == 'dismiss') setState(() => showAlert = false);
-              if (value == 'snooze') _message('Alert snoozed for 1 hour');
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'dismiss', child: Text('Dismiss alert')),
-              PopupMenuItem(value: 'snooze', child: Text('Snooze for 1 hour')),
+  /// Bookings waiting on the doctor, the one thing on this page that asks
+  /// them to act. Opens the Appointments page, where accepting happens.
+  Widget _alertBar(int waiting) {
+    return Material(
+      color: const Color(0xFFF2EE7A),
+      child: InkWell(
+        onTap: () => context.go(AppRoutes.doctorAppointments),
+        child: Container(
+          height: 26,
+          constraints: const BoxConstraints(minWidth: 300, maxWidth: 400),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.warning_rounded, size: 18, color: orange),
+              const SizedBox(width: 12),
+              Flexible(
+                fit: FlexFit.tight,
+                child: Text(
+                  waiting == 1
+                      ? '1 booking is waiting for you to accept'
+                      : '$waiting bookings are waiting for you to accept',
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF8A7A00)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right,
+                  size: 16, color: Color(0xFF8A7A00)),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _dashboardMenu() {
-    return PopupMenuButton<String>(
-      tooltip: 'Dashboard options',
-      icon: const Icon(
-        Icons.dashboard_customize,
-        size: 22,
-        color: Colors.black,
-      ),
-      onSelected: (value) {
-        if (value == 'refresh') _message('Dashboard refreshed');
-        if (value == 'customize') _message('Customize dashboard selected');
-      },
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: 'refresh', child: Text('Refresh dashboard')),
-        PopupMenuItem(value: 'customize', child: Text('Customize widgets')),
-      ],
-    );
-  }
+  // ─── Stats ─────────────────────────────────────────────────────────────────
 
-  Widget _statsRow() {
+  Widget _statsRow(AppointmentsState state) {
+    final now = _now;
+    final ready = state.hasLoadedOnce;
+    final thisMonth = appointmentsInMonth(state.appointments, now);
+    final change = changeVersusLastMonth(state.appointments, now);
+    final patients = patientsFromAppointments(state.appointments, now: now);
+    final newThisMonth = newPatientsThisMonth(state.appointments, now);
+
     return _tealCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final rowWidth = constraints.maxWidth < 520
-              ? 520.0
-              : constraints.maxWidth;
+          final rowWidth =
+              constraints.maxWidth < 520 ? 520.0 : constraints.maxWidth;
 
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
               width: rowWidth,
+              height: constraints.maxHeight,
               child: Row(
                 children: [
                   _statTile(
                     Icons.calendar_month,
-                    'Appointments',
-                    '72',
-                    '+12%',
-                    'vs last month',
+                    'Appointments this month',
+                    ready ? '$thisMonth' : '—',
+                    trend: change,
+                    subtext: change == null ? '' : 'vs last month',
+                    onTap: () => context.go(AppRoutes.doctorAppointments),
                   ),
                   _statDivider(),
                   _statTile(
                     Icons.person,
                     'Patients',
-                    '100+',
-                    '+12%',
-                    'vs last month',
+                    ready ? '${patients.length}' : '—',
+                    trend: newThisMonth > 0 ? '+$newThisMonth' : null,
+                    subtext: newThisMonth > 0 ? 'new this month' : '',
+                    onTap: () => context.go(AppRoutes.doctorPatients),
                   ),
                   _statDivider(),
                   StoreConnector<AppState, ReviewsState>(
@@ -340,11 +372,13 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                       }
 
                       return _statTile(
-                        Icons.reviews,
+                        Icons.rate_review,
                         'Reviews',
                         summary == null ? '—' : '${summary.totalReviews}',
-                        summary == null ? '' : _stars(summary.filledStars),
-                        subtext,
+                        stars: summary == null
+                            ? null
+                            : _stars(summary.filledStars),
+                        subtext: subtext,
                       );
                     },
                   ),
@@ -359,88 +393,102 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
 
   /// The tile already drew stars as text; this keeps that and makes them
   /// reflect the real score.
-  static String _stars(int filled) =>
-      ('★' * filled) + ('☆' * (5 - filled));
+  static String _stars(int filled) => ('★' * filled) + ('☆' * (5 - filled));
 
+  /// One figure: icon, label, value, then either a trend chip ("+12%" with a
+  /// note) or, for reviews, the stars with a note under them.
   Widget _statTile(
     IconData icon,
     String label,
-    String value,
-    String meta,
-    String subtext,
-  ) {
-    final isReview = label == 'Reviews';
+    String value, {
+    String? trend,
+    String? stars,
+    String subtext = '',
+    VoidCallback? onTap,
+  }) {
+    final falling = trend?.startsWith('-') ?? false;
+    final trendColor =
+        falling ? const Color(0xFFE0533D) : const Color(0xFF24C35B);
 
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => _message('$label opened'),
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 12, 8),
+          padding: const EdgeInsets.fromLTRB(36, 14, 14, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                radius: 11,
-                backgroundColor: cardMint,
-                child: Icon(icon, size: 13, color: Colors.black),
+                radius: 19,
+                backgroundColor: mint,
+                child: Icon(icon, size: 19, color: Colors.black),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 8),
               Text(
                 label,
-                style: const TextStyle(fontSize: 10, color: Colors.black),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: Colors.black),
               ),
-              const SizedBox(height: 1),
+              const SizedBox(height: 4),
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 22,
+                  fontSize: 28,
                   height: 1,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                   color: Colors.black,
                 ),
               ),
-              const SizedBox(height: 5),
-              if (isReview) ...[
-                Text(
-                  meta,
-                  style: const TextStyle(fontSize: 10, color: Colors.black),
-                ),
+              const Spacer(),
+              if (stars != null) ...[
+                Text(stars,
+                    style: const TextStyle(fontSize: 11, color: Colors.black)),
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
                     subtext,
-                    style: const TextStyle(
-                      fontSize: 8,
-                      color: Color(0xFF8A8A8A),
-                    ),
+                    style:
+                        const TextStyle(fontSize: 8, color: Color(0xFF8A8A8A)),
                   ),
                 ),
-              ] else
+              ] else if (stars == null && trend == null && subtext.isNotEmpty)
+                Text(
+                  subtext,
+                  style: const TextStyle(fontSize: 8, color: Color(0xFF8A8A8A)),
+                )
+              else if (trend != null)
                 Row(
                   children: [
-                    const Icon(
-                      Icons.trending_up,
-                      size: 8,
-                      color: Color(0xFF24C35B),
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      meta,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Color(0xFF24C35B),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: trendColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            falling ? Icons.arrow_downward : Icons.arrow_upward,
+                            size: 10,
+                            color: trendColor,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(trend,
+                              style: TextStyle(fontSize: 9, color: trendColor)),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         subtext,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 8,
-                          color: Color(0xFF9A9A9A),
-                        ),
+                            fontSize: 8, color: Color(0xFF9A9A9A)),
                       ),
                     ),
                   ],
@@ -455,14 +503,43 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
   Widget _statDivider() {
     return Container(
       width: 1,
-      margin: const EdgeInsets.symmetric(vertical: 16),
+      margin: const EdgeInsets.symmetric(vertical: 20),
       color: const Color(0xFFCFCFCF),
     );
   }
 
-  Widget _appointmentsSection() {
+  // ─── Today's appointments ──────────────────────────────────────────────────
+
+  Widget _appointmentsSection(AppointmentsState state) {
+    final now = _now;
+    final today = todaysAppointments(state.appointments, now);
+
+    final Widget body;
+    if (!state.hasLoadedOnce && state.isLoading) {
+      body = const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, color: aqua),
+        ),
+      );
+    } else if (state.errorMessage != null && state.appointments.isEmpty) {
+      body = _sectionNote(
+          'Could not load your appointments.\n${state.errorMessage}');
+    } else if (today.isEmpty) {
+      final next = nextAppointmentAfterToday(state.appointments, now);
+      body = _sectionNote(
+        next == null
+            ? 'No appointments today.'
+            : 'No appointments today.\n\nNext: ${next.patientName}, '
+                '${next.formattedDate} at ${next.timeSlot ?? '—'}',
+      );
+    } else {
+      body = _timeline(today);
+    }
+
     return _tealCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(14, 20, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -471,205 +548,268 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
               const Expanded(
                 child: Text(
                   'Appointments',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
               ),
               Text(
-                'Mar 14th',
-                style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                '${_months[now.month - 1].substring(0, 3)} '
+                '${now.day}${_ordinalSuffix(now.day)}',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF8A8A8A)),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _timelineAxis(),
-                const SizedBox(width: 8),
-                Expanded(child: _appointmentTimeline()),
-              ],
-            ),
-          ),
+          const SizedBox(height: 22),
+          Expanded(child: body),
         ],
       ),
     );
   }
 
-  Widget _appointmentTimeline() {
+  Widget _sectionNote(String text) {
+    return Center(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 12, color: muted),
+      ),
+    );
+  }
+
+  /// The hours the day's timeline spans: at least 08:00–15:00, widened to
+  /// take in any appointment outside that.
+  (int, int) _hourRange(List<Appointment> today) {
+    var start = 8;
+    var end = 15;
+    for (final a in today) {
+      final minutes = startMinutes(a);
+      if (minutes ~/ 60 < start) start = minutes ~/ 60;
+      if (minutes ~/ 60 + 1 > end) end = minutes ~/ 60 + 1;
+    }
+    return (start, end.clamp(start + 1, 24));
+  }
+
+  /// The day as the design draws it: hour labels on a vertical line that
+  /// breaks around them, each appointment card at its start time, and a short
+  /// connector from a dot on the card's teal edge across to the card. The
+  /// appointment in progress, or the next one, is the lavender card.
+  Widget _timeline(List<Appointment> today) {
+    final (startHour, endHour) = _hourRange(today);
+    final current = currentOrNextIndex(today, _now);
+
+    // Measured from the inside of the card's padding.
+    const labelWidth = 31.0;
+    const lineX = 15.0;
+    const cardLeft = 41.0;
+    const cardHeight = 52.0;
+    const connectorY = 16.0;
+    // The dot sits on the card's teal edge, outside this padding.
+    const dotX = -16.0;
+    const lineColor = Color(0xFF8FB9BD);
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        const startHour = 8;
-        const endHour = 15;
-        const cardHeight = 38.0;
-        final timelineHeight = constraints.maxHeight;
-        final minuteHeight = timelineHeight / ((endHour - startHour) * 60);
+        final height = constraints.maxHeight;
+        final hours = endHour - startHour;
+        final hourHeight = (height - 12) / hours;
+        final minuteHeight = hourHeight / 60;
+        double topFor(Appointment a) =>
+            ((startMinutes(a) - startHour * 60) * minuteHeight)
+                .clamp(0.0, math.max(0.0, height - cardHeight))
+                .toDouble();
 
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            for (var i = 0; i < appointments.length; i++)
-              _positionedAppointment(
-                appointments[i],
-                i,
-                cardHeight,
-                minuteHeight,
-                startHour,
-                timelineHeight,
+            Positioned(
+              top: 6,
+              bottom: 0,
+              left: lineX - 0.75,
+              child: Container(width: 1.5, color: lineColor),
+            ),
+            // On a white ground, so the line breaks around each label.
+            for (var h = 0; h <= hours; h++)
+              Positioned(
+                top: h * hourHeight,
+                left: 0,
+                width: labelWidth,
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Text(
+                    '${(startHour + h).toString().padLeft(2, '0')}:00',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 10, color: faint),
+                  ),
+                ),
               ),
+            for (var i = 0; i < today.length; i++) ...[
+              Positioned(
+                top: topFor(today[i]) + connectorY - 0.75,
+                left: dotX,
+                width: cardLeft - dotX,
+                height: 1.5,
+                child: const ColoredBox(color: lineColor),
+              ),
+              Positioned(
+                top: topFor(today[i]) + connectorY - 3,
+                left: dotX - 3,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: darkTeal,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: topFor(today[i]),
+                left: cardLeft,
+                right: 0,
+                height: cardHeight,
+                child: _appointmentCard(today[i], highlight: i == current),
+              ),
+            ],
           ],
         );
       },
     );
   }
 
-  Widget _positionedAppointment(
-    Map<String, dynamic> appt,
-    int index,
-    double cardHeight,
-    double minuteHeight,
-    int startHour,
-    double timelineHeight,
-  ) {
-    final start = _appointmentStartMinutes(appt['duration']);
-    final top = ((start - startHour * 60) * minuteHeight)
-        .clamp(0.0, timelineHeight - cardHeight)
-        .toDouble();
+  /// Name and time, as in the design. The status is in the tooltip and the
+  /// details sheet; a document mark shows when the patient gave a reason.
+  Widget _appointmentCard(Appointment appt, {required bool highlight}) {
+    final reason = appt.reason?.trim() ?? '';
+    final radius = BorderRadius.circular(10);
 
-    return Positioned(
-      top: top,
-      left: 0,
-      right: 0,
-      height: cardHeight,
-      child: _appointmentCard(appt, index),
-    );
-  }
-
-  int _appointmentStartMinutes(String duration) {
-    final start = duration.split('-').first.trim();
-    final parts = start.split(':');
-    if (parts.length != 2) return 8 * 60;
-
-    final hour = int.tryParse(parts[0]) ?? 8;
-    final minute = int.tryParse(parts[1]) ?? 0;
-    return hour * 60 + minute;
-  }
-
-  Widget _timelineAxis() {
-    const times = [
-      '08:00',
-      '09:00',
-      '10:00',
-      '11:00',
-      '12:00',
-      '13:00',
-      '14:00',
-      '15:00',
-    ];
-
-    return SizedBox(
-      width: 34,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 24,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final time in times)
-                  Text(
-                    time,
-                    style: const TextStyle(
-                      fontSize: 8,
-                      color: Color(0xFF8C9A9D),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(width: 1, color: const Color(0xFFC6D4D6)),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    for (var i = 0; i < 4; i++)
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: const BoxDecoration(
-                          color: primaryTeal,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _appointmentCard(Map<String, dynamic> appt, int index) {
-    final isFirst = index == 0;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: () => _showAppointmentDetails(appt),
+    // The card sits on a rounded teal shape that shows down its left side,
+    // so the stripe follows the card's curved corners, as the big cards' edge
+    // does.
+    return Tooltip(
+      message: appt.statusLabel,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(11, 6, 9, 6),
-        decoration: BoxDecoration(
-          color: isFirst ? lavender : cardMint,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
+        decoration: BoxDecoration(color: _stripe, borderRadius: radius),
+        padding: const EdgeInsets.only(left: _stripeWidth),
+        child: Material(
+          color: highlight ? lavender : mint,
+          borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _showAppointmentDetails(appt),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 7, 10, 7),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    appt['patient'],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          appt.patientName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          appt.timeRange,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF7A8B8E),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    appt['duration'],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: Color(0xFF7A8B8E),
+                  if (reason.isNotEmpty)
+                    Tooltip(
+                      message: reason,
+                      child: const Icon(
+                        Icons.description,
+                        size: 14,
+                        color: Colors.black,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
-            if (isFirst)
-              const Icon(Icons.medication, size: 12, color: Colors.black),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _activitySection() {
-    final labels = _trendLabels();
-    final values = _trendValues(labels.length);
+  /// The appointment cards' left stripe.
+  static const Color _stripe = Color(0xFF48BFC4);
+  static const double _stripeWidth = 4;
+
+  void _showAppointmentDetails(Appointment appointment) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final reason = appointment.reason?.trim() ?? '';
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                appointment.patientName,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text('${appointment.formattedDate}, ${appointment.timeRange}'),
+              const SizedBox(height: 4),
+              Text('Status: ${appointment.statusLabel}'),
+              if (reason.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('Reason: $reason'),
+              ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      context.go(AppRoutes.doctorAppointments);
+                    },
+                    child: const Text('Open in Appointments'),
+                  ),
+                  const SizedBox(width: 10),
+                  TextButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── Activity trend ────────────────────────────────────────────────────────
+
+  Widget _activitySection(AppointmentsState state) {
+    final buckets = activityTrend(state.appointments, selectedTrend, _now);
+    final peak =
+        buckets.fold<int>(0, (m, b) => b.appointments > m ? b.appointments : m);
+    // A round top for the axis, so its labels are whole numbers.
+    final top = peak <= 4 ? 4 : ((peak + 3) ~/ 4) * 4;
 
     return _tealCard(
-      padding: const EdgeInsets.fromLTRB(20, 14, 18, 12),
+      padding: const EdgeInsets.fromLTRB(22, 18, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -678,168 +818,89 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
               const Expanded(
                 child: Text(
                   'Activity Trend',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
               ),
-              Flexible(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  reverse: true,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _trendChip('Daily'),
-                      _trendChip('Monthly'),
-                      _trendChip('Yearly'),
-                      IconButton(
-                        tooltip: 'Pick date range',
-                        onPressed: () async {
-                          await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030),
-                          );
-                        },
-                        icon: const Icon(Icons.calendar_month, size: 13),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 22,
-                          height: 22,
-                        ),
-                      ),
-                    ],
-                  ),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF7F8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    _trendChip('Daily', TrendPeriod.weekly),
+                    _trendChip('Monthly', TrendPeriod.monthly),
+                    _trendChip('Yearly', TrendPeriod.yearly),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Expanded(
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(
-                  width: 28,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '80',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                      Text(
-                        '60',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                      Text(
-                        '40',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                      Text(
-                        '20',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                      Text(
-                        '0',
-                        style: TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                    ],
+                SizedBox(
+                  width: 24,
+                  child: Padding(
+                    // Lines up with the bars, above the month labels.
+                    padding: const EdgeInsets.only(bottom: 18),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 4; i >= 0; i--)
+                          Text(
+                            '${top * i ~/ 4}',
+                            style: const TextStyle(
+                                fontSize: 11, color: faint, height: 1),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Stack(
+                  child: Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 18, top: 5),
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < 4; i++)
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.topCenter,
+                                  child: Container(
+                                    height: 1,
+                                    color: const Color(0xFFE8EFF0),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Column(
-                            children: [
-                              for (var i = 0; i < 5; i++) ...[
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.topCenter,
-                                    child: Container(
-                                      height: 1,
-                                      color: const Color(0xFFE8EFF0),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              for (var i = 0; i < labels.length; i++)
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 1.5,
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Expanded(
-                                          child: Align(
-                                            alignment: Alignment.bottomCenter,
-                                            child: Stack(
-                                              alignment: Alignment.bottomCenter,
-                                              children: [
-                                                Container(
-                                                  width: 26,
-                                                  decoration: BoxDecoration(
-                                                    color: cardMint,
-                                                    borderRadius:
-                                                        BorderRadius.circular(6),
-                                                  ),
-                                                ),
-                                                FractionallySizedBox(
-                                                  heightFactor: values[i],
-                                                  child: Container(
-                                                    width: 26,
-                                                    decoration: BoxDecoration(
-                                                      color: darkTeal,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            5,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 7),
-                                        Text(
-                                          labels[i],
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 8,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                          for (final bucket in buckets)
+                            Expanded(child: _trendBar(bucket, top)),
                         ],
-                      );
-                    },
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           const Row(
             children: [
               _Legend(color: darkTeal, label: 'Patients'),
-              SizedBox(width: 28),
-              _Legend(color: cardMint, label: 'Appointments'),
+              SizedBox(width: 46),
+              _Legend(color: mint, label: 'Appointments'),
             ],
           ),
         ],
@@ -847,65 +908,84 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  List<String> _trendLabels() {
-    if (selectedTrend == 'Daily') {
-      return const ['00', '03', '06', '09', '12', '15', '18'];
-    }
-    if (selectedTrend == 'Yearly') {
-      return const ['2020', '2021', '2022', '2023', '2024', '2025'];
-    }
-    return const [
-      'Jan',
-      'Feb',
-      'Apr',
-      'Mar',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
+  /// Appointments as the light bar, the distinct patients among them as the
+  /// dark bar in front.
+  Widget _trendBar(TrendBucket bucket, int top) {
+    return Tooltip(
+      message: '${bucket.label}: ${bucket.appointments} appointments, '
+          '${bucket.patients} patients',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final barWidth = math.min(38.0, constraints.maxWidth * 0.72);
+          Widget bar(double factor, Color color) => FractionallySizedBox(
+                heightFactor: factor,
+                child: Container(
+                  width: barWidth,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(4)),
+                  ),
+                ),
+              );
+
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      bar(bucket.appointments / top, mint),
+                      bar(bucket.patients / top, darkTeal),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 12,
+                child: Text(
+                  bucket.label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: faint,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
-  List<double> _trendValues(int length) {
-    final base = selectedTrend == 'Daily'
-        ? <double>[.54, .66, .48, .73, .61, .42, .69]
-        : selectedTrend == 'Yearly'
-        ? <double>[.44, .55, .63, .71, .78, .83]
-        : <double>[.72, .72, .72, .72, .52, .72, .72, .72, .72, .72, .72];
-    return base.take(length).toList();
-  }
+  Widget _trendChip(String text, TrendPeriod period) {
+    final selected = selectedTrend == period;
 
-  String get _dashboardDateLabel {
-    const weekdays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    return '${weekdays[dashboardDate.weekday - 1]}, '
-        '${dashboardDate.day}${_ordinalSuffix(dashboardDate.day)} '
-        '${months[dashboardDate.month - 1]}';
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => setState(() => selectedTrend = period),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: selected ? darkTeal : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 15,
+            color: selected ? Colors.white : const Color(0xFF9BB5B8),
+          ),
+        ),
+      ),
+    );
   }
 
   String _ordinalSuffix(int day) {
@@ -922,48 +1002,29 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     }
   }
 
-  Widget _trendChip(String text) {
-    final selected = selectedTrend == text;
+  // ─── Recent patients ───────────────────────────────────────────────────────
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () => setState(() => selectedTrend = text),
-      child: Container(
-        margin: const EdgeInsets.only(left: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: selected ? darkTeal : cardMint,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 9,
-            color: selected ? Colors.white : const Color(0xFF8CA2A5),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _patientsSection() {
-    final visiblePatients = selectedPatientFilter == 'All'
-        ? patients
-        : patients
-              .where((patient) => patient['type'] == selectedPatientFilter)
-              .toList();
+  Widget _patientsSection(AppointmentsState state) {
+    final now = _now;
+    final all = patientsFromAppointments(state.appointments, now: now);
+    // The top bar's search, when this page is inside the doctor's shell.
+    final query = DoctorSearchScope.maybeOf(context)?.value.trim() ?? '';
+    final visible = all
+        .where((p) =>
+            patientFilter.keeps(patientStatus(state.appointments, p.id, now)))
+        .where((p) => patientMatches(p, query))
+        .toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tableWidth = constraints.maxWidth < 824
-            ? 780.0
-            : constraints.maxWidth - 44;
+        final tableWidth =
+            constraints.maxWidth < 844 ? 780.0 : constraints.maxWidth - 64;
 
         return Container(
-          padding: const EdgeInsets.fromLTRB(22, 12, 22, 10),
+          padding: const EdgeInsets.fromLTRB(30, 16, 34, 8),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(26),
           ),
           child: Column(
             children: [
@@ -974,47 +1035,76 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                   child: Row(
                     children: [
                       const CircleAvatar(
-                        radius: 12,
-                        backgroundColor: cardMint,
-                        child: Icon(Icons.person, size: 15, color: Colors.black),
+                        radius: 20,
+                        backgroundColor: mint,
+                        child:
+                            Icon(Icons.person, size: 24, color: Colors.black),
                       ),
-                      const SizedBox(width: 13),
+                      const SizedBox(width: 18),
                       const Text(
                         'Patients',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                            fontSize: 21, fontWeight: FontWeight.w400),
+                      ),
+                      const SizedBox(width: 32),
+                      // Scrolls sideways if the card is too narrow for all
+                      // five, rather than overflow.
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: PatientFilterChips(
+                            selected: patientFilter,
+                            onSelected: (filter) =>
+                                setState(() => patientFilter = filter),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 28),
-                      _filterChip('All'),
-                      _filterChip('Outpatients'),
-                      _filterChip('Remote care'),
-                      _filterChip('Follow-up'),
-                      const Spacer(),
-                      _filterButton(),
-                      const SizedBox(width: 10),
-                      _addButton(),
+                      const SizedBox(width: 12),
+                      TextButton(
+                        onPressed: () => context.go(AppRoutes.doctorPatients),
+                        child: const Text(
+                          'View all',
+                          style: TextStyle(fontSize: 15, color: darkTeal),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               _patientHeader(tableWidth),
-              const SizedBox(height: 8),
+              Container(
+                width: tableWidth,
+                height: 2,
+                margin: const EdgeInsets.only(top: 8, bottom: 6),
+                color: const Color(0xFFF0F2F2),
+              ),
               Expanded(
-                child: visiblePatients.isEmpty
-                    ? const Center(
+                child: visible.isEmpty
+                    ? Center(
                         child: Text(
-                          'No patients for this filter',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          !state.hasLoadedOnce
+                              ? ''
+                              : all.isEmpty
+                                  ? 'Patients appear here once they book with you'
+                                  : query.isNotEmpty
+                                      ? 'No patients match "$query"'
+                                      : 'No patients under ${patientFilter.label}',
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       )
-                    : ListView.separated(
-                        itemCount: visiblePatients.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) =>
-                            _patientRow(visiblePatients[index], tableWidth),
+                    : PatientTableList(
+                        // The rows have no padding of their own here, so
+                        // this keeps them clear of the scrollbar.
+                        padding: const EdgeInsets.only(right: 18),
+                        itemCount: visible.length,
+                        itemBuilder: (context, index) => _patientRow(
+                          visible[index],
+                          state.appointments,
+                          now,
+                          tableWidth,
+                        ),
                       ),
               ),
             ],
@@ -1024,507 +1114,58 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _filterChip(String text) {
-    final selected = selectedPatientFilter == text;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => setState(() => selectedPatientFilter = text),
-      child: Container(
-        margin: const EdgeInsets.only(right: 14),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? Colors.black : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 10,
-            color: selected ? Colors.white : const Color(0xFF8C8C8C),
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _filterButton() {
-    return PopupMenuButton<String>(
-      tooltip: 'Filter patients',
-      onSelected: (value) => setState(() => selectedPatientFilter = value),
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: 'All', child: Text('All')),
-        PopupMenuItem(value: 'Outpatients', child: Text('Outpatients')),
-        PopupMenuItem(value: 'Remote care', child: Text('Remote care')),
-        PopupMenuItem(value: 'Follow-up', child: Text('Follow-up')),
-      ],
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: const BoxDecoration(
-          color: Color(0xFFE5E5E5),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(Icons.tune, size: 18, color: Colors.black),
-      ),
-    );
-  }
-
-  Widget _addButton() {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: _showAddPatientDialog,
-      child: Container(
-        width: 30,
-        height: 30,
-        decoration: const BoxDecoration(color: orange, shape: BoxShape.circle),
-        child: const Icon(Icons.add, size: 23, color: Colors.black),
-      ),
-    );
-  }
-
+  /// The Patients page's own column labels, so the two tables match.
   Widget _patientHeader(double tableWidth) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: tableWidth,
-        child: const Row(
-          children: [
-            Expanded(flex: 2, child: _HeaderText('Name')),
-            Expanded(flex: 2, child: _HeaderText('Condition')),
-            Expanded(flex: 2, child: _HeaderText('Last activity')),
-            Expanded(flex: 2, child: _HeaderText('Status')),
-            Expanded(flex: 1, child: _HeaderText('Priority')),
-            SizedBox(width: 96),
-          ],
-        ),
-      ),
+      child: SizedBox(width: tableWidth, child: const PatientTableHeader()),
     );
   }
 
-  Widget _patientRow(Map<String, dynamic> patient, double tableWidth) {
+  /// The Patients page's own row: the same cells, and a click on it or its
+  /// three dots opens the patient's actions rather than the profile.
+  Widget _patientRow(
+    DoctorPatient patient,
+    List<Appointment> appointments,
+    DateTime now,
+    double tableWidth,
+  ) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
         width: tableWidth,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: () => _showPatientDetails(patient),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    _patientAvatar(patient),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        patient['name'],
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Color(0xFF777777),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  patient['condition'],
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9, color: Color(0xFF777777)),
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  patient['activity'],
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9, color: Color(0xFF777777)),
-                ),
-              ),
-              Expanded(flex: 2, child: _statusChip(patient['status'])),
-              Expanded(flex: 1, child: _priorityText(patient['priority'])),
-              SizedBox(
-                width: 96,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      tooltip: 'Edit patient',
-                      onPressed: () => _showEditPatientDialog(patient),
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        size: 16,
-                        color: Color(0xFF6C6C6C),
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 22,
-                        height: 22,
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Delete patient',
-                      onPressed: () => _deletePatient(patient),
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 16,
-                        color: Color(0xFF6C6C6C),
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 22,
-                        height: 22,
-                      ),
-                    ),
-                    PopupMenuButton<String>(
-                      tooltip: 'Patient menu',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 22,
-                        height: 22,
-                      ),
-                      icon: const Icon(
-                        Icons.more_vert,
-                        size: 16,
-                        color: Color(0xFF6C6C6C),
-                      ),
-                      onSelected: (value) =>
-                          _message('$value: ${patient['name']}'),
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: 'View profile',
-                          child: Text('View profile'),
-                        ),
-                        PopupMenuItem(
-                          value: 'Send reminder',
-                          child: Text('Send reminder'),
-                        ),
-                        PopupMenuItem(
-                          value: 'Create prescription',
-                          child: Text('Create prescription'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        child: PatientTableRow(
+          patient: patient,
+          status: patientStatus(appointments, patient.id, now),
+          lastVisit: lastVisit(appointments, patient.id, now),
+          now: now,
+          onOpenProfile: () =>
+              context.push('${AppRoutes.doctorPatients}/${patient.id}'),
         ),
       ),
     );
   }
 
-  Widget _patientAvatar(Map<String, dynamic> patient) {
-    final avatar = patient['avatar'] as String?;
-
-    if (avatar == null || avatar.isEmpty) {
-      return CircleAvatar(
-        radius: 12,
-        backgroundColor: primaryTeal,
-        child: Text(
-          _initials(patient['name']),
-          style: const TextStyle(fontSize: 8, color: Colors.white),
-        ),
-      );
-    }
-
-    return CircleAvatar(
-      radius: 12,
-      backgroundColor: cardMint,
-      backgroundImage: AssetImage(avatar),
-    );
-  }
-
-  Widget _statusChip(String status) {
-    final isAttention = status == 'Attention Needed';
-    final bg = isAttention ? const Color(0xFFFF7777) : const Color(0xFFFFD36D);
-    final text = isAttention
-        ? const Color(0xFFFF1D25)
-        : const Color(0xFFFFA000);
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Container(
-          height: 20,
-          padding: const EdgeInsets.symmetric(horizontal: 9),
-          decoration: BoxDecoration(
-            color: bg.withValues(alpha: .85),
-            borderRadius: BorderRadius.circular(3),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(color: text, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 5),
-              Text(status, style: TextStyle(fontSize: 9, color: text)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _priorityText(String priority) {
-    final color = priority == 'High' ? darkTeal : const Color(0xFF00A1A6);
-    return Text(priority, style: TextStyle(fontSize: 9, color: color));
-  }
-
+  /// A white card with the design's curved teal edge down its left side.
   Widget _tealCard({
     required Widget child,
     EdgeInsets padding = EdgeInsets.zero,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: const Border(left: BorderSide(color: primaryTeal, width: 6)),
+        color: aqua,
+        borderRadius: BorderRadius.circular(26),
       ),
-      child: Padding(padding: padding, child: child),
-    );
-  }
-
-  void _showAppointmentDetails(Map<String, dynamic> appointment) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                appointment['patient'],
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('Time: ${appointment['duration']}'),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _message('Appointment opened');
-                    },
-                    child: const Text('Open'),
-                  ),
-                  const SizedBox(width: 10),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Close'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showPatientDetails(Map<String, dynamic> patient) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(patient['name']),
-        content: Text(
-          'Condition: ${patient['condition']}\nStatus: ${patient['status']}\nPriority: ${patient['priority']}',
+      padding: const EdgeInsets.only(left: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(26),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+        padding: padding,
+        child: child,
       ),
     );
-  }
-
-  void _showAddPatientDialog() {
-    final nameController = TextEditingController();
-    final conditionController = TextEditingController();
-    String type = 'Outpatients';
-    String priority = 'Low';
-
-    showDialog<void>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Add Patient'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Patient name'),
-                ),
-                TextField(
-                  controller: conditionController,
-                  decoration: const InputDecoration(labelText: 'Condition'),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: type,
-                  decoration: const InputDecoration(labelText: 'Care type'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Outpatients',
-                      child: Text('Outpatients'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Remote care',
-                      child: Text('Remote care'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Follow-up',
-                      child: Text('Follow-up'),
-                    ),
-                  ],
-                  onChanged: (value) =>
-                      setDialogState(() => type = value ?? type),
-                ),
-                DropdownButtonFormField<String>(
-                  initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: const [
-                    DropdownMenuItem(value: 'Low', child: Text('Low')),
-                    DropdownMenuItem(value: 'High', child: Text('High')),
-                  ],
-                  onChanged: (value) =>
-                      setDialogState(() => priority = value ?? priority),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (nameController.text.trim().isEmpty) return;
-                  setState(() {
-                    patients.add({
-                      'name': nameController.text.trim(),
-                      'condition': conditionController.text.trim().isEmpty
-                          ? 'General care'
-                          : conditionController.text.trim(),
-                      'activity': 'Just now',
-                      'status': priority == 'High'
-                          ? 'Attention Needed'
-                          : 'Monitored',
-                      'priority': priority,
-                      'type': type,
-                    });
-                  });
-                  Navigator.pop(context);
-                  _message('Patient added');
-                },
-                child: const Text('Add'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _showEditPatientDialog(Map<String, dynamic> patient) {
-    final nameController = TextEditingController(text: patient['name']);
-    final conditionController = TextEditingController(
-      text: patient['condition'],
-    );
-    String priority = patient['priority'];
-
-    showDialog<void>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Edit Patient'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Patient name'),
-                ),
-                TextField(
-                  controller: conditionController,
-                  decoration: const InputDecoration(labelText: 'Condition'),
-                ),
-                DropdownButtonFormField<String>(
-                  initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: const [
-                    DropdownMenuItem(value: 'Low', child: Text('Low')),
-                    DropdownMenuItem(value: 'High', child: Text('High')),
-                  ],
-                  onChanged: (value) =>
-                      setDialogState(() => priority = value ?? priority),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    patient['name'] = nameController.text.trim();
-                    patient['condition'] = conditionController.text.trim();
-                    patient['priority'] = priority;
-                    patient['status'] = priority == 'High'
-                        ? 'Attention Needed'
-                        : 'Monitored';
-                  });
-                  Navigator.pop(context);
-                  _message('Patient updated');
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _deletePatient(Map<String, dynamic> patient) {
-    setState(() => patients.remove(patient));
-    _message('Patient removed');
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    return parts.take(2).map((part) => part[0]).join().toUpperCase();
-  }
-
-  void _message(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 }
 
@@ -1538,24 +1179,17 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 8, height: 8, color: color),
-        const SizedBox(width: 5),
-        Text(label, style: const TextStyle(fontSize: 8, color: Colors.grey)),
+        Container(width: 14, height: 10, color: color),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Color(0xFF9AA7A9),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
-    );
-  }
-}
-
-class _HeaderText extends StatelessWidget {
-  const _HeaderText(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(fontSize: 9, color: Color(0xFF8A8A8A)),
     );
   }
 }

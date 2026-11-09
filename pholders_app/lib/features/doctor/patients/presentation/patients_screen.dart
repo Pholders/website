@@ -1,11 +1,18 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:go_router/go_router.dart';
 import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
+import '../../../../core/routing/app_routes.dart';
+import '../../../../shared/widgets/doctor_search_scope.dart';
 import '../../appointments/data/models/appointment.dart';
 import '../../appointments/redux/appointments_actions.dart';
+import '../../dashboard/data/dashboard_summary.dart' as summary;
 import '../data/doctor_patient.dart';
+import 'patient_table.dart';
 
 // ─── Colours ─────────────────────────────────────────────────────────────────
 class AppColors {
@@ -49,7 +56,9 @@ class Patient {
     this.avatarInitials,
     this.email,
     this.phone,
+    this.avatarUrl,
   });
+
   /// Built from a real patient, so the older detail screens can keep their
   /// type while showing what the appointments actually say.
   factory Patient.fromDoctorPatient(DoctorPatient p) => Patient(
@@ -58,7 +67,7 @@ class Patient {
         condition: p.lastReason ?? 'No reason recorded',
         lastActivity: p.lastSeen == null
             ? 'No visit recorded'
-            : _PatientRow._date(p.lastSeen),
+            : formatPatientDate(p.lastSeen),
         // Nothing in the data supports a clinical judgement, so none is made.
         status: PatientStatus.stable,
         priority: 'Not set',
@@ -66,6 +75,7 @@ class Patient {
         avatarInitials: p.initials,
         email: p.email,
         phone: p.phone,
+        avatarUrl: p.avatarUrl,
       );
 
   final String id;
@@ -80,6 +90,9 @@ class Patient {
   /// Real contact details when they came from a booking; null otherwise.
   String? email;
   String? phone;
+
+  /// Their profile photo, or null when they have not set one.
+  String? avatarUrl;
 
   Patient copyWith({
     String? name,
@@ -98,29 +111,42 @@ class Patient {
         priority: priority ?? this.priority,
         category: category ?? this.category,
         avatarInitials: avatarInitials,
+        email: email,
+        phone: phone,
+        avatarUrl: avatarUrl,
       );
 }
 
 // ─── Patients screen ─────────────────────────────────────────────────────────
-/// Everyone who has booked this doctor.
+/// Everyone who has booked this doctor, laid out to the Figma "Patients"
+/// frame.
 ///
 /// Not a roster the doctor maintains — the SRS puts that under out-of-scope
 /// "Provider-Side / Clinical Workflow Features (EHR Territory)". A patient is
 /// here because they booked, which is the consent the SRS describes: "when
 /// the patient makes a booking he is agreeing to share his medical records".
 /// So there is nothing to add, edit or delete here, and no clinical status
-/// invented for anyone.
+/// invented for anyone: the design's Condition, Status and Priority columns
+/// show the last reason for a visit, what the appointments say, and the next
+/// visit, and its tabs filter by that status.
 class PatientsScreen extends StatelessWidget {
-  const PatientsScreen({super.key, required this.onPatientTap});
+  const PatientsScreen({super.key, required this.onPatientTap, this.clock});
 
   final ValueChanged<DoctorPatient> onPatientTap;
+
+  /// Stands in for the time of day in tests.
+  final DateTime Function()? clock;
 
   @override
   Widget build(BuildContext context) {
     return StoreConnector<AppState, _PatientsViewModel>(
       onInit: (store) => store.dispatch(const LoadAppointmentsAction()),
-      converter: _PatientsViewModel.fromStore,
-      builder: (context, vm) => _PatientsView(vm: vm, onPatientTap: onPatientTap),
+      converter: (store) => _PatientsViewModel.fromStore(
+        store,
+        clock?.call() ?? DateTime.now(),
+      ),
+      builder: (context, vm) =>
+          _PatientsView(vm: vm, onPatientTap: onPatientTap),
     );
   }
 }
@@ -128,15 +154,19 @@ class PatientsScreen extends StatelessWidget {
 class _PatientsViewModel {
   const _PatientsViewModel({
     required this.patients,
+    required this.appointments,
+    required this.now,
     required this.isLoading,
     required this.hasLoaded,
     required this.errorMessage,
   });
 
-  factory _PatientsViewModel.fromStore(Store<AppState> store) {
+  factory _PatientsViewModel.fromStore(Store<AppState> store, DateTime now) {
     final state = store.state.appointmentsState;
     return _PatientsViewModel(
-      patients: patientsFromAppointments(state.appointments),
+      patients: patientsFromAppointments(state.appointments, now: now),
+      appointments: state.appointments,
+      now: now,
       isLoading: state.isLoading,
       hasLoaded: state.hasLoadedOnce,
       errorMessage: state.errorMessage,
@@ -144,9 +174,14 @@ class _PatientsViewModel {
   }
 
   final List<DoctorPatient> patients;
+  final List<Appointment> appointments;
+  final DateTime now;
   final bool isLoading;
   final bool hasLoaded;
   final String? errorMessage;
+
+  summary.PatientStatus statusOf(DoctorPatient p) =>
+      summary.patientStatus(appointments, p.id, now);
 }
 
 class _PatientsView extends StatefulWidget {
@@ -160,153 +195,107 @@ class _PatientsView extends StatefulWidget {
 }
 
 class _PatientsViewState extends State<_PatientsView> {
-  final _searchController = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  List<DoctorPatient> get _filtered {
-    final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return widget.vm.patients;
-    return widget.vm.patients.where((p) {
-      return p.name.toLowerCase().contains(q) ||
-          (p.email ?? '').toLowerCase().contains(q) ||
-          (p.phone ?? '').toLowerCase().contains(q);
-    }).toList();
-  }
+  PatientFilter _tab = PatientFilter.all;
 
   @override
   Widget build(BuildContext context) {
     final vm = widget.vm;
-    final patients = _filtered;
+    // The top bar's search, when this page is inside the doctor's shell.
+    final query = DoctorSearchScope.maybeOf(context)?.value.trim() ?? '';
+    final patients = vm.patients
+        .where((p) => _tab.keeps(vm.statusOf(p)))
+        .where((p) => summary.patientMatches(p, query))
+        .toList();
+    final waiting = summary.awaitingAcceptance(vm.appointments, vm.now);
+
+    final Widget body;
+    if (vm.errorMessage != null && vm.patients.isEmpty) {
+      body = _Notice(
+        icon: Icons.error_outline,
+        title: 'Your patients could not be loaded',
+        body: vm.errorMessage!,
+        tone: _NoticeTone.problem,
+      );
+    } else if (!vm.hasLoaded && vm.isLoading) {
+      body =
+          const Center(child: CircularProgressIndicator(color: AppColors.teal));
+    } else if (vm.patients.isEmpty) {
+      body = const _Notice(
+        icon: Icons.people_outline,
+        title: 'No patients yet',
+        body: 'A patient appears here once they book an appointment '
+            'with you. Booking is how they agree to share their '
+            'records, so there is nothing to add by hand.',
+        tone: _NoticeTone.calm,
+      );
+    } else if (patients.isEmpty) {
+      body = _Notice(
+        icon: Icons.search_off,
+        title: query.isNotEmpty
+            ? 'Nobody matches "$query"'
+            : 'No patients under ${_tab.label}',
+        body: query.isNotEmpty
+            ? 'Search looks at name, patient ID, visit reason, email and phone.'
+            : 'Choose another tab to see the rest.',
+        tone: _NoticeTone.calm,
+      );
+    } else {
+      body = _PatientTable(
+        patients: patients,
+        statusOf: vm.statusOf,
+        lastVisitOf: (p) => summary.lastVisit(vm.appointments, p.id, vm.now),
+        now: vm.now,
+        onRowTap: widget.onPatientTap,
+      );
+    }
 
     return Container(
-      color: AppColors.bg,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _TopBar(
-            controller: _searchController,
-            onChanged: (value) => setState(() => _query = value),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Header(total: vm.patients.length),
-                  const SizedBox(height: 16),
-                  if (vm.errorMessage != null)
-                    _Notice(
-                      icon: Icons.error_outline,
-                      title: 'Your patients could not be loaded',
-                      body: vm.errorMessage!,
-                      tone: _NoticeTone.problem,
-                    )
-                  else if (!vm.hasLoaded && vm.isLoading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 60),
-                      child: Center(child: CircularProgressIndicator(color: AppColors.teal)),
-                    )
-                  else if (vm.patients.isEmpty)
-                    const _Notice(
-                      icon: Icons.people_outline,
-                      title: 'No patients yet',
-                      body: 'A patient appears here once they book an appointment '
-                          'with you. Booking is how they agree to share their '
-                          'records, so there is nothing to add by hand.',
-                      tone: _NoticeTone.calm,
-                    )
-                  else if (patients.isEmpty)
-                    _Notice(
-                      icon: Icons.search_off,
-                      title: 'Nobody matches "$_query"',
-                      body: 'Search looks at name, email and phone number.',
-                      tone: _NoticeTone.calm,
-                    )
-                  else
-                    _PatientTable(
-                      patients: patients,
-                      onRowTap: widget.onPatientTap,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(31, 0, 38, 26),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(33, 30, 33, 22),
+        decoration: BoxDecoration(
+          color: _panelBg,
+          borderRadius: BorderRadius.circular(32),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(total: vm.patients.length),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                PatientFilterChips(
+                  selected: _tab,
+                  onSelected: (tab) => setState(() => _tab = tab),
+                ),
+                const SizedBox(width: 12),
+                // Takes what room the tabs leave, up to its design width.
+                if (waiting > 0)
+                  Flexible(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: _AlertBar(waiting: waiting),
                     ),
-                ],
-              ),
+                  )
+                else
+                  const Spacer(),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 22),
+            Expanded(child: body),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ─── Top bar ─────────────────────────────────────────────────────────────────
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.controller, required this.onChanged});
+const Color _panelBg = Color(0xFFE3F5F6);
+const Color _aqua = Color(0xFF6DD0D8);
+const Color _muted = Color(0xFF7C8B8D);
 
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      decoration: const BoxDecoration(
-        color: AppColors.cardBg,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          const Text(
-            'Patients',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const Spacer(),
-          SizedBox(
-            width: 320,
-            height: 38,
-            child: TextField(
-              controller: controller,
-              onChanged: onChanged,
-              style: const TextStyle(fontSize: 13.5),
-              decoration: InputDecoration(
-                hintText: 'Search by name, email or phone',
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textSecondary),
-                filled: true,
-                fillColor: AppColors.bg,
-                contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: AppColors.teal),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Header row ──────────────────────────────────────────────────────────────
+// ─── Header ──────────────────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
   const _Header({required this.total});
 
@@ -314,23 +303,76 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          total == 1 ? '1 patient' : '$total patients',
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Patients',
+                style:
+                    TextStyle(fontSize: 34, color: Colors.black, height: 1.2),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Everyone who has booked an appointment with you.',
+                style: TextStyle(fontSize: 17, color: _muted),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 3),
-        const Text(
-          'Everyone who has booked an appointment with you.',
-          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        Text(
+          'Total: $total',
+          style: const TextStyle(fontSize: 13, color: Colors.black),
         ),
       ],
+    );
+  }
+}
+
+/// Bookings waiting on the doctor, as on the dashboard. Opens Appointments,
+/// where accepting happens.
+class _AlertBar extends StatelessWidget {
+  const _AlertBar({required this.waiting});
+
+  final int waiting;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF2EE7A),
+      child: InkWell(
+        onTap: () => context.go(AppRoutes.doctorAppointments),
+        child: Container(
+          height: 26,
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.warning_rounded,
+                  size: 18, color: AppColors.amber),
+              const SizedBox(width: 12),
+              Flexible(
+                fit: FlexFit.tight,
+                child: Text(
+                  waiting == 1
+                      ? '1 booking is waiting for you to accept'
+                      : '$waiting bookings are waiting for you to accept',
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF8A7A00)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right,
+                  size: 16, color: Color(0xFF8A7A00)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -354,242 +396,135 @@ class _Notice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final problem = tone == _NoticeTone.problem;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: problem ? AppColors.alertBg : AppColors.cardBg,
-        border: Border.all(color: problem ? AppColors.alertBorder : AppColors.border),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 30, color: problem ? AppColors.amber : AppColors.textSecondary),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
-            child: Text(
-              body,
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: problem ? AppColors.alertBg : AppColors.cardBg,
+          border: Border.all(
+              color: problem ? AppColors.alertBorder : AppColors.border),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 30,
+                color: problem ? AppColors.amber : AppColors.textSecondary),
+            const SizedBox(height: 10),
+            Text(
+              title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 13,
-                height: 1.45,
-                color: AppColors.textSecondary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Patient table ────────────────────────────────────────────────────────────
-class _PatientTable extends StatelessWidget {
-  const _PatientTable({required this.patients, required this.onRowTap});
-
-  final List<DoctorPatient> patients;
-  final ValueChanged<DoctorPatient> onRowTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBg,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          Container(
-            color: AppColors.bg,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-            child: const Row(
-              children: [
-                Expanded(flex: 26, child: _HeaderCell('Patient')),
-                Expanded(flex: 24, child: _HeaderCell('Contact')),
-                Expanded(flex: 10, child: _HeaderCell('Visits')),
-                Expanded(flex: 20, child: _HeaderCell('Last seen')),
-                Expanded(flex: 20, child: _HeaderCell('Next appointment')),
-              ],
-            ),
-          ),
-          for (final patient in patients)
-            _PatientRow(patient: patient, onTap: () => onRowTap(patient)),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderCell extends StatelessWidget {
-  const _HeaderCell(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 11.5,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.3,
-        color: AppColors.textSecondary,
-      ),
-    );
-  }
-}
-
-// ─── Patient row ──────────────────────────────────────────────────────────────
-class _PatientRow extends StatelessWidget {
-  const _PatientRow({required this.patient, required this.onTap});
-
-  final DoctorPatient patient;
-  final VoidCallback onTap;
-
-  static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
-  static String _date(DateTime? value) {
-    if (value == null) return '—';
-    return '${value.day.toString().padLeft(2, '0')} '
-        '${_months[value.month - 1]} ${value.year}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 26,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.tealLight,
-                    child: Text(
-                      patient.initials,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.tealDark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          patient.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        if (patient.lastReason != null)
-                          Text(
-                            patient.lastReason!,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 24,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    patient.email ?? '—',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.textPrimary),
-                  ),
-                  if (patient.phone != null)
-                    Text(
-                      patient.phone!,
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-                    ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 10,
+            const SizedBox(height: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
               child: Text(
-                '${patient.visits}',
+                body,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _date(patient.lastSeen),
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.textPrimary),
-                  ),
-                  Text(
-                    patient.hasCompletedVisit ? 'Consulted' : 'Not yet consulted',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: patient.hasCompletedVisit
-                          ? AppColors.tealDark
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 20,
-              child: Text(
-                patient.nextVisit == null ? '—' : _date(patient.nextVisit),
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: patient.nextVisit == null
-                      ? AppColors.textSecondary
-                      : AppColors.textPrimary,
+                  height: 1.45,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Patient table ────────────────────────────────────────────────────────────
+
+/// The column labels on the panel, then the rows on a white card with the
+/// curved teal edge, scrolling inside it so the page itself does not.
+class _PatientTable extends StatefulWidget {
+  const _PatientTable({
+    required this.patients,
+    required this.statusOf,
+    required this.lastVisitOf,
+    required this.now,
+    required this.onRowTap,
+  });
+
+  final List<DoctorPatient> patients;
+  final summary.PatientStatus Function(DoctorPatient) statusOf;
+  final DateTime? Function(DoctorPatient) lastVisitOf;
+  final DateTime now;
+  final ValueChanged<DoctorPatient> onRowTap;
+
+  @override
+  State<_PatientTable> createState() => _PatientTableState();
+}
+
+class _PatientTableState extends State<_PatientTable> {
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Narrow windows scroll the table sideways rather than crush it.
+        const minWidth = 820.0;
+        final width = math.max(constraints.maxWidth, minWidth);
+        final table = SizedBox(
+          width: width,
+          height: constraints.maxHeight,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(30, 0, 34, 0),
+                child: PatientTableHeader(),
+              ),
+              Container(
+                height: 2,
+                margin: const EdgeInsets.only(top: 8, bottom: 14),
+                color: const Color(0xFFCFE3E5),
+              ),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _aqua,
+                    borderRadius: BorderRadius.circular(26),
+                  ),
+                  padding: const EdgeInsets.only(left: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(26),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(20, 12, 10, 12),
+                    child: PatientTableList(
+                      itemCount: widget.patients.length,
+                      itemBuilder: (context, i) {
+                        final p = widget.patients[i];
+                        return PatientTableRow(
+                          patient: p,
+                          status: widget.statusOf(p),
+                          lastVisit: widget.lastVisitOf(p),
+                          now: widget.now,
+                          onOpenProfile: () => widget.onRowTap(p),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        return constraints.maxWidth >= minWidth
+            ? table
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal, child: table);
+      },
     );
   }
 }

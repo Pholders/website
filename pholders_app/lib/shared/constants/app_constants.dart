@@ -29,6 +29,15 @@ class AppConstants {
   static const String userRoleStorageKey = 'user_role';
   static const String userNameStorageKey = 'user_name';
 
+  /// The email "Remember me" keeps for the login form. Not part of the
+  /// session, so signing out leaves it.
+  static const String rememberedEmailStorageKey = 'remembered_email';
+
+  /// Where an earlier build kept the password. Nothing is written here now;
+  /// the key is only deleted, so a password left from then does not linger.
+  static const String legacyRememberedPasswordStorageKey =
+      'remembered_password';
+
   // ─── Roles ──────────────────────────────────────────────────────────────────
   static const String roleDoctor = 'doctor';
   static const String rolePharmacy = 'pharmacy';

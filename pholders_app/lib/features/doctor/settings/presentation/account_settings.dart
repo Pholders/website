@@ -8,11 +8,10 @@ import '../../../../core/network/secure_url.dart';
 import '../../../auth/data/models/doctor.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
-import '../../../../shared/widgets/settings_sidebar.dart';
-import '../../../../core/routing/app_routes.dart';
+import 'settings_frame.dart';
+import '../../../../core/images/background_removal.dart';
 
 class AccountSettings extends StatelessWidget {
   const AccountSettings({super.key, this.initialTab = 0});
@@ -26,59 +25,16 @@ class AccountSettings extends StatelessWidget {
         : const _ProfileDetails();
   }
 
-  void _navigate(BuildContext context, String id) {
-    switch (id) {
-      case 'personal_information':
-        context.go(AppRoutes.doctorSettingsProfile);
-        break;
-      case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
-        break;
-      case 'fees_setup':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
-        break;
-      case 'practice_settings':
-        context.go(AppRoutes.doctorSettingsPractice);
-        break;
-      case 'notification_settings':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
-        break;
-      case 'notification_center':
-        context.go(AppRoutes.doctorNotifications);
-        break;
-      case 'security_settings':
-        context.go(AppRoutes.doctorSettingsSecurity);
-        break;
-      case 'device_management':
-        context.go(AppRoutes.doctorSettingsDevices);
-        break;
-      case 'login_activity':
-        context.go(AppRoutes.doctorSettingsLoginActivity);
-        break;
-      case 'preferences_settings':
-        context.go(AppRoutes.doctorSettingsPreferences);
-        break;
-      case 'linked_services':
-        context.go(AppRoutes.doctorSettingsLinkedServices);
-        break;
-      case 'help_center':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
-        break;
-      case 'privacy_policy':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
-        break;
-      case 'terms_of_service':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
-        break;
-      case 'contact_support':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
-        break;
-      default:
-        break;
-    }
-  }
+  // The menu's links are in navigateDoctorSettings (settings_frame.dart).
 }
 
+/// Personal Information: photo, the About text patients read, name and phone.
+///
+/// The About box used to be a fixed hint that could not be typed in, though
+/// the doctor record has a bio column and the patient app shows it ("No
+/// biography provided yet."). Date of birth, gender, nationality and ID number
+/// were shown switched off: nothing stores them, and the SRS asks the platform
+/// to collect only what it needs (BR-107), so they are gone.
 class _ProfileDetails extends StatefulWidget {
   const _ProfileDetails();
 
@@ -87,133 +43,261 @@ class _ProfileDetails extends StatefulWidget {
 }
 
 class _ProfileDetailsState extends State<_ProfileDetails> {
+  static const bioLimit = 1000;
+
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+  final _bio = TextEditingController();
+
+  bool _isEditing = false;
+  bool _prefilled = false;
+
+  /// Set when this screen sends a save, so the answer can be reported here.
+  bool _awaitingSave = false;
+  String? _problem;
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Settings sidebar ──────────────────────────────────────────────
-          SettingsSidebar(
-            selectedItemId: 'personal_information',
-            onMenuItemSelected: (id) => _navigate(context, id),
-          ),
-          // ── Content area ────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: SettingsContentCard(
-                title: 'Profile Details',
-                children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 9,
-              child: Column(
-                children: [
-                  const _ProfilePhoto(),
-                  const SizedBox(height: 10),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 22),
-                      child: Text('About', style: TextStyle(fontSize: 16)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    height: 154,
-                    margin: const EdgeInsets.only(right: 18),
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                    decoration: BoxDecoration(
-                      color: SettingsShell.panelMint,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFCFECEE)),
-                    ),
-                    child: const Stack(
-                      children: [
-                        Align(
-                          alignment: Alignment.topLeft,
-                          child: Text(
-                            'Write a Bio about yourself for patients\nto know your background',
-                            style: TextStyle(
-                                fontSize: 12, color: SettingsShell.muted),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-                        const SizedBox(width: 26),
-            const Expanded(
-              flex: 12,
-              child: _ProfileForm(),
-            ),
-          ],
-        ),
-      ],
-              ),
-            ),
-          ),
-        ],
+  void dispose() {
+    _firstName.dispose();
+    _lastName.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _bio.dispose();
+    super.dispose();
+  }
+
+  /// Fills the fields from the stored profile: once at first, and again on
+  /// Cancel. Not on every store change, so typing is never overwritten.
+  void _fill(Doctor doctor) {
+    _firstName.text = doctor.firstName;
+    _lastName.text = doctor.lastName;
+    _email.text = doctor.email;
+    _phone.text = doctor.phone ?? '';
+    _bio.text = doctor.bio ?? '';
+  }
+
+  String? _validate() {
+    if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty) {
+      return 'First and last name are both needed.';
+    }
+    final phone = _phone.text.trim();
+    if (phone.isNotEmpty && phone.length != 10) {
+      return 'A phone number has 10 digits, like 0821234567.';
+    }
+    return null;
+  }
+
+  void _save() {
+    final problem = _validate();
+    setState(() => _problem = problem);
+    if (problem != null) return;
+    _awaitingSave = true;
+    StoreProvider.of<AppState>(context).dispatch(
+      UpdateDoctorProfileAction(
+        firstName: _firstName.text.trim(),
+        lastName: _lastName.text.trim(),
+        phone: _phone.text.trim(),
+        bio: _bio.text.trim(),
       ),
     );
   }
 
-  void _navigate(BuildContext context, String id) {
-    switch (id) {
-      case 'personal_information':
-        context.go(AppRoutes.doctorSettingsProfile);
-        break;
-      case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
-        break;
-      case 'fees_setup':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
-        break;
-      case 'practice_settings':
-        context.go(AppRoutes.doctorSettingsPractice);
-        break;
-      case 'notification_settings':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
-        break;
-      case 'notification_center':
-        context.go(AppRoutes.doctorNotifications);
-        break;
-      case 'security_settings':
-        context.go(AppRoutes.doctorSettingsSecurity);
-        break;
-      case 'device_management':
-        context.go(AppRoutes.doctorSettingsDevices);
-        break;
-      case 'login_activity':
-        context.go(AppRoutes.doctorSettingsLoginActivity);
-        break;
-      case 'preferences_settings':
-        context.go(AppRoutes.doctorSettingsPreferences);
-        break;
-      case 'linked_services':
-        context.go(AppRoutes.doctorSettingsLinkedServices);
-        break;
-      case 'help_center':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
-        break;
-      case 'privacy_policy':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
-        break;
-      case 'terms_of_service':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
-        break;
-      case 'contact_support':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
-        break;
-      default:
-        break;
+  void _cancel(Doctor? doctor) {
+    if (doctor != null) _fill(doctor);
+    setState(() {
+      _isEditing = false;
+      _problem = null;
+    });
+  }
+
+  /// Reports how a save this screen sent turned out, once it has.
+  void _onChange(_ProfileViewModel? previous, _ProfileViewModel vm) {
+    if (!_awaitingSave || vm.isSaving) return;
+    _awaitingSave = false;
+    if (vm.errorMessage == null) {
+      setState(() => _isEditing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your profile is saved')),
+      );
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, _ProfileViewModel>(
+      converter: _ProfileViewModel.fromStore,
+      onWillChange: _onChange,
+      builder: (context, vm) {
+        final doctor = vm.doctor;
+        if (doctor != null && !_prefilled) {
+          _fill(doctor);
+          _prefilled = true;
+        }
+        return _buildScreen(context, vm);
+      },
+    );
+  }
+
+  Widget _buildScreen(BuildContext context, _ProfileViewModel vm) {
+    return DoctorSettingsLayout(
+      selectedItemId: 'personal_information',
+      child: doctorSettingsCard(
+                context,
+                title: 'Profile Details',
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 9,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Center(child: _ProfilePhoto()),
+                            const SizedBox(height: 14),
+                            const Text('About', style: TextStyle(fontSize: 16)),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Patients read this on your page in the app.',
+                              style: TextStyle(
+                                  fontSize: 12, color: SettingsShell.muted),
+                            ),
+                            const SizedBox(height: 8),
+                            _bioField(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 26),
+                      Expanded(flex: 12, child: _form(vm)),
+                    ],
+                  ),
+                ],
+              ),
+    );
+  }
+
+  Widget _bioField() {
+    return Padding(
+      padding: const EdgeInsets.only(right: 18),
+      child: TextField(
+        key: const ValueKey('bio'),
+        controller: _bio,
+        readOnly: !_isEditing,
+        minLines: 6,
+        maxLines: 10,
+        maxLength: bioLimit,
+        style: const TextStyle(fontSize: 13),
+        decoration: InputDecoration(
+          hintText: 'Your training, the care you focus on, and languages you '
+              'consult in.',
+          hintStyle: const TextStyle(fontSize: 12, color: SettingsShell.muted),
+          filled: true,
+          fillColor: SettingsShell.panelMint,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFFCFECEE)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFFCFECEE)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _form(_ProfileViewModel vm) {
+    final error = _problem ?? (_awaitingSave ? null : vm.errorMessage);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SettingsSectionTitle('Personal Information', muted: true),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _Field(
+                  label: 'First Name',
+                  controller: _firstName,
+                  readOnly: !_isEditing),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: _Field(
+                  label: 'Last Name',
+                  controller: _lastName,
+                  readOnly: !_isEditing),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        const SettingsSectionTitle('Contact Information', muted: true),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            // The endpoint strips email before writing, so it is shown but
+            // never editable rather than silently discarded on save.
+            Expanded(
+              child: _Field(
+                  label: 'Email Address', controller: _email, readOnly: true),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: _Field(
+                label: 'Phone Number',
+                hint: '0821234567',
+                controller: _phone,
+                readOnly: !_isEditing,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Your email is how you sign in, so it cannot be changed here.',
+          style: TextStyle(fontSize: 12, color: SettingsShell.muted),
+        ),
+        const SizedBox(height: 26),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(error,
+                style: const TextStyle(fontSize: 13, color: Color(0xFFCC1111))),
+          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (_isEditing) ...[
+              SettingsButton(
+                'Cancel',
+                width: 110,
+                height: 34,
+                filled: false,
+                onTap: vm.isSaving ? null : () => _cancel(vm.doctor),
+              ),
+              const SizedBox(width: 12),
+            ],
+            SettingsButton(
+              _isEditing ? (vm.isSaving ? 'Saving…' : 'Save Changes') : 'Edit',
+              icon: _isEditing ? Icons.save_outlined : Icons.edit_outlined,
+              width: 150,
+              height: 34,
+              onTap: vm.isSaving
+                  ? null
+                  : _isEditing
+                      ? _save
+                      : () => setState(() => _isEditing = true),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
@@ -242,6 +326,15 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
 
   String? _problem;
 
+  /// True while the background is being cut out in the browser. The first
+  /// photo of a session is slow — the library and its model come down from a
+  /// CDN — so this is worth saying rather than appearing to have hung.
+  bool _removingBackground = false;
+
+  /// Something that went differently but is not an error, such as the photo
+  /// going up with its background still on.
+  String? _note;
+
   Future<void> _pick() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -254,7 +347,8 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
 
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _problem = 'That file could not be read. Try another one.');
+      setState(
+          () => _problem = 'That file could not be read. Try another one.');
       return;
     }
 
@@ -270,15 +364,51 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
       return;
     }
 
-    setState(() => _problem = null);
+    setState(() {
+      _problem = null;
+      _removingBackground = true;
+    });
+
+    // Done here rather than on the server, which has nowhere near the memory
+    // for it. A null answer means it could not be done — the photo goes up
+    // with its background rather than the upload failing.
+    final cutout = await removeBackground(bytes, contentType);
     if (!mounted) return;
+
+    // The check above was on the photo as picked. A cut-out is a PNG, which
+    // is lossless and can be far larger than the JPEG it came from, so the
+    // result has to be measured again before it is sent. Without this an
+    // 11-megapixel photo sailed past the check and was refused by the server.
+    final tooBig = cutout != null && cutout.lengthInBytes > _maxBytes;
+    final send = (cutout == null || tooBig) ? bytes : cutout;
+
+    setState(() {
+      _removingBackground = false;
+      // Said out loud. Falling back silently is what made a photo that kept
+      // its background indistinguishable from the feature not being built,
+      // and left no way to tell which without reading the code.
+      _note = cutout == null
+          ? 'The background could not be removed, so the photo went up as it '
+              'is. It usually means the tool could not be reached.'
+          : tooBig
+              ? 'The photo kept its background: without it the file came out '
+                  'too large to store. A smaller photo will work.'
+              : null;
+    });
+
+    final asCutout = identical(send, cutout);
     StoreProvider.of<AppState>(context).dispatch(
       UploadDoctorProfileImageAction(
-        bytes: bytes,
-        filename: file.name,
-        contentType: contentType,
+        bytes: send,
+        filename: asCutout ? '${_stem(file.name)}.png' : file.name,
+        contentType: asCutout ? 'image/png' : contentType,
       ),
     );
+  }
+
+  static String _stem(String filename) {
+    final dot = filename.lastIndexOf('.');
+    return dot <= 0 ? filename : filename.substring(0, dot);
   }
 
   @override
@@ -296,24 +426,39 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
               child: SizedBox(
                 width: 190,
                 height: 180,
+                // No photo yet, or one that will not load: a plain
+                // silhouette, never a stock photo of someone else.
                 child: url == null || url.isEmpty
-                    ? Image.asset('assets/doctors.png', fit: BoxFit.cover)
+                    ? const _NoPhoto()
                     : Image.network(
                         url,
                         fit: BoxFit.cover,
-                        // A photo that will not load should not leave a broken
-                        // box where the doctor's face belongs.
-                        errorBuilder: (context, _, __) =>
-                            Image.asset('assets/doctors.png', fit: BoxFit.cover),
+                        errorBuilder: (context, _, __) => const _NoPhoto(),
                       ),
               ),
             ),
             const SizedBox(height: 12),
             SettingsButton(
-              vm.isSaving ? 'Uploading…' : 'Upload photo',
+              _removingBackground
+                  ? 'Removing background…'
+                  : vm.isSaving
+                      ? 'Uploading…'
+                      : 'Upload photo',
               icon: Icons.photo_camera_outlined,
-              onTap: vm.isSaving ? null : _pick,
+              onTap: _removingBackground || vm.isSaving ? null : _pick,
             ),
+            if (_removingBackground) ...[
+              const SizedBox(height: 6),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'The first photo takes a while — the tool downloads itself '
+                  'once, then it is quick.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8A9E9E)),
+                ),
+              ),
+            ],
             if (_problem != null) ...[
               const SizedBox(height: 6),
               Padding(
@@ -321,223 +466,26 @@ class _ProfilePhotoState extends State<_ProfilePhoto> {
                 child: Text(
                   _problem!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111)),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFFCC1111)),
+                ),
+              ),
+            ],
+            if (_note != null && _problem == null) ...[
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _note!,
+                  textAlign: TextAlign.center,
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF9A7B22)),
                 ),
               ),
             ],
           ],
         );
       },
-    );
-  }
-}
-
-class _ProfileForm extends StatefulWidget {
-  const _ProfileForm();
-
-  @override
-  State<_ProfileForm> createState() => _ProfileFormState();
-}
-
-class _ProfileFormState extends State<_ProfileForm> {
-  bool isEditing = false;
-
-  final _firstName = TextEditingController();
-  final _lastName = TextEditingController();
-  final _email = TextEditingController();
-  final _phone = TextEditingController();
-
-  /// True once the fields hold the loaded profile, so a later store update
-  /// does not overwrite something being typed.
-  bool _prefilled = false;
-
-  @override
-  void dispose() {
-    _firstName.dispose();
-    _lastName.dispose();
-    _email.dispose();
-    _phone.dispose();
-    super.dispose();
-  }
-
-  void _prefill(Doctor? doctor) {
-    if (doctor == null || _prefilled) return;
-    _firstName.text = doctor.firstName;
-    _lastName.text = doctor.lastName;
-    _email.text = doctor.email;
-    _phone.text = doctor.phone ?? '';
-    _prefilled = true;
-  }
-
-  void _save() {
-    StoreProvider.of<AppState>(context).dispatch(
-      UpdateDoctorProfileAction(
-        firstName: _firstName.text.trim(),
-        lastName: _lastName.text.trim(),
-        phone: _phone.text.trim(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StoreConnector<AppState, _ProfileViewModel>(
-      converter: _ProfileViewModel.fromStore,
-      builder: (context, vm) {
-        _prefill(vm.doctor);
-        return _buildForm(context, vm);
-      },
-    );
-  }
-
-  Widget _buildForm(BuildContext context, _ProfileViewModel vm) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SettingsSectionTitle('Personal Information', muted: true),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _Field(label: 'First Name', controller: _firstName),
-            ),
-            const SizedBox(width: 22),
-            Expanded(
-              child: _Field(label: 'Last Name', controller: _lastName),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        const SettingsSectionTitle('Contact Information', muted: true),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            // The endpoint strips email before writing, so it is shown but
-            // not editable rather than silently discarded on save.
-            Expanded(
-              child: _Field(
-                label: 'Email Address',
-                controller: _email,
-                readOnly: true,
-              ),
-            ),
-            const SizedBox(width: 22),
-            Expanded(child: _Field(label: 'Phone Number', hint: '0123456789',
-            controller: _phone,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],)),
-          ],
-        ),
-        const SizedBox(height: 26),
-        const SettingsSectionTitle('Additional Information', muted: true),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Expanded(
-                child: _Field(
-                    label: 'Date of Birth',
-                    hint: 'Select Date',
-                    icon: Icons.calendar_month)),
-            const SizedBox(width: 22),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Gender', 
-                    style: TextStyle(fontSize: 16)
-                    ),
-                  const SizedBox(height: 5),
-                  DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0xFFEAF8F8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(7),
-                        borderSide: const BorderSide (
-                          color: Color(0xFFCFECEE)),
-                      ),
-                    ),
-                  hint: const Text('Select Gender'),
-                  items: const [
-                    DropdownMenuItem(value: 'male', child: Text('Male'),),
-                    DropdownMenuItem(value: 'female', child: Text('Female'),),
-                    DropdownMenuItem(value: 'other', child: Text('Other'),),
-                    DropdownMenuItem(value: 'prefer_not_to_say', child: Text('Prefer not to say'),),
-                  ],
-                  onChanged: (value) {},
-              ),
-            ],
-          ),
-        ),
-          ]),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Nationality',
-        style: TextStyle(fontSize: 16),
-      ),
-      const SizedBox(height: 5),
-      DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: const Color(0xFFEAF8F8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-          ),
-        ),
-        hint: const Text('South African'),
-        items: const [
-          DropdownMenuItem(value: 'South African',child: Text('South African'),),
-          DropdownMenuItem(value: 'Zimbabwean',child: Text('Zimbabwean'),),
-          DropdownMenuItem(value: 'Botswanan',child: Text('Botswanan'),),
-          DropdownMenuItem(value: 'Namibian',child: Text('Namibian'),),
-          DropdownMenuItem(value: 'Mozambican',child: Text('Mozambican'),),
-          DropdownMenuItem(value: 'Lesotho',child: Text('Lesotho'),),
-          DropdownMenuItem(value: 'Eswatini',child: Text('Eswatini'),),
-          DropdownMenuItem(value: 'Other',child: Text('Other'),),
-        ],
-        onChanged: (value) {},
-      ),
-    ],
-  ),
-),
-            const SizedBox(width: 22),
-            Expanded(child: _Field(label: 'ID Number', hint: '0123456789012', inputFormatters: [FilteringTextInputFormatter.digitsOnly,LengthLimitingTextInputFormatter(13)],)),
-          ],
-        ),
-        const SizedBox(height: 26),
-        if (vm.errorMessage != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              vm.errorMessage!,
-              style: const TextStyle(fontSize: 13, color: Color(0xFFCC1111)),
-            ),
-          ),
-        Align(
-  alignment: Alignment.centerRight,
-  child: SettingsButton(
-    isEditing ? 'Save Changes' : 'Edit',
-    icon: isEditing
-        ? Icons.save_outlined
-        : Icons.edit_outlined,
-    width: 140,
-    height: 34,
-    onTap: vm.isSaving
-        ? null
-        : () {
-            // Leaving edit mode is the save.
-            if (isEditing) _save();
-            setState(() => isEditing = !isEditing);
-          },
-  ),
-),
-      ],
     );
   }
 }
@@ -550,7 +498,7 @@ class _ProfessionalDetails extends StatefulWidget {
 }
 
 class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
-  final _licenseNumber = TextEditingController();
+  final _qualification = TextEditingController();
   final _hpcsa = TextEditingController();
   final _experience = TextEditingController();
   final _clinicName = TextEditingController();
@@ -562,6 +510,9 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   String? _province;
   bool _prefilled = false;
   String? _problem;
+
+  /// Set when this screen sends a save, so the answer can be reported here.
+  bool _awaitingSave = false;
 
   /// Catalogue ids of the schemes this doctor accepts.
   Set<int> _medicalAidIds = {};
@@ -577,7 +528,13 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   final Map<String, List<String>> _extraWindows = {};
 
   static const _weekdays = [
-    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
   ];
 
   /// The options the screen ships with. A doctor whose stored value is not on
@@ -630,7 +587,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
 
   @override
   void dispose() {
-    _licenseNumber.dispose();
+    _qualification.dispose();
     _hpcsa.dispose();
     _experience.dispose();
     _clinicName.dispose();
@@ -643,6 +600,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   void _prefill(Doctor? doctor) {
     if (doctor == null || _prefilled) return;
     _hpcsa.text = doctor.hpcsaNumber ?? '';
+    _qualification.text = doctor.qualification ?? '';
     _experience.text = doctor.experience?.toString() ?? '';
     _clinicName.text = doctor.clinicName ?? '';
     _clinicAddress.text = doctor.clinicAddress ?? '';
@@ -690,9 +648,11 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
     }
     return null;
   }
+
   void _save() {
     final experienceText = _experience.text.trim();
-    final experience = experienceText.isEmpty ? null : int.tryParse(experienceText);
+    final experience =
+        experienceText.isEmpty ? null : int.tryParse(experienceText);
     if (experienceText.isNotEmpty && experience == null) {
       setState(() => _problem = 'Years of experience must be a number.');
       return;
@@ -703,10 +663,12 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
       return;
     }
     setState(() => _problem = null);
+    _awaitingSave = true;
 
     StoreProvider.of<AppState>(context).dispatch(
       UpdateDoctorProfileAction(
         specialization: _specialization,
+        qualification: _qualification.text.trim(),
         experience: experience,
         clinicName: _clinicName.text.trim(),
         clinicAddress: _clinicAddress.text.trim(),
@@ -723,6 +685,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   Widget build(BuildContext context) {
     return StoreConnector<AppState, _ProfileViewModel>(
       converter: _ProfileViewModel.fromStore,
+      onWillChange: _onChange,
       builder: (context, vm) {
         _prefill(vm.doctor);
         return _buildScreen(context, vm);
@@ -730,210 +693,224 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
     );
   }
 
+  /// Reports how a save this screen sent turned out, once it has. Saving
+  /// used to give no sign either way.
+  void _onChange(_ProfileViewModel? previous, _ProfileViewModel vm) {
+    if (!_awaitingSave || vm.isSaving) return;
+    _awaitingSave = false;
+    if (vm.errorMessage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your professional details are saved')),
+      );
+    }
+  }
+
   Widget _buildScreen(BuildContext context, _ProfileViewModel vm) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-                    // ── Settings sidebar ──────────────────────────────────────────────
-          SettingsSidebar(
-            selectedItemId: 'professional',
-            onMenuItemSelected: (id) => const AccountSettings()._navigate(context, id),
-          ),
-          // ── Content area ────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: SettingsContentCard(
+    return DoctorSettingsLayout(
+      selectedItemId: 'professional',
+      child: doctorSettingsCard(
+                context,
                 title: 'Professional Details',
                 children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SettingsSectionTitle('Medical Credentials', muted: true),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  // No column on the doctors table, so this is not sent on
-                  // save. Left visible rather than removed from their design.
-                  Expanded(
-                    child: _Field(
-                      label: 'Medical License Number',
-                      controller: _licenseNumber,
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                  // The endpoint strips hpcsa_number before writing, so an
-                  // editable field would discard whatever was typed.
-                  Expanded(
-                    child: _Field(
-                      label: 'HPCSA Number',
-                      controller: _hpcsa,
-                      readOnly: true,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Specialization',
-        style: TextStyle(fontSize: 16),
-      ),
-      const SizedBox(height: 5),
-      DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: const Color(0xFFEAF8F8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-          ),
-        ),
-        hint: const Text('Select Specialization'),
-        value: _specialization,
-        items: [
-          for (final s in _specializations)
-            DropdownMenuItem(value: s, child: Text(s)),
-        ],
-        onChanged: (value) => setState(() => _specialization = value),
-      ),
-    ],
-  ),
-),
-                  const SizedBox(width: 48),
-                  Expanded(
-                    child: _Field(
-                      label: 'Years of Experience',
-                      controller: _experience,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              const SettingsSectionTitle('Practice Information', muted: true),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _Field(
-                      label: 'Practice Name',
-                      controller: _clinicName,
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                  Expanded(
-                    child: _Field(
-                      label: 'Practice Address',
-                      controller: _clinicAddress,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _Field(
-                      label: 'City',
-                      hint: 'Johannesburg',
-                      controller: _city,
-                      trailing: const Icon(Icons.keyboard_arrow_down,
-                          color: Color(0xFF748486)),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                  Expanded(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
                     child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Province',
-        style: TextStyle(fontSize: 16),
-      ),
-      const SizedBox(height: 5),
-      DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: const Color(0xFFEAF8F8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-          ),
-        ),
-        hint: const Text('Gauteng'),
-        value: _province,
-        items: [
-          for (final p in _provinces)
-            DropdownMenuItem(value: p, child: Text(p)),
-        ],
-        onChanged: (value) => setState(() => _province = value),
-      ),
-    ],
-  ),
-),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SettingsSectionTitle('Medical Credentials',
+                            muted: true),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            // There was a "Medical License Number" here with nowhere to
+                            // be stored; in South Africa the HPCSA number is the
+                            // registration. Qualification has a column, and goes out
+                            // with the doctor's name.
+                            Expanded(
+                              child: _Field(
+                                label: 'Qualification',
+                                hint: 'MBChB (UCT)',
+                                controller: _qualification,
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                            // The endpoint strips hpcsa_number before writing, so an
+                            // editable field would discard whatever was typed.
+                            Expanded(
+                              child: _Field(
+                                label: 'HPCSA Number',
+                                controller: _hpcsa,
+                                readOnly: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Specialization',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  DropdownButtonFormField<String>(
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFFEAF8F8),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                    ),
+                                    hint: const Text('Select Specialization'),
+                                    value: _specialization,
+                                    items: [
+                                      for (final s in _specializations)
+                                        DropdownMenuItem(
+                                            value: s, child: Text(s)),
+                                    ],
+                                    onChanged: (value) =>
+                                        setState(() => _specialization = value),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                            Expanded(
+                              child: _Field(
+                                label: 'Years of Experience',
+                                controller: _experience,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+                        const SettingsSectionTitle('Practice Information',
+                            muted: true),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _Field(
+                                label: 'Practice Name',
+                                controller: _clinicName,
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                            Expanded(
+                              child: _Field(
+                                label: 'Practice Address',
+                                controller: _clinicAddress,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _Field(
+                                label: 'City',
+                                hint: 'Johannesburg',
+                                controller: _city,
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Province',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  DropdownButtonFormField<String>(
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFFEAF8F8),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                    ),
+                                    hint: const Text('Gauteng'),
+                                    value: _province,
+                                    items: [
+                                      for (final p in _provinces)
+                                        DropdownMenuItem(
+                                            value: p, child: Text(p)),
+                                    ],
+                                    onChanged: (value) =>
+                                        setState(() => _province = value),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                            width: 210,
+                            child: _Field(
+                              label: 'Postal Code',
+                              hint: '2001',
+                              controller: _zipCode,
+                            )),
+                        const SizedBox(height: 28),
+                        const SettingsSectionTitle('Medical Aids Accepted',
+                            muted: true),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Patients searching for a doctor covered by their plan will '
+                          'only see you if you accept their scheme.',
+                          style:
+                              TextStyle(fontSize: 12, color: Color(0xFF748486)),
+                        ),
+                        const SizedBox(height: 10),
+                        _MedicalAidPicker(
+                          catalogue: vm.medicalAidCatalogue,
+                          selected: _medicalAidIds,
+                          onChanged: (ids) =>
+                              setState(() => _medicalAidIds = ids),
+                        ),
+                        const SizedBox(height: 28),
+                        const SettingsSectionTitle('Consulting Hours',
+                            muted: true),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'The hours patients can book you for. Untick a day to show as '
+                          'closed.',
+                          style:
+                              TextStyle(fontSize: 12, color: Color(0xFF748486)),
+                        ),
+                        const SizedBox(height: 10),
+                        for (final day in _weekdays)
+                          _DayHoursRow(
+                            day: day,
+                            window: _hours[day],
+                            onChanged: (window) =>
+                                setState(() => _hours[day] = window),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 44),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _SignatureArea(
+                      onSave: vm.isSaving ? null : _save,
+                      isSaving: vm.isSaving,
+                      errorMessage:
+                          _problem ?? (_awaitingSave ? null : vm.errorMessage),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 22),
-              SizedBox(
-                  width: 210,
-                  child: _Field(
-                    label: 'Postal Code',
-                    hint: '2001',
-                    controller: _zipCode,
-                  )),
-              const SizedBox(height: 28),
-              const SettingsSectionTitle('Medical Aids Accepted', muted: true),
-              const SizedBox(height: 4),
-              const Text(
-                'Patients searching for a doctor covered by their plan will '
-                'only see you if you accept their scheme.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF748486)),
-              ),
-              const SizedBox(height: 10),
-              _MedicalAidPicker(
-                catalogue: vm.medicalAidCatalogue,
-                selected: _medicalAidIds,
-                onChanged: (ids) => setState(() => _medicalAidIds = ids),
-              ),
-              const SizedBox(height: 28),
-              const SettingsSectionTitle('Consulting Hours', muted: true),
-              const SizedBox(height: 4),
-              const Text(
-                'The hours patients can book you for. Untick a day to show as '
-                'closed.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF748486)),
-              ),
-              const SizedBox(height: 10),
-              for (final day in _weekdays)
-                _DayHoursRow(
-                  day: day,
-                  window: _hours[day],
-                  onChanged: (window) => setState(() => _hours[day] = window),
-                ),
-            ],
-          ),
-        ),
-                const SizedBox(height: 44),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _SignatureArea(
-            onSave: vm.isSaving ? null : _save,
-            errorMessage: _problem ?? vm.errorMessage,
-          ),
-        ),
-      ],
-              ),
-            ),
-          ),
-                ],
-      ),
     );
   }
 }
@@ -1089,7 +1066,8 @@ class _DayHoursRow extends StatelessWidget {
               checked: open,
               // Reopening a day lands on the usual working window rather than
               // two empty boxes the doctor has to fill in from scratch.
-              onTap: () => onChanged(open ? null : const _Window('08:00', '17:00')),
+              onTap: () =>
+                  onChanged(open ? null : const _Window('08:00', '17:00')),
             ),
           ),
           if (open) ...[
@@ -1172,59 +1150,56 @@ class _TimeBoxState extends State<_TimeBox> {
   }
 }
 
+/// The foot of Professional Details: how prescriptions are signed, where the
+/// doctor's registration stands, and the Save button for the whole screen.
+///
+/// It used to offer "Draw your signature" (which did nothing), "Upload
+/// Signature" (which picked a file and threw it away), a preview of a made-up
+/// scribble, and a fixed "Not Verified" badge. Nothing stores a signature
+/// image: the server signs each prescription digitally when the doctor
+/// presses Sign, and the PDF carries that signature's fingerprint.
 class _SignatureArea extends StatelessWidget {
-  const _SignatureArea({this.onSave, this.errorMessage});
+  const _SignatureArea({this.onSave, this.errorMessage, this.isSaving = false});
 
-  /// The Save Changes button at the foot of this section saves the whole
-  /// Professional Details screen, not just the signature.
   final VoidCallback? onSave;
   final String? errorMessage;
+  final bool isSaving;
 
   @override
   Widget build(BuildContext context) {
+    const note = TextStyle(fontSize: 12, color: Color(0xFF748486), height: 1.4);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionTitle('Digital Signature', muted: true),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            const SettingsButton('Draw your signature',
-                icon: Icons.draw_outlined, width: 190, filled: false),
-            const SizedBox(width: 42),
-            SettingsButton(
-              'Upload Signature',
-              onTap: () async {
-                await FilePicker.platform.pickFiles(
-                  type: FileType.image,
-                );
-              },
-            ),
-          ],
+        const SettingsSectionTitle('Signing Prescriptions', muted: true),
+        const SizedBox(height: 8),
+        const Text(
+          'You sign each prescription digitally when you press Sign on it, '
+          'while signed in. Nothing needs drawing or uploading: the PDF carries '
+          'a fingerprint of that signature, which a pharmacy can check.',
+          style: note,
         ),
-        const SizedBox(height: 30),
-        const SettingsSectionTitle('Digital Preview', muted: true),
-        const SizedBox(height: 16),
-        const SizedBox(
-          width: 110,
-          height: 86,
-          child: CustomPaint(painter: _SignaturePainter()),
-        ),
-        const SizedBox(height: 18),
-        const SettingsSectionTitle('Verification Status', muted: true),
-        const SizedBox(height: 14),
+        const SizedBox(height: 22),
+        const SettingsSectionTitle('HPCSA Registration', muted: true),
+        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           decoration: BoxDecoration(
-            color: const Color(0xFFFF6F72),
+            color: const Color(0xFFFFF4D6),
             borderRadius: BorderRadius.circular(4),
           ),
           child: const Text(
-            'Not Verified',
-            style: TextStyle(fontSize: 11, color: Color(0xFFCC1111)),
+            'Not checked yet',
+            style: TextStyle(fontSize: 11, color: Color(0xFF8A6D00)),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
+        const Text(
+          'Pholders does not check HPCSA numbers against the register yet. '
+          'To correct yours, contact support.',
+          style: note,
+        ),
+        const SizedBox(height: 22),
         if (errorMessage != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -1235,8 +1210,8 @@ class _SignatureArea extends StatelessWidget {
           ),
         Align(
           alignment: Alignment.centerRight,
-          child: SettingsButton('Save Changes',
-              width: 150, filled: false, height: 30, onTap: onSave),
+          child: SettingsButton(isSaving ? 'Saving…' : 'Save Changes',
+              icon: Icons.save_outlined, width: 160, height: 34, onTap: onSave),
         ),
       ],
     );
@@ -1247,8 +1222,6 @@ class _Field extends StatelessWidget {
   const _Field({
     required this.label,
     this.hint,
-    this.icon,
-    this.trailing,
     this.inputFormatters,
     this.controller,
     this.readOnly = false,
@@ -1256,8 +1229,6 @@ class _Field extends StatelessWidget {
 
   final String label;
   final String? hint;
-  final IconData? icon;
-  final Widget? trailing;
   final List<TextInputFormatter>? inputFormatters;
 
   /// Supplied for fields that are actually saved. Without one the field stays
@@ -1277,8 +1248,6 @@ class _Field extends StatelessWidget {
         const SizedBox(height: 5),
         SettingsInput(
           hint: hint,
-          icon: icon,
-          trailing: trailing,
           inputFormatters: inputFormatters,
           controller: controller,
           readOnly: readOnly,
@@ -1286,49 +1255,6 @@ class _Field extends StatelessWidget {
       ],
     );
   }
-}
-
-class _SignaturePainter extends CustomPainter {
-  const _SignaturePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF12C7C8)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final corner = Paint()
-      ..color = const Color(0xFF12C7C8)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(const Offset(4, 4), const Offset(26, 4), corner);
-    canvas.drawLine(const Offset(4, 4), const Offset(4, 26), corner);
-    canvas.drawLine(
-        Offset(size.width - 4, 4), Offset(size.width - 26, 4), corner);
-    canvas.drawLine(
-        Offset(size.width - 4, 4), Offset(size.width - 4, 26), corner);
-    canvas.drawLine(
-        Offset(4, size.height - 4), Offset(26, size.height - 4), corner);
-    canvas.drawLine(
-        Offset(4, size.height - 4), Offset(4, size.height - 26), corner);
-    canvas.drawLine(Offset(size.width - 4, size.height - 4),
-        Offset(size.width - 26, size.height - 4), corner);
-    canvas.drawLine(Offset(size.width - 4, size.height - 4),
-        Offset(size.width - 4, size.height - 26), corner);
-
-    final path = Path()
-      ..moveTo(28, 60)
-      ..cubicTo(40, 20, 40, 20, 46, 62)
-      ..cubicTo(54, 45, 55, 45, 58, 65)
-      ..cubicTo(66, 48, 70, 48, 78, 59)
-      ..cubicTo(86, 68, 94, 54, 100, 57);
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // Store bindings ------------------------------------------------------------
@@ -1355,4 +1281,20 @@ class _ProfileViewModel {
   final Doctor? doctor;
   final String? errorMessage;
   final List<MedicalAidScheme> medicalAidCatalogue;
+}
+
+/// Where the doctor's photo goes before they have uploaded one.
+class _NoPhoto extends StatelessWidget {
+  const _NoPhoto();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      key: ValueKey('no-photo'),
+      color: Color(0xFFE3F5F6),
+      child: Center(
+        child: Icon(Icons.person, size: 110, color: Color(0xFFA9C9CC)),
+      ),
+    );
+  }
 }

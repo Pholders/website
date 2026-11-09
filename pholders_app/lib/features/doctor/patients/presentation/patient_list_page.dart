@@ -14,11 +14,16 @@ class PatientListPage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => PatientProfileScreen(
-                // The detail screens still type against the older shape, so
-                // the real record is converted at this one boundary.
-                patient: Patient.fromDoctorPatient(patient),
-                onBack: () => Navigator.pop(context),
+              // A pushed route has no Scaffold above it, so it needs its own:
+              // without one the page has no background or Material for its
+              // text fields. PatientDetailPage does the same.
+              builder: (context) => Scaffold(
+                body: PatientProfileScreen(
+                  // The detail screens still type against the older shape, so
+                  // the real record is converted at this one boundary.
+                  patient: Patient.fromDoctorPatient(patient),
+                  onBack: () => Navigator.pop(context),
+                ),
               ),
             ),
           );

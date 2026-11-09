@@ -855,6 +855,7 @@ class _PatientFormDialogState extends State<_PatientFormDialog> {
               const Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<PatientStatus>(
+                isExpanded: true,
                 initialValue: _status,
                 decoration: _dropDecoration(),
                 items: PatientStatus.values.map((s) {
@@ -868,6 +869,7 @@ class _PatientFormDialogState extends State<_PatientFormDialog> {
               const Text('Priority', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _priority,
                 decoration: _dropDecoration(),
                 items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
@@ -879,6 +881,7 @@ class _PatientFormDialogState extends State<_PatientFormDialog> {
               const Text('Category', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<PatientCategory>(
+                isExpanded: true,
                 initialValue: _category,
                 decoration: _dropDecoration(),
                 items: const [

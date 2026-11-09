@@ -5,90 +5,52 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-import '../../../../main.dart';
-import '../../../../shared/theme/app_theme.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../shared/widgets/app_sidebar.dart';
-import '../../../../shared/widgets/app_top_navbar.dart';
+import '../data/billing_repository.dart';
 import 'pdf_download_stub.dart'
     if (dart.library.html) 'pdf_download_web.dart';
 
-// ─── Transaction model ────────────────────────────────────────────────────────
-enum TxStatus { paid, pending, cancelled, refund, processing }
-
-class Transaction {
-
-  const Transaction({
-    required this.id,
-    required this.patient,
-    required this.initials,
-    required this.service,
-    required this.amount,
-    required this.date,
-    required this.status,
-  });
-  final String id;
-  final String patient;
-  final String initials;
-  final String service;
-  final String amount;
-  final String date;
-  final TxStatus status;
-
-  Transaction copyWith({TxStatus? status}) => Transaction(
-    id: id,
-    patient: patient,
-    initials: initials,
-    service: service,
-    amount: amount,
-    date: date,
-    status: status ?? this.status,
-  );
-}
-
-final _initialTransactions = [
-  const Transaction(id: 'TXN-001', patient: 'Maria Wilson',   initials: 'MW', service: 'Consultation', amount: 'R200', date: '05 May', status: TxStatus.paid),
-  const Transaction(id: 'TXN-002', patient: 'James Mokoena',  initials: 'JM', service: 'Chemotherapy',  amount: 'R450', date: '03 May', status: TxStatus.pending),
-  const Transaction(id: 'TXN-003', patient: 'Sarah Dlamini',  initials: 'SD', service: 'Consultation',  amount: 'R200', date: '03 May', status: TxStatus.cancelled),
-  const Transaction(id: 'TXN-004', patient: 'John Nkosi',     initials: 'JN', service: 'X-Ray',         amount: 'R100', date: '02 May', status: TxStatus.paid),
-  const Transaction(id: 'TXN-005', patient: 'Thandi Khumalo', initials: 'TK', service: 'Consultation',  amount: 'R80',  date: '01 May', status: TxStatus.refund),
-  const Transaction(id: 'TXN-006', patient: 'Peter Sithole',  initials: 'PS', service: 'Blood Test',    amount: 'R200', date: '30 Apr', status: TxStatus.processing),
-  const Transaction(id: 'TXN-007', patient: 'Lisa Mahlangu',  initials: 'LM', service: 'Consultation',  amount: 'R200', date: '29 Apr', status: TxStatus.paid),
-];
-
 // ─── Status helpers ───────────────────────────────────────────────────────────
 ({Color bg, Color fg, String label}) _statusStyle(TxStatus s) => switch (s) {
-  TxStatus.paid       => (bg: const Color(0xFFE1F5EE), fg: const Color(0xFF0F6E56), label: 'Paid'),
-  TxStatus.pending    => (bg: const Color(0xFFFAEEDA), fg: const Color(0xFF854F0B), label: 'Pending'),
-  TxStatus.cancelled  => (bg: const Color(0xFFF1EFE8), fg: const Color(0xFF5F5E5A), label: 'Cancelled'),
-  TxStatus.refund     => (bg: const Color(0xFFFCEBEB), fg: const Color(0xFFA32D2D), label: 'Refund'),
-  TxStatus.processing => (bg: const Color(0xFFE6F1FB), fg: const Color(0xFF185FA5), label: 'Processing'),
+  TxStatus.paid       => (bg: const Color(0xFFC4EDF0), fg: const Color(0xFF2E9FA5), label: 'Paid'),
+  TxStatus.pending    => (bg: const Color(0xFFFFF0CE), fg: const Color(0xFFE0951A), label: 'Pending'),
+  TxStatus.cancelled  => (bg: const Color(0xFFE2E4E4), fg: const Color(0xFF6C6C6C), label: 'Cancelled'),
+  TxStatus.failed     => (bg: const Color(0xFFFFB4B4), fg: const Color(0xFFC62828), label: 'Failed'),
 };
 
 Color _dotColor(TxStatus s) => switch (s) {
-  TxStatus.paid       => const Color(0xFF1D9E75),
-  TxStatus.pending    => const Color(0xFFBA7517),
-  TxStatus.cancelled  => const Color(0xFF888780),
-  TxStatus.refund     => const Color(0xFFE24B4A),
-  TxStatus.processing => const Color(0xFF378ADD),
+  TxStatus.paid       => const Color(0xFF2E9FA5),
+  TxStatus.pending    => const Color(0xFFF5A623),
+  TxStatus.cancelled  => const Color(0xFF6C6C6C),
+  TxStatus.failed     => const Color(0xFFE53935),
 };
 
 // ─── BillingPage ──────────────────────────────────────────────────────────────
+/// The doctor's payments from patients, from /users/doctor/payments.
+///
+/// It used to show seven invented transactions, made-up totals (R88,200
+/// earned), a Withdraw button that announced a R8,200 payout nobody made, and
+/// a Cancel that changed only the row on screen. There is no payout or
+/// doctor-side cancel on the backend, so those are gone rather than faked.
 class BillingPage extends StatelessWidget {
-  const BillingPage({super.key});
-  static const String _role = 'doctor';
+  const BillingPage({super.key, this.repository});
+
+  final BillingRepository? repository;
 
   @override
   Widget build(BuildContext context) {
-    // Remove the Scaffold and layout logic from BillingPage.
-    // The parent widget (e.g., ShellLayout) will handle the layout.
-    return const _BillingBody();
+    // The parent widget (e.g., ShellLayout) handles the layout.
+    return _BillingBody(repository: repository ?? sl<BillingRepository>());
   }
 }
 
 // ─── Body ─────────────────────────────────────────────────────────────────────
 class _BillingBody extends StatefulWidget {
-  const _BillingBody();
+  const _BillingBody({required this.repository});
+
+  final BillingRepository repository;
 
   @override
   State<_BillingBody> createState() => _BillingBodyState();
@@ -96,15 +58,43 @@ class _BillingBody extends StatefulWidget {
 
 class _BillingBodyState extends State<_BillingBody> {
   final TextEditingController _searchController = TextEditingController();
-  late List<Transaction> _transactions;
-  List<Transaction> _filtered = [];
+  List<Transaction> _transactions = const [];
+  List<Transaction> _filtered = const [];
+  BillingSummary? _summary;
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _transactions = List.from(_initialTransactions);
-    _filtered = _transactions;
     _searchController.addListener(_onSearch);
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait([
+        widget.repository.fetchSummary(),
+        widget.repository.fetchPayments(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _summary = results[0] as BillingSummary;
+        _transactions = results[1] as List<Transaction>;
+        _loading = false;
+      });
+      _onSearch();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    }
   }
 
   void _onSearch() {
@@ -117,18 +107,9 @@ class _BillingBodyState extends State<_BillingBody> {
                   tx.service.toLowerCase().contains(q) ||
                   tx.amount.toLowerCase().contains(q) ||
                   tx.date.toLowerCase().contains(q) ||
+                  tx.method.toLowerCase().contains(q) ||
                   _statusStyle(tx.status).label.toLowerCase().contains(q);
             }).toList();
-    });
-  }
-
-  void _cancelTransaction(String id) {
-    setState(() {
-      final idx = _transactions.indexWhere((t) => t.id == id);
-      if (idx != -1) {
-        _transactions[idx] = _transactions[idx].copyWith(status: TxStatus.cancelled);
-      }
-      _onSearch();
     });
   }
 
@@ -140,105 +121,144 @@ class _BillingBodyState extends State<_BillingBody> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+    // As the patients page: white round the edge, the pale rounded panel
+    // filling the rest, at least as tall as the window.
+    return LayoutBuilder(builder: (context, c) {
+      const outer = EdgeInsets.fromLTRB(31, 0, 38, 26);
+      final minPanel = c.hasBoundedHeight ? c.maxHeight - outer.vertical : 0.0;
+      return Material(
+        color: Colors.white,
+        child: SingleChildScrollView(
+          padding: outer,
+          child: Container(
+            constraints: BoxConstraints(minHeight: minPanel < 0 ? 0 : minPanel),
+            padding: const EdgeInsets.fromLTRB(33, 30, 33, 26),
+            decoration: BoxDecoration(
+              color: _panelBg,
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: _content(),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _content() {
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Billing & Payments', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-          const SizedBox(height: 16),
-          const _WithdrawButton(),
+          Row(children: [
+            const Text('Billing & Payments', style: TextStyle(fontSize: 30, color: Colors.black)),
+            const Spacer(),
+            if (!_loading)
+              IconButton(
+                tooltip: 'Refresh',
+                icon: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.textSecondary),
+                onPressed: _load,
+              ),
+          ]),
           const SizedBox(height: 18),
-          const _StatBox(),
-          const SizedBox(height: 24),
-          _TransactionsHeader(controller: _searchController),
-          const SizedBox(height: 10),
-          const _ColumnHeaders(),
-          const SizedBox(height: 6),
-          _DataRowsBox(
-            transactions: _filtered,
-            onCancel: _cancelTransaction,
-          ),
-          const SizedBox(height: 24),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: CircularProgressIndicator(color: AppColors.activeTeal)),
+            )
+          else if (_error != null)
+            _LoadError(message: _error!, onRetry: _load)
+          else ...[
+            _StatBox(summary: _summary!),
+            const SizedBox(height: 32),
+            _TransactionsHeader(controller: _searchController),
+            const SizedBox(height: 22),
+            const _ColumnHeaders(),
+            const SizedBox(height: 14),
+            _DataRowsBox(
+              transactions: _filtered,
+              searching: _searchController.text.trim().isNotEmpty,
+            ),
+          ],
         ],
+    );
+  }
+}
+
+const Color _panelBg = Color(0xFFE3F5F6);
+const Color _aqua = Color(0xFF6DD0D8);
+
+/// A white card on the design's aqua left edge.
+class _EdgedCard extends StatelessWidget {
+  const _EdgedCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: 8),
+      decoration: BoxDecoration(color: _aqua, borderRadius: BorderRadius.circular(24)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: ColoredBox(color: Colors.white, child: child),
       ),
     );
   }
 }
 
-// ─── Withdraw button ──────────────────────────────────────────────────────────
-class _WithdrawButton extends StatelessWidget {
-  const _WithdrawButton();
+// ─── Load error ───────────────────────────────────────────────────────────────
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Withdraw Funds'),
-          content: const Text('Your withdrawal request of R8,200 has been submitted successfully.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK', style: const TextStyle(color: AppColors.activeTeal)),
-            ),
-          ],
-        ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider, width: 0.5),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(color: AppColors.activeTeal, borderRadius: BorderRadius.circular(20)),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.arrow_circle_up_outlined, color: Colors.white, size: 16),
-            SizedBox(width: 6),
-            Text('Withdraw Funds', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
+      child: Column(children: [
+        const Icon(Icons.cloud_off_rounded, size: 40, color: AppColors.textSecondary),
+        const SizedBox(height: 8),
+        const Text('Could not load your payments', style: TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+        const SizedBox(height: 4),
+        Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        const SizedBox(height: 12),
+        TextButton(onPressed: onRetry, child: const Text('Try again', style: TextStyle(color: AppColors.activeTeal))),
+      ]),
     );
   }
 }
 
 // ─── Stat box ─────────────────────────────────────────────────────────────────
 class _StatBox extends StatelessWidget {
-  const _StatBox();
+  const _StatBox({required this.summary});
+
+  final BillingSummary summary;
+
+  String _count(int n, String one) => '$n ${n == 1 ? one : '${one}s'}';
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 0.5),
-      ),
+    return _EdgedCard(
       child: Stack(
         children: [
-          Positioned(
-            left: 0, top: 0, bottom: 0,
-            child: Container(
-              width: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.activeTeal,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
-              ),
-            ),
-          ),
           Padding(
-            padding: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: IntrinsicHeight(
               child: Row(
                 children: [
-                  _StatItem(icon: Icons.monetization_on_outlined, iconBg: AppColors.activeTeal.withValues(alpha: 0.12), iconColor: AppColors.activeTeal, label: 'Total Earnings',     value: 'R88,200', sub: '+2.5% Learn more', subColor: const Color(0xFF1D9E75)),
+                  _StatItem(icon: Icons.monetization_on_outlined, iconBg: AppColors.activeTeal.withValues(alpha: 0.12), iconColor: AppColors.activeTeal, label: 'Received', value: formatRand(summary.receivedAmount), sub: 'From paid consultations'),
                   _vDiv(),
-                  _StatItem(icon: Icons.account_balance_wallet_outlined, iconBg: AppColors.activeTeal.withValues(alpha: 0.12), iconColor: AppColors.activeTeal, label: 'Available Balance', value: 'R8,200',  sub: 'Ready to withdraw'),
+                  _StatItem(icon: Icons.access_time_outlined, iconBg: const Color(0xFFFAEEDA), iconColor: const Color(0xFFBA7517), label: 'Pending Payments', value: formatRand(summary.pendingAmount), sub: 'Not paid yet'),
                   _vDiv(),
-                  const _StatItem(icon: Icons.access_time_outlined, iconBg: Color(0xFFFAEEDA), iconColor: Color(0xFFBA7517), label: 'Pending Payments',   value: 'R3,400',  sub: 'In progress'),
+                  _StatItem(icon: Icons.check_circle_outline, iconBg: const Color(0xFFE1F5EE), iconColor: const Color(0xFF1D9E75), label: 'Completed Payments', value: '${summary.receivedCount}', sub: _count(summary.pendingCount, 'pending payment')),
                   _vDiv(),
-                  const _StatItem(icon: Icons.check_circle_outline,  iconBg: Color(0xFFE1F5EE), iconColor: Color(0xFF1D9E75), label: 'Completed Payments', value: '42',      sub: 'Transactions'),
+                  _StatItem(icon: Icons.cancel_outlined, iconBg: const Color(0xFFF1EFE8), iconColor: const Color(0xFF5F5E5A), label: 'Cancelled or Failed', value: '${summary.cancelledCount + summary.failedCount}', sub: 'Not charged'),
                 ],
               ),
             ),
@@ -248,35 +268,34 @@ class _StatBox extends StatelessWidget {
     );
   }
 
-  static Widget _vDiv() => Container(width: 0.5, color: AppColors.divider, margin: const EdgeInsets.symmetric(vertical: 16));
+  static Widget _vDiv() => Container(width: 1, color: const Color(0xFFD0D5D6), margin: const EdgeInsets.symmetric(vertical: 18));
 }
 
 class _StatItem extends StatelessWidget {
 
-  const _StatItem({required this.icon, required this.iconBg, required this.iconColor, required this.label, required this.value, required this.sub, this.subColor});
+  const _StatItem({required this.icon, required this.iconBg, required this.iconColor, required this.label, required this.value, required this.sub});
   final IconData icon;
   final Color iconBg;
   final Color iconColor;
   final String label;
   final String value;
   final String sub;
-  final Color? subColor;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(24, 16, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(width: 32, height: 32, decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: iconColor, size: 18)),
+            Container(width: 38, height: 38, decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle), child: Icon(icon, color: iconColor, size: 20)),
             const SizedBox(height: 10),
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-            const SizedBox(height: 3),
-            Text(sub, style: TextStyle(fontSize: 10, color: subColor ?? AppColors.textMuted)),
+            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black)),
+            const SizedBox(height: 6),
+            Text(value, style: const TextStyle(fontSize: 28, color: Colors.black)),
+            const SizedBox(height: 6),
+            Text(sub, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
           ],
         ),
       ),
@@ -305,14 +324,19 @@ class _TransactionsHeaderState extends State<_TransactionsHeader> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Row(children: [
-          const Icon(Icons.swap_horiz, color: AppColors.activeTeal, size: 18),
-          SizedBox(width: 8),
-          const Text('Transactions', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+        Row(children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(color: Color(0xFFC4EDF0), shape: BoxShape.circle),
+            child: const Icon(Icons.swap_horiz, color: Colors.black, size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Text('Transactions', style: TextStyle(fontSize: 20, color: Colors.black)),
         ]),
         SizedBox(
-          width: 220,
-          height: 36,
+          width: 280,
+          height: 40,
           child: TextField(
             controller: widget.controller,
             style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
@@ -327,11 +351,11 @@ class _TransactionsHeaderState extends State<_TransactionsHeader> {
                     )
                   : null,
               filled: true,
-              fillColor: AppColors.brandTeal.withValues(alpha: 0.12),
+              fillColor: const Color(0xFFC4EDF0),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.divider, width: 0.5)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.divider, width: 0.5)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.activeTeal, width: 1.5)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: AppColors.activeTeal, width: 1.5)),
             ),
           ),
         ),
@@ -349,15 +373,14 @@ class _ColumnHeaders extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-      decoration: BoxDecoration(
-        border: const Border(bottom: const BorderSide(color: AppColors.divider, width: 1.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 2))],
+      padding: const EdgeInsets.fromLTRB(28, 0, 24, 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFD3E6E7), width: 2)),
       ),
       child: Row(
         children: List.generate(_cols.length, (i) => Expanded(
           flex: _flex[i],
-          child: Text(_cols[i], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+          child: Text(_cols[i], style: const TextStyle(fontSize: 13, color: Color(0xFF7C8B8D))),
         )),
       ),
     );
@@ -367,59 +390,48 @@ class _ColumnHeaders extends StatelessWidget {
 // ─── Data rows box ────────────────────────────────────────────────────────────
 class _DataRowsBox extends StatelessWidget {
 
-  const _DataRowsBox({required this.transactions, required this.onCancel});
+  const _DataRowsBox({required this.transactions, required this.searching});
   final List<Transaction> transactions;
-  final void Function(String id) onCancel;
+
+  /// Whether an empty list means "no match" rather than "no payments yet".
+  final bool searching;
 
   @override
   Widget build(BuildContext context) {
     if (transactions.isEmpty) {
-      return Container(
+      return _EdgedCard(
+        child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 40),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.divider, width: 0.5),
-        ),
-        child: const Center(
+        child: Center(
           child: Column(children: [
-            const Icon(Icons.search_off_rounded, size: 40, color: AppColors.textSecondary),
-            SizedBox(height: 8),
-            const Text('No transactions found', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            SizedBox(height: 4),
-            const Text('Try a different search term', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            Icon(searching ? Icons.search_off_rounded : Icons.receipt_long_outlined, size: 40, color: AppColors.textSecondary),
+            const SizedBox(height: 8),
+            Text(searching ? 'No transactions found' : 'No payments yet', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 4),
+            Text(
+              searching
+                  ? 'Try a different search term'
+                  : 'Payments appear here when patients pay for appointments with you',
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
           ]),
         ),
+      ),
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 0.5),
-      ),
+    return _EdgedCard(
       child: Stack(
         children: [
-          Positioned(
-            left: 0, top: 0, bottom: 0,
-            child: Container(
-              width: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.activeTeal,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
-              ),
-            ),
-          ),
           Padding(
-            padding: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               children: List.generate(
                 transactions.length,
                 (i) => _TxRow(
                   tx: transactions[i],
                   isLast: i == transactions.length - 1,
-                  onCancel: onCancel,
                 ),
               ),
             ),
@@ -433,10 +445,9 @@ class _DataRowsBox extends StatelessWidget {
 // ─── Transaction row ──────────────────────────────────────────────────────────
 class _TxRow extends StatefulWidget {
 
-  const _TxRow({required this.tx, required this.isLast, required this.onCancel});
+  const _TxRow({required this.tx, required this.isLast});
   final Transaction tx;
   final bool isLast;
-  final void Function(String id) onCancel;
 
   @override
   State<_TxRow> createState() => _TxRowState();
@@ -493,6 +504,8 @@ class _TxRowState extends State<_TxRow> {
                   _pdfDetailRow('Service', tx.service),
                   pw.SizedBox(height: 10),
                   _pdfDetailRow('Date', tx.date),
+                  pw.SizedBox(height: 10),
+                  _pdfDetailRow('Paid by', tx.method),
                   pw.SizedBox(height: 10),
                   _pdfDetailRow('Amount', tx.amount, isBold: true, color: const PdfColor.fromInt(0xFF2D9B8C)),
                   pw.SizedBox(height: 10),
@@ -556,13 +569,16 @@ class _TxRowState extends State<_TxRow> {
   }
 
   // ── Receipt dialog ─────────────────────────────────────────────────────────
+  // Dialogs open on the root navigator, but this page sits in a ShellRoute
+  // with its own. Each dialog closes itself through its own context: popping
+  // with the page's context popped the page instead, and crashed.
   void _showReceipt(BuildContext context) {
     final tx = widget.tx;
     final statusInfo = _statusStyle(tx.status);
 
     showDialog(
       context: context,
-      builder: (_) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           width: 420,
@@ -601,6 +617,8 @@ class _TxRowState extends State<_TxRow> {
                     _receiptDivider(),
                     _receiptRow('Date', tx.date),
                     _receiptDivider(),
+                    _receiptRow('Paid by', tx.method),
+                    _receiptDivider(),
                     _receiptRow('Amount', tx.amount, valueColor: AppColors.activeTeal, valueBold: true),
                     _receiptDivider(),
                     Row(
@@ -632,6 +650,7 @@ class _TxRowState extends State<_TxRow> {
                               'Patient        : ${tx.patient}\n'
                               'Service        : ${tx.service}\n'
                               'Date           : ${tx.date}\n'
+                              'Paid by        : ${tx.method}\n'
                               'Amount         : ${tx.amount}\n'
                               'Status         : ${statusInfo.label}\n'
                               '─────────────────────────';
@@ -662,11 +681,23 @@ class _TxRowState extends State<_TxRow> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () async {
-                          Navigator.pop(context);
-                          await _downloadReceiptPDF(tx);
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(dialogContext);
+                          try {
+                            await _downloadReceiptPDF(tx);
+                          } catch (e) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Could not create the receipt PDF: $e'),
+                                backgroundColor: Colors.red.shade400,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          messenger.showSnackBar(
                             SnackBar(
-                              content: const Text('Receipt PDF ready for download'),
+                              content: const Text('Receipt PDF downloaded'),
                               backgroundColor: AppColors.activeTeal,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -690,7 +721,7 @@ class _TxRowState extends State<_TxRow> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(dialogContext),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.activeTeal,
                           foregroundColor: Colors.white,
@@ -739,7 +770,7 @@ class _TxRowState extends State<_TxRow> {
 
     showDialog(
       context: context,
-      builder: (_) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           width: 500,
@@ -889,6 +920,15 @@ class _TxRowState extends State<_TxRow> {
                       ),
                       const SizedBox(height: 16),
 
+                      // How the patient paid
+                      _detailsSection(
+                        icon: Icons.payments_outlined,
+                        iconColor: AppColors.activeTeal,
+                        label: 'Paid by',
+                        value: tx.method,
+                      ),
+                      const SizedBox(height: 16),
+
                       // Status
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -944,7 +984,7 @@ class _TxRowState extends State<_TxRow> {
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () {
-                                Navigator.pop(context);
+                                Navigator.pop(dialogContext);
                                 _showReceipt(context);
                               },
                               style: OutlinedButton.styleFrom(
@@ -966,7 +1006,7 @@ class _TxRowState extends State<_TxRow> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => Navigator.pop(dialogContext),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.activeTeal,
                                 foregroundColor: Colors.white,
@@ -1038,110 +1078,9 @@ class _TxRowState extends State<_TxRow> {
     );
   }
 
-  // ── Cancel confirmation dialog ─────────────────────────────────────────────
-  void _confirmCancel(BuildContext context) {
-    final tx = widget.tx;
-
-    // Already cancelled — nothing to do
-    if (tx.status == TxStatus.cancelled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('This transaction is already cancelled'),
-          backgroundColor: AppColors.textSecondary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: const Color(0xFFFCEBEB), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
-          ),
-          const SizedBox(width: 10),
-          const Text('Cancel Transaction', style: TextStyle(fontSize: 16)),
-        ]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Are you sure you want to cancel this transaction?', style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Column(
-                children: [
-                  _dialogInfoRow('Patient', tx.patient),
-                  const SizedBox(height: 4),
-                  _dialogInfoRow('Service', tx.service),
-                  const SizedBox(height: 4),
-                  _dialogInfoRow('Amount', tx.amount),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This action cannot be undone.',
-              style: TextStyle(fontSize: 12, color: Colors.red.shade400),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Keep', style: const TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onCancel(tx.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Transaction ${tx.id} has been cancelled'),
-                  backgroundColor: Colors.red.shade400,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Yes, Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dialogInfoRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        Text(value, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
-      ],
-    );
-  }
-
   // ── Action menu ────────────────────────────────────────────────────────────
   void _showMenu(BuildContext context) {
     final tx = widget.tx;
-    final canCancel = tx.status != TxStatus.cancelled && tx.status != TxStatus.refund;
 
     showModalBottomSheet(
       context: context,
@@ -1215,32 +1154,6 @@ class _TxRowState extends State<_TxRow> {
               },
             ),
 
-            // Cancel
-            ListTile(
-              leading: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: canCancel ? const Color(0xFFFCEBEB) : AppColors.rowDivider,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.cancel_outlined, color: canCancel ? Colors.red : AppColors.textMuted, size: 18),
-              ),
-              title: Text(
-                'Cancel Transaction',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: canCancel ? AppColors.textPrimary : AppColors.textMuted),
-              ),
-              subtitle: Text(
-                canCancel ? 'Mark this transaction as cancelled' : 'Already ${_statusStyle(tx.status).label.toLowerCase()}',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-              onTap: canCancel
-                  ? () {
-                      Navigator.pop(context);
-                      _confirmCancel(context);
-                    }
-                  : null,
-            ),
-
             const SizedBox(height: 8),
           ],
         ),
@@ -1261,16 +1174,22 @@ class _TxRowState extends State<_TxRow> {
           color: _hovered ? AppColors.brandTeal.withValues(alpha: 0.04) : Colors.transparent,
           border: widget.isLast ? null : const Border(bottom: const BorderSide(color: AppColors.divider, width: 0.5)),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
         child: Row(
           children: [
             Expanded(
               flex: 25,
               child: Row(children: [
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: const Color(0xFFD9F5F5),
-                  child: Text(widget.tx.initials, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF0F6E56))),
+                Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1FAFA),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _aqua, width: 1.5),
+                  ),
+                  child: Text(widget.tx.initials, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF2E9FA5))),
                 ),
                 const SizedBox(width: 10),
                 Flexible(child: Text(widget.tx.patient, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
@@ -1285,12 +1204,13 @@ class _TxRowState extends State<_TxRow> {
                 alignment: Alignment.centerLeft,
                 fit: BoxFit.scaleDown,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(color: style.bg, borderRadius: BorderRadius.circular(20)),
+                  constraints: const BoxConstraints(minWidth: 108),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: style.bg, borderRadius: BorderRadius.circular(4)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: _dotColor(widget.tx.status), shape: BoxShape.circle)),
-                    const SizedBox(width: 5),
-                    Text(style.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: style.fg)),
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: _dotColor(widget.tx.status), shape: BoxShape.circle)),
+                    const SizedBox(width: 10),
+                    Text(style.label, style: TextStyle(fontSize: 13, color: style.fg)),
                   ]),
                 ),
               ),

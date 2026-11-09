@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../../shared/constants/app_constants.dart';
@@ -42,7 +45,12 @@ class ApiClient {
   final Dio _dio;
   final TokenStorage _tokenStorage;
 
-  /// Called when any request comes back 401/403, so the app can log out.
+  /// Called when any request comes back 401, so the app can log out.
+  ///
+  /// Not on 403: the backend sends 401 for every missing, expired or revoked
+  /// session, and 403 for "signed in, but not allowed this", such as a doctor
+  /// the patient has not given access to their record. Signing out on 403
+  /// threw the doctor out of the portal for an ordinary refusal.
   ///
   /// Set by the auth middleware at startup.
   void Function()? onUnauthorized;
@@ -73,6 +81,11 @@ class ApiClient {
     return _send(() => _dio.patch<dynamic>(path, data: body));
   }
 
+  /// Sends a DELETE and returns the decoded `data` object.
+  Future<Map<String, dynamic>> delete(String path) {
+    return _send(() => _dio.delete<dynamic>(path));
+  }
+
   /// Sends a PUT and returns the decoded `data` object.
   Future<Map<String, dynamic>> put(
     String path, {
@@ -93,6 +106,51 @@ class ApiClient {
     required FormData formData,
   }) {
     return _send(() => _dio.put<dynamic>(path, data: formData));
+  }
+
+  /// Fetches a binary document — a PDF, rather than the usual JSON envelope.
+  ///
+  /// Separate from [get] because [_send] expects `{ success, message, data }`
+  /// and would reject a stream of bytes as an unexpected response. Only the
+  /// success path differs: a refusal still arrives as the usual envelope, so
+  /// it is decoded here and raised as an [ApiException] like any other call.
+  Future<Uint8List> getBytes(String path) async {
+    final Response<List<int>> response;
+    try {
+      response = await _dio.get<List<int>>(
+        path,
+        options: Options(responseType: ResponseType.bytes),
+      );
+    } on DioException catch (e) {
+      throw _mapDioException(e);
+    }
+
+    final status = response.statusCode ?? 0;
+    final bytes = response.data;
+
+    if (status >= 200 && status < 300 && bytes != null && bytes.isNotEmpty) {
+      return Uint8List.fromList(bytes);
+    }
+
+    if (status == 401) onUnauthorized?.call();
+
+    var message = 'The document could not be downloaded.';
+    if (bytes != null && bytes.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(utf8.decode(bytes));
+        if (decoded is Map && decoded['message'] is String) {
+          message = decoded['message'] as String;
+        }
+      } on FormatException {
+        // Not JSON either — keep the generic message.
+      }
+    }
+
+    throw ApiException(
+      message: message,
+      statusCode: response.statusCode,
+      kind: ApiErrorKind.http,
+    );
   }
 
   Future<Map<String, dynamic>> _send(
@@ -119,7 +177,7 @@ class ApiClient {
     final succeeded = body['success'] == true;
     if (!succeeded) {
       final statusCode = response.statusCode;
-      if (statusCode == 401 || statusCode == 403) {
+      if (statusCode == 401) {
         onUnauthorized?.call();
       }
       throw ApiException(
@@ -159,7 +217,7 @@ class ApiClient {
         );
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode;
-        if (statusCode == 401 || statusCode == 403) onUnauthorized?.call();
+        if (statusCode == 401) onUnauthorized?.call();
         final data = e.response?.data;
         return ApiException(
           message: data is Map<String, dynamic>

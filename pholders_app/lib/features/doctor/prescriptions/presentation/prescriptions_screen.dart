@@ -3,8 +3,10 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:redux/redux.dart';
 
 import 'package:pholders_app/app/app_state.dart';
-import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart' show Patient;
-import 'package:pholders_app/features/doctor/prescriptions/data/models/prescription.dart' as api;
+import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart'
+    show Patient;
+import 'package:pholders_app/features/doctor/prescriptions/data/models/prescription.dart'
+    as api;
 import 'package:pholders_app/features/doctor/prescriptions/data/models/signing_receipt.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/interaction_check_dialog.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/signing_receipt_dialog.dart';
@@ -36,7 +38,6 @@ class RxColors {
 enum RxStatus { approved, pending, dispensed, expired, revoked }
 
 class Prescription {
-
   const Prescription({
     required this.id,
     required this.patientName,
@@ -45,6 +46,7 @@ class Prescription {
     required this.dateIssued,
     required this.status,
     this.note,
+    this.issuedOn,
   });
   final String id;
   final String patientName;
@@ -56,23 +58,24 @@ class Prescription {
   /// Read-only detail behind the status: which pharmacy dispensed it and
   /// when, or why it was revoked. The doctor never sets either.
   final String? note;
+
+  /// When it was written, for the details' full date ("22 Oct 2026").
+  final DateTime? issuedOn;
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-List<Prescription> _mockPrescriptions(String patientName) => [
-      Prescription(id: 'RX001', patientName: patientName, medication: 'Isotretinoin', dosage: '10mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX002', patientName: patientName, medication: 'Isotretinoin', dosage: '10mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX003', patientName: patientName, medication: 'Isotretinoin', dosage: '10mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX004', patientName: patientName, medication: 'Isotretinoin', dosage: '30mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX005', patientName: patientName, medication: 'Isotretinoin', dosage: '40mg', dateIssued: '01 Mar', status: RxStatus.pending),
-      Prescription(id: 'RX006', patientName: patientName, medication: 'Isotretinoin', dosage: '10mg', dateIssued: '01 Mar', status: RxStatus.approved),
-      Prescription(id: 'RX007', patientName: patientName, medication: 'Isotretinoin', dosage: '30mg', dateIssued: '01 Mar', status: RxStatus.dispensed),
-      Prescription(id: 'RX008', patientName: patientName, medication: 'Isotretinoin', dosage: '20mg', dateIssued: '01 Mar', status: RxStatus.approved),
-    ];
+/// Whether [p] matches what the doctor typed: every word must appear in the
+/// patient's name, the diagnosis or the prescription reference.
+bool prescriptionMatches(Prescription p, String query) {
+  final haystack = '${p.patientName} ${p.medication} ${p.dosage}'.toLowerCase();
+  return query
+      .toLowerCase()
+      .split(RegExp(r'\s+'))
+      .where((w) => w.isNotEmpty)
+      .every(haystack.contains);
+}
 
 // ─── Prescriptions Screen ─────────────────────────────────────────────────────
 class PrescriptionsScreen extends StatefulWidget {
-
   const PrescriptionsScreen({super.key, this.patient});
   final Patient? patient;
 
@@ -82,19 +85,33 @@ class PrescriptionsScreen extends StatefulWidget {
 
 class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
   int _filterIndex = 0;
-  late List<Prescription> _allPrescriptions;
+
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  /// The table's rows, which scroll under a fixed header.
+  final _rowsScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _rowsScroll.dispose();
+    super.dispose();
+  }
+
   Prescription? _selectedPrescription; // null = list, non-null = details
 
-  /// With no patient supplied this is the doctor's own Prescriptions tab, so
-  /// the rows come from the API. Scoped to a patient it keeps its sample data:
-  /// the backend has no per-patient prescription list for doctors.
-  bool get _isLive => widget.patient == null;
+  /// Opened from a patient's profile, only that patient's prescriptions are
+  /// shown, filtered from the doctor's own list (the backend has no
+  /// per-patient list for doctors). It used to show eight invented
+  /// Isotretinoin scripts under the real patient's name.
+  int? get _patientId =>
+      widget.patient == null ? null : int.tryParse(widget.patient!.id);
 
   /// Rows from the API, refreshed by the store.
   List<Prescription> _livePrescriptions = const [];
 
-  List<Prescription> get _source =>
-      _isLive ? _livePrescriptions : _allPrescriptions;
+  List<Prescription> get _source => _livePrescriptions;
 
   /// Opens the real create form. The list refreshes itself on success, so
   /// nothing needs adding to local state here.
@@ -209,10 +226,9 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                style:
-                    FilledButton.styleFrom(backgroundColor: RxColors.expiredText),
-                onPressed:
-                    text.isEmpty ? null : () => Navigator.pop(ctx, text),
+                style: FilledButton.styleFrom(
+                    backgroundColor: RxColors.expiredText),
+                onPressed: text.isEmpty ? null : () => Navigator.pop(ctx, text),
                 child: const Text('Revoke'),
               ),
             ],
@@ -242,6 +258,7 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
       medication: p.diagnosis ?? '-',
       dosage: p.number,
       dateIssued: p.formattedDate,
+      issuedOn: p.createdAt,
       // Dispensing is tracked separately from the signature, so a dispensed
       // script still reads as 'signed'. A revoke outranks it: a withdrawn
       // script should not look fulfilled.
@@ -257,89 +274,55 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
     );
   }
 
-  static const _filters = ['All', 'Pending', 'Approved', 'Dispensed', 'Expired'];
+  static const _filters = [
+    'All',
+    'Pending',
+    'Approved',
+    'Dispensed',
+    'Expired'
+  ];
 
-    @override
+  @override
   void initState() {
     super.initState();
-    _allPrescriptions = _mockPrescriptions(widget.patient?.name ?? 'Patient Name');
-    if (_isLive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          StoreProvider.of<AppState>(context)
-              .dispatch(const LoadPrescriptionsAction());
-        }
-      });
-    }
+    // The list is loaded once, at sign-in, and refreshes itself after a
+    // prescription is written, signed or revoked. Opening the tab only
+    // asks for it if that first load has not happened.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final store = StoreProvider.of<AppState>(context);
+      final state = store.state.prescriptionsState;
+      if (!state.hasLoadedOnce && !state.isLoading) {
+        store.dispatch(const LoadPrescriptionsAction());
+      }
+    });
   }
 
   List<Prescription> get _filtered {
-    if (_filterIndex == 0) return _source;
     final map = {
       1: RxStatus.pending,
       2: RxStatus.approved,
       3: RxStatus.dispensed,
       4: RxStatus.expired,
     };
-    return _source.where((p) => p.status == map[_filterIndex]).toList();
-  }
-
-        void _addPrescription() async {
-    final result = await showDialog<Prescription>(
-      context: context,
-      builder: (_) => _PrescriptionFormDialog(patientName: widget.patient?.name ?? 'Patient Name'),
-    );
-    if (result != null) setState(() => _allPrescriptions.add(result));
-  }
-
-  void _editPrescription(Prescription rx) async {
-    final result = await showDialog<Prescription>(
-      context: context,
-      builder: (_) => _PrescriptionFormDialog(
-          patientName: widget.patient?.name ?? 'Patient Name', existing: rx),
-    );
-    if (result != null) {
-      setState(() {
-        final i = _allPrescriptions.indexWhere((p) => p.id == rx.id);
-        if (i != -1) _allPrescriptions[i] = result;
-      });
-    }
-  }
-
-  void _deletePrescription(Prescription rx) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Prescription'),
-        content: Text('Remove prescription for ${rx.medication}?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade400),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      setState(() => _allPrescriptions.removeWhere((p) => p.id == rx.id));
-    }
+    return _source
+        .where((p) => _filterIndex == 0 || p.status == map[_filterIndex])
+        .where((p) => prescriptionMatches(p, _query))
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
     // Sample-data mode renders straight from local state.
-    if (!_isLive) return _buildContent(context);
-
     // Live mode feeds the rows from the store, keeping the same layout.
     return StoreConnector<AppState, _RxViewModel>(
       converter: _RxViewModel.fromStore,
       builder: (context, vm) {
-        _livePrescriptions = vm.prescriptions.map(_fromApi).toList();
+        final patientId = _patientId;
+        _livePrescriptions = vm.prescriptions
+            .where((p) => patientId == null || p.patientId == patientId)
+            .map(_fromApi)
+            .toList();
         // Checked on every build rather than via onDidChange: the receipt
         // must not be missed, and the guard inside makes repeats harmless.
         _maybeShowReceipt(vm.signingReceipt);
@@ -401,170 +384,409 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-        decoration: BoxDecoration(
-          color: RxColors.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: RxColors.border),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ──────────────────────────────────────────────────────
-            Row(
+    Widget row(Prescription rx) => _RxRow(
+          prescription: rx,
+          onViewDetails: () => setState(() => _selectedPrescription = rx),
+          onSign: rx.status == RxStatus.pending
+              ? () => _signPrescription(rx)
+              : null,
+          onRevoke: rx.status == RxStatus.approved
+              ? () => _revokePrescription(rx)
+              : null,
+          onCheckInteractions: () => _checkInteractions(rx),
+        );
+
+    return LayoutBuilder(builder: (context, c) {
+      // Given a height, the card fills it and only the rows scroll, under
+      // the header, filters and column labels. Too short a space, or none
+      // given, and the whole card scrolls instead.
+      final fill = c.hasBoundedHeight && c.maxHeight >= 420;
+      final rows = _filtered;
+
+      final standalone = widget.patient == null;
+
+      // ── Header ──────────────────────────────────────────────────────────
+      // On its own page the title sits on the pale panel, large, as in the
+      // design. Inside a patient's profile it stays the small card heading.
+      final header = standalone
+          ? Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: RxColors.tealLight,
-                    borderRadius: BorderRadius.circular(10),
+                const Expanded(
+                  child: Text(
+                    'Prescriptions',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 30, color: Colors.black),
                   ),
-                  child: const Icon(Icons.medication_outlined,
-                      color: RxColors.teal, size: 20),
                 ),
                 const SizedBox(width: 12),
+                _NewPrescriptionButton(onTap: _newPrescription, solid: true),
+              ],
+            )
+          : Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: RxColors.tealLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.medication,
+                      color: RxColors.textPrimary, size: 20),
+                ),
+                const SizedBox(width: 14),
                 const Text(
                   'Prescriptions',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: RxColors.textPrimary),
+                  style: TextStyle(fontSize: 20, color: RxColors.textPrimary),
                 ),
                 const Spacer(),
-                // New Prescription button
-                ElevatedButton.icon(
-                  onPressed: _isLive ? _newPrescription : _addPrescription,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: RxColors.teal,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 12),
-                  ),
-                  icon: const Icon(Icons.add_circle_outline,
-                      color: Colors.white, size: 18),
-                  label: const Text('New Prescription',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600)),
-                ),
+                _NewPrescriptionButton(onTap: _newPrescription),
               ],
-            ),
+            );
 
-            const SizedBox(height: 6),
-            const Text(
+      final subtitle = Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Text(
               'Create, review, and manage patient prescriptions',
               style: TextStyle(
-                  fontSize: 13, color: RxColors.textSecondary),
+                  fontSize: standalone ? 18 : 16,
+                  color: const Color(0xFF7C8B8D)),
             ),
-
-            const SizedBox(height: 20),
-
-            // ── Filter tabs ─────────────────────────────────────────────────
-            Row(
-              children: List.generate(_filters.length, (i) {
-                final active = i == _filterIndex;
-                return GestureDetector(
-                  onTap: () => setState(() => _filterIndex = i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: active ? RxColors.teal : Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                          color: active ? RxColors.teal : RxColors.border),
-                    ),
-                    child: Text(
-                      _filters[i],
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: active
-                            ? Colors.white
-                            : RxColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                );
-              }),
+          ),
+          if (standalone)
+            Text(
+              'Total: ${_source.length}',
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4A5A5C)),
             ),
+        ],
+      );
 
-            const SizedBox(height: 20),
-
-            // ── Table header ────────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 10),
-              decoration: const BoxDecoration(
-                border: Border(
-                    bottom: BorderSide(color: RxColors.border)),
-              ),
+      // ── Filter tabs and search ──────────────────────────────────────────
+      final filters = Row(
+        children: [
+          // On a narrow window the chips scroll sideways rather than
+          // pushing the search box off the edge.
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  const Expanded(flex: 3, child: _RxHeaderCell('Patient')),
-                  Expanded(
-                    flex: 3,
-                    child: _RxHeaderCell(_isLive ? 'Diagnosis' : 'Medication'),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: _RxHeaderCell(_isLive ? 'Reference' : 'Dosage'),
-                  ),
-                  const Expanded(flex: 2, child: _RxHeaderCell('Date Issued')),
-                  const Expanded(flex: 2, child: _RxHeaderCell('Status')),
-                  const Expanded(flex: 2, child: _RxHeaderCell('Actions')),
+                  for (var i = 0; i < _filters.length; i++)
+                    _RxFilterChip(
+                      label: _filters[i],
+                      selected: i == _filterIndex,
+                      onTap: () => setState(() => _filterIndex = i),
+                    ),
                 ],
               ),
             ),
-
-            // ── Table rows ──────────────────────────────────────────────────
-            _filtered.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(
-                      child: Text('No prescriptions found',
-                          style: TextStyle(
-                              color: RxColors.textSecondary)),
-                    ),
-                  )
-                : Column(
-                    children: _filtered
-                        .map((rx) => _RxRow(
-                              prescription: rx,
-                              onEdit: () => _editPrescription(rx),
-                              onDelete: () => _deletePrescription(rx),
-                              onViewDetails: () => setState(
-                                  () => _selectedPrescription = rx),
-                              // Signing and revoking hit the API, so they are
-                              // only offered against real prescriptions.
-                              onSign: _isLive && rx.status == RxStatus.pending
-                                  ? () => _signPrescription(rx)
-                                  : null,
-                              onRevoke: _isLive && rx.status == RxStatus.approved
-                                  ? () => _revokePrescription(rx)
-                                  : null,
-                              // Sample rows have no prescription on the server
-                              // to check, so the action is not offered there.
-                              onCheckInteractions: _isLive
-                                  ? () => _checkInteractions(rx)
-                                  : null,
-                            ))
-                        .toList(),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 280,
+            height: 36,
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _searchController,
+              builder: (context, value, _) => TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _query = v),
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Search patient, diagnosis or reference',
+                  hintStyle: const TextStyle(
+                      fontSize: 12, color: RxColors.textSecondary),
+                  prefixIcon: const Icon(Icons.search,
+                      size: 18, color: RxColors.textPrimary),
+                  suffixIcon: value.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear search',
+                          icon: const Icon(Icons.close, size: 16),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
+                  filled: true,
+                  // White on the pale panel, pale inside the white card.
+                  fillColor: standalone ? Colors.white : RxColors.tealLight,
+                  contentPadding: EdgeInsets.zero,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
                   ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+
+      // ── Table header ────────────────────────────────────────────────────
+      // Standalone, the labels sit on the panel above the card, so they are
+      // inset by the card's teal edge and padding to line up with the rows.
+      final tableHeader = Container(
+        padding: standalone
+            ? const EdgeInsets.fromLTRB(40, 0, 44, 8)
+            : const EdgeInsets.fromLTRB(8, 0, 8, 8),
+        decoration: BoxDecoration(
+          border: Border(
+              bottom: BorderSide(
+                  color: standalone ? const Color(0xFFD3E6E7) : RxColors.border,
+                  width: 2)),
+        ),
+        child: const Row(
+          children: [
+            Expanded(flex: _patientFlex, child: _RxHeaderCell('Patient')),
+            // The list carries no medicines, so the diagnosis and the
+            // reference stand where the design has medication and dosage.
+            Expanded(flex: _diagnosisFlex, child: _RxHeaderCell('Diagnosis')),
+            Expanded(flex: _referenceFlex, child: _RxHeaderCell('Reference')),
+            Expanded(flex: _dateFlex, child: _RxHeaderCell('Date Issued')),
+            Expanded(flex: _statusFlex, child: _RxHeaderCell('Status')),
+            SizedBox(
+                width: _actionsWidth,
+                child: Center(child: _RxHeaderCell('Actions'))),
           ],
-        ),        // closes Column
-        ),        // closes Container
-      ),          // closes SingleChildScrollView
-    );            // closes Material
+        ),
+      );
+
+      // ── Table rows ──────────────────────────────────────────────────────
+      final Widget rowsArea;
+      if (rows.isEmpty) {
+        rowsArea = Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Center(
+            child: Text(
+                _query.trim().isEmpty
+                    ? 'No prescriptions found'
+                    : 'No prescriptions match "${_query.trim()}"',
+                style: const TextStyle(color: RxColors.textSecondary)),
+          ),
+        );
+      } else if (fill) {
+        rowsArea = Scrollbar(
+          controller: _rowsScroll,
+          thumbVisibility: true,
+          child: ListView.builder(
+            controller: _rowsScroll,
+            padding: const EdgeInsets.only(right: 12),
+            itemCount: rows.length,
+            itemBuilder: (_, i) => row(rows[i]),
+          ),
+        );
+      } else {
+        rowsArea = Column(children: [for (final rx in rows) row(rx)]);
+      }
+
+      if (standalone) {
+        // As the patients page: the pale panel holds the title, filters and
+        // column labels; only the rows sit in the white card on its teal edge.
+        final rowsCard = _RxEdgedCard(
+          child: rows.isNotEmpty && fill
+              ? rowsArea
+              : Align(alignment: Alignment.topCenter, child: rowsArea),
+        );
+        final panel = Container(
+          padding: const EdgeInsets.fromLTRB(33, 30, 33, 22),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE3F5F6),
+            borderRadius: BorderRadius.circular(32),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              header,
+              const SizedBox(height: 6),
+              subtitle,
+              const SizedBox(height: 18),
+              filters,
+              const SizedBox(height: 20),
+              tableHeader,
+              const SizedBox(height: 14),
+              if (fill) Expanded(child: rowsCard) else rowsCard,
+            ],
+          ),
+        );
+        const outer = EdgeInsets.fromLTRB(31, 0, 38, 26);
+        return Material(
+          color: Colors.white,
+          child: fill
+              ? Padding(padding: outer, child: panel)
+              : SingleChildScrollView(padding: outer, child: panel),
+        );
+      }
+
+      final card = _RxEdgedCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            header,
+            const SizedBox(height: 10),
+            subtitle,
+            const SizedBox(height: 22),
+            filters,
+            const SizedBox(height: 22),
+            tableHeader,
+            if (fill && rows.isNotEmpty)
+              Expanded(child: rowsArea)
+            else
+              rowsArea,
+          ],
+        ),
+      );
+
+      // Inside a patient's profile the tab already sits on the pale panel.
+      const padding = EdgeInsets.all(4);
+      return Material(
+        color: Colors.transparent,
+        child: fill
+            ? Padding(padding: padding, child: card)
+            : SingleChildScrollView(padding: padding, child: card),
+      );
+    });
+  }
+}
+
+// Column shares of the table.
+const _patientFlex = 4;
+const _diagnosisFlex = 4;
+const _referenceFlex = 3;
+const _dateFlex = 3;
+const _statusFlex = 3;
+const _actionsWidth = 110.0;
+
+/// A white card on the design's teal edge.
+class _RxEdgedCard extends StatelessWidget {
+  const _RxEdgedCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6DD0D8),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+/// The pale pill with a teal plus, top right.
+class _NewPrescriptionButton extends StatelessWidget {
+  const _NewPrescriptionButton({required this.onTap, this.solid = false});
+  final VoidCallback onTap;
+
+  /// The page's own button: solid teal, as in the design. Inside a
+  /// patient's profile it stays the pale pill.
+  final bool solid;
+
+  @override
+  Widget build(BuildContext context) {
+    if (solid) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 8, 22, 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E9FA5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_box_outlined, size: 22, color: Colors.black),
+              SizedBox(width: 12),
+              Text('New Prescription',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white)),
+            ],
+          ),
+        ),
+      );
+    }
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(3, 3, 18, 3),
+        decoration: BoxDecoration(
+          color: RxColors.tealLight,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 15,
+              backgroundColor: Color(0xFF2E9FA5),
+              child: Icon(Icons.add, size: 22, color: Colors.black),
+            ),
+            SizedBox(width: 14),
+            Text('New Prescription',
+                style: TextStyle(fontSize: 12, color: Color(0xFF2E9FA5))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A filter: black when chosen, plain grey text otherwise.
+class _RxFilterChip extends StatelessWidget {
+  const _RxFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(17),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? Colors.black : Colors.transparent,
+            borderRadius: BorderRadius.circular(17),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: selected ? Colors.white : const Color(0xFF6C6C6C),
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -576,28 +798,20 @@ class _RxHeaderCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(label,
-        style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: RxColors.textSecondary));
+        style: const TextStyle(fontSize: 12, color: Color(0xFF9AA5A6)));
   }
 }
 
 // ─── Prescription row ─────────────────────────────────────────────────────────
 class _RxRow extends StatefulWidget {
-
   const _RxRow({
     required this.prescription,
-    required this.onEdit,
-    required this.onDelete,
     required this.onViewDetails,
     this.onSign,
     this.onRevoke,
     this.onCheckInteractions,
   });
   final Prescription prescription;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
   final VoidCallback onViewDetails;
 
   /// Null when the action does not apply to this prescription's status.
@@ -619,8 +833,6 @@ class _RxRowState extends State<_RxRow> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.15),
       builder: (_) => _RxActionsMenu(
-        onEdit: widget.onEdit,
-        onDelete: widget.onDelete,
         onViewDetails: widget.onViewDetails,
         onSign: widget.onSign,
         onRevoke: widget.onRevoke,
@@ -632,6 +844,14 @@ class _RxRowState extends State<_RxRow> {
   @override
   Widget build(BuildContext context) {
     final rx = widget.prescription;
+    const cell = TextStyle(fontSize: 12, color: Color(0xFF6C6C6C));
+    final initials = rx.patientName
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -640,202 +860,179 @@ class _RxRowState extends State<_RxRow> {
         onTap: widget.onViewDetails,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          color: _hovered
-              ? RxColors.tealLight.withValues(alpha: 0.4)
-              : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? RxColors.tealLight.withValues(alpha: 0.5)
+                : Colors.transparent,
+            border: const Border(
+                bottom: BorderSide(color: Color(0xFFF2F5F5), width: 1.5)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           child: Row(
             children: [
-            // Patient name + avatar
-            Expanded(
-              flex: 3,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: RxColors.tealLight,
-                    child: Text(
-                      rx.patientName
-                          .split(' ')
-                          .map((w) => w[0])
-                          .join(),
-                      style: const TextStyle(
-                          color: RxColors.teal,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(rx.patientName,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            color: RxColors.textPrimary,
-                            fontWeight: FontWeight.w500)),
-                  ),
-                ],
-              ),
-            ),
-
-            // Medication
-            Expanded(
-              flex: 3,
-              child: Text(rx.medication,
-                  style: const TextStyle(
-                      fontSize: 13, color: RxColors.textSecondary)),
-            ),
-
-            // Dosage
-            Expanded(
-              flex: 2,
-              child: Text(rx.dosage,
-                  style: const TextStyle(
-                      fontSize: 13, color: RxColors.textSecondary)),
-            ),
-
-            // Date issued
-            Expanded(
-              flex: 2,
-              child: Text(rx.dateIssued,
-                  style: const TextStyle(
-                      fontSize: 13, color: RxColors.textSecondary)),
-            ),
-
-                                    // Status badge
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _RxStatusBadge(status: rx.status),
-                  if (rx.note != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        rx.note!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 11, color: RxColors.textSecondary),
+              // Patient: initials on the design's ringed avatar, then name.
+              Expanded(
+                flex: _patientFlex,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: RxColors.tealLight,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: const Color(0xFF2E9FA5), width: 1.5),
                       ),
+                      child: Text(initials,
+                          style: const TextStyle(
+                              color: Color(0xFF2E9FA5),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700)),
                     ),
-                ],
+                    const SizedBox(width: 14),
+                    Flexible(
+                      child: Text(rx.patientName,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12, color: RxColors.textPrimary)),
+                    ),
+                  ],
+                ),
               ),
-            ),
-
-            // Actions
-            Expanded(
-              flex: 2,
-              child: Row(
-                children: [
-                  _RxActionBtn(
-                      icon: Icons.edit_outlined,
-                      onTap: widget.onEdit),
-                  const SizedBox(width: 6),
-                  _RxActionBtn(
-                      icon: Icons.delete_outline,
-                      onTap: widget.onDelete),
-                  const SizedBox(width: 6),
-                  _RxActionBtn(
-                    icon: Icons.more_vert,
-                    onTap: () => _showMenu(context),
-                  ),
-                ],
+              Expanded(
+                flex: _diagnosisFlex,
+                child: Text(rx.medication,
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: cell),
               ),
-            ),
-          ],
+              Expanded(
+                flex: _referenceFlex,
+                child: Text(rx.dosage,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: cell),
+              ),
+              Expanded(
+                flex: _dateFlex,
+                child: Text(rx.dateIssued, style: cell),
+              ),
+              Expanded(
+                flex: _statusFlex,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _RxStatusBadge(status: rx.status),
+                    if (rx.note != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          rx.note!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 11, color: RxColors.textSecondary),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Actions: revoke, more.
+              //
+              // The design also has a pencil and a bin. Neither is offered:
+              // a written prescription cannot be edited (the server has no
+              // way to, and a signed one is fixed by law), and nothing is
+              // ever deleted. Revoking is what the record does instead, so
+              // it gets its own icon rather than a bin that implies delete.
+              SizedBox(
+                width: _actionsWidth,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _RxIconAction(
+                      icon: Icons.block,
+                      tooltip: widget.onRevoke != null
+                          ? 'Revoke prescription'
+                          : 'Only a signed prescription not yet dispensed '
+                              'can be revoked',
+                      onTap: widget.onRevoke,
+                    ),
+                    _RxIconAction(
+                      icon: Icons.more_vert,
+                      tooltip: 'More actions',
+                      onTap: () => _showMenu(context),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ));
+    );
+  }
+}
+
+/// A bare icon in the Actions column; greyed when [onTap] is null.
+class _RxIconAction extends StatelessWidget {
+  const _RxIconAction({required this.icon, required this.tooltip, this.onTap});
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+      iconSize: 18,
+      color: RxColors.textPrimary,
+      disabledColor: const Color(0xFFC4CCCC),
+      icon: Icon(icon),
+    );
   }
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
+/// A solid pill, white text, as in the design.
 class _RxStatusBadge extends StatelessWidget {
   const _RxStatusBadge({required this.status});
   final RxStatus status;
 
   @override
   Widget build(BuildContext context) {
-    Color bg, text;
-    String label;
-    switch (status) {
-      case RxStatus.approved:
-        bg = RxColors.approvedBg;
-        text = RxColors.approvedText;
-        label = 'Approved';
-      case RxStatus.pending:
-        bg = RxColors.pendingBg;
-        text = RxColors.pendingText;
-        label = 'Pending';
-      case RxStatus.dispensed:
-        bg = RxColors.dispensedBg;
-        text = RxColors.dispensedText;
-        label = 'Dispensed';
-      case RxStatus.revoked:
-        bg = RxColors.expiredBg;
-        text = RxColors.expiredText;
-        label = 'Revoked';
-      case RxStatus.expired:
-        bg = RxColors.expiredBg;
-        text = RxColors.expiredText;
-        label = 'Expired';
-    }
+    final (bg, label) = switch (status) {
+      RxStatus.approved => (const Color(0xFF6DD0D8), 'Approved'),
+      RxStatus.pending => (const Color(0xFFF2B648), 'Pending'),
+      RxStatus.dispensed => (const Color(0xFF5DBB7B), 'Dispensed'),
+      RxStatus.revoked => (const Color(0xFFEE8A8A), 'Revoked'),
+      RxStatus.expired => (const Color(0xFFEE8A8A), 'Expired'),
+    };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      width: 90,
+      padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(label,
           textAlign: TextAlign.center,
-          style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: text)),
-    );
-  }
-}
-
-// ─── Action button ────────────────────────────────────────────────────────────
-class _RxActionBtn extends StatelessWidget {
-  const _RxActionBtn({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: RxColors.bg,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: RxColors.border),
-        ),
-        child: Icon(icon, size: 14, color: RxColors.textSecondary),
-      ),
+          style: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
     );
   }
 }
 
 // ─── Actions menu ─────────────────────────────────────────────────────────────
 class _RxActionsMenu extends StatelessWidget {
-
   const _RxActionsMenu({
-    required this.onEdit,
-    required this.onDelete,
     required this.onViewDetails,
     this.onSign,
     this.onRevoke,
     this.onCheckInteractions,
   });
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
   final VoidCallback onViewDetails;
   final VoidCallback? onSign;
   final VoidCallback? onRevoke;
@@ -844,23 +1041,39 @@ class _RxActionsMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = [
-      _RxAction(label: 'View Details', icon: Icons.visibility_outlined,
-          onTap: () { Navigator.pop(context); onViewDetails(); }),
+      _RxAction(
+          label: 'View Details',
+          icon: Icons.visibility_outlined,
+          onTap: () {
+            Navigator.pop(context);
+            onViewDetails();
+          }),
       if (onCheckInteractions != null)
-        _RxAction(label: 'Check Interactions', icon: Icons.science_outlined,
-            onTap: () { Navigator.pop(context); onCheckInteractions!(); }),
+        _RxAction(
+            label: 'Check Interactions',
+            icon: Icons.science_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              onCheckInteractions!();
+            }),
       // Only offered while the prescription is still unsigned.
       if (onSign != null)
-        _RxAction(label: 'Sign Prescription', icon: Icons.draw_outlined,
-            onTap: () { Navigator.pop(context); onSign!(); }),
+        _RxAction(
+            label: 'Sign Prescription',
+            icon: Icons.draw_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              onSign!();
+            }),
       // Only offered once it is signed and therefore dispensable.
       if (onRevoke != null)
-        _RxAction(label: 'Revoke Prescription', icon: Icons.block_outlined,
-            onTap: () { Navigator.pop(context); onRevoke!(); }),
-      _RxAction(label: 'Edit Prescription', icon: Icons.edit_outlined,
-          onTap: () { Navigator.pop(context); onEdit(); }),
-      _RxAction(label: 'Delete', icon: Icons.delete_outline,
-          onTap: () { Navigator.pop(context); onDelete(); }),
+        _RxAction(
+            label: 'Revoke Prescription',
+            icon: Icons.block_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              onRevoke!();
+            }),
     ];
 
     return Dialog(
@@ -896,8 +1109,8 @@ class _RxActionsMenu extends StatelessWidget {
                       height: 26,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(
-                            color: RxColors.textPrimary, width: 1.5),
+                        border:
+                            Border.all(color: RxColors.textPrimary, width: 1.5),
                       ),
                       child: const Icon(Icons.close_rounded,
                           size: 14, color: RxColors.textPrimary),
@@ -942,7 +1155,6 @@ class _RxAction {
 }
 
 class _RxActionMenuItem extends StatefulWidget {
-
   const _RxActionMenuItem({
     required this.label,
     required this.icon,
@@ -977,12 +1189,9 @@ class _RxActionMenuItemState extends State<_RxActionMenuItem> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 130),
           color: _hovered
-              ? (widget.isDanger
-                  ? Colors.red.shade50
-                  : RxColors.tealLight)
+              ? (widget.isDanger ? Colors.red.shade50 : RxColors.tealLight)
               : Colors.transparent,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(
             children: [
               Icon(widget.icon, size: 17, color: color),
@@ -991,216 +1200,12 @@ class _RxActionMenuItemState extends State<_RxActionMenuItem> {
                   style: TextStyle(
                       fontSize: 14,
                       color: color,
-                      fontWeight: _hovered
-                          ? FontWeight.w500
-                          : FontWeight.w400)),
+                      fontWeight:
+                          _hovered ? FontWeight.w500 : FontWeight.w400)),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-// ─── Add / Edit prescription dialog ──────────────────────────────────────────
-class _PrescriptionFormDialog extends StatefulWidget {
-  const _PrescriptionFormDialog(
-      {required this.patientName, this.existing});
-  final String patientName;
-  final Prescription? existing;
-
-  @override
-  State<_PrescriptionFormDialog> createState() =>
-      _PrescriptionFormDialogState();
-}
-
-class _PrescriptionFormDialogState
-    extends State<_PrescriptionFormDialog> {
-  late final TextEditingController _medCtrl;
-  late final TextEditingController _dosageCtrl;
-  late RxStatus _status;
-
-  bool get _isEdit => widget.existing != null;
-
-  @override
-  void initState() {
-    super.initState();
-    _medCtrl =
-        TextEditingController(text: widget.existing?.medication ?? '');
-    _dosageCtrl =
-        TextEditingController(text: widget.existing?.dosage ?? '');
-    _status = widget.existing?.status ?? RxStatus.pending;
-  }
-
-  @override
-  void dispose() {
-    _medCtrl.dispose();
-    _dosageCtrl.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (_medCtrl.text.isEmpty || _dosageCtrl.text.isEmpty) return;
-    final result = Prescription(
-      id: widget.existing?.id ??
-          'RX${DateTime.now().millisecondsSinceEpoch}',
-      patientName: widget.patientName,
-      medication: _medCtrl.text.trim(),
-      dosage: _dosageCtrl.text.trim(),
-      dateIssued: '${DateTime.now().day} ${_monthName(DateTime.now().month)}',
-      status: _status,
-    );
-    Navigator.pop(context, result);
-  }
-
-  String _monthName(int m) => const [
-        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][m];
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: SizedBox(
-        width: 420,
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_isEdit ? 'Edit Prescription' : 'New Prescription',
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 20),
-
-              _RxFormField(
-                  label: 'Medication',
-                  controller: _medCtrl,
-                  hint: 'e.g. Amoxicillin'),
-              const SizedBox(height: 14),
-              _RxFormField(
-                  label: 'Dosage',
-                  controller: _dosageCtrl,
-                  hint: 'e.g. 500mg'),
-              const SizedBox(height: 14),
-
-              const Text('Status',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: RxColors.textSecondary)),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<RxStatus>(
-                initialValue: _status,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          const BorderSide(color: RxColors.border)),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          const BorderSide(color: RxColors.border)),
-                ),
-                items: RxStatus.values
-                    .map((s) => DropdownMenuItem(
-                        value: s,
-                        child: Text(s.name[0].toUpperCase() +
-                            s.name.substring(1))))
-                    .toList(),
-                onChanged: (v) => setState(() => _status = v!),
-              ),
-              const SizedBox(height: 24),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: RxColors.teal,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text(
-                          _isEdit ? 'Save Changes' : 'Add Prescription',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RxFormField extends StatelessWidget {
-
-  const _RxFormField(
-      {required this.label,
-      required this.controller,
-      required this.hint});
-  final String label;
-  final TextEditingController controller;
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: RxColors.textSecondary)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(
-                color: RxColors.textSecondary, fontSize: 13),
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: RxColors.border)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: RxColors.border)),
-            focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                    color: RxColors.teal, width: 1.5)),
-          ),
-        ),
-      ],
     );
   }
 }

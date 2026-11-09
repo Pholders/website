@@ -12,10 +12,16 @@ class SettingsSidebar extends StatefulWidget {
     super.key,
     required this.onMenuItemSelected,
     this.selectedItemId,
+    this.embedded = false,
   });
 
   final Function(String) onMenuItemSelected;
   final String? selectedItemId;
+
+  /// The doctor's settings, as in the design: the menu sits inside the
+  /// settings card with every section open, rather than as its own white
+  /// column of accordions. The pharmacy keeps the accordion.
+  final bool embedded;
 
   @override
   State<SettingsSidebar> createState() => _SettingsSidebarState();
@@ -141,6 +147,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) return _buildEmbedded();
     return Container(
       width: 250,
       decoration: const BoxDecoration(
@@ -172,6 +179,70 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── Embedded (doctor) style ─────────────────────────────────────────────
+  // Every section open: a round icon and a bold heading, with its pages
+  // listed under it in grey, the current one in teal.
+  Widget _buildEmbedded() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 22, 12, 22),
+      children: [
+        for (final item in menuItems) ...[
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFD3EEF0),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_getIconData(item.icon),
+                    size: 16, color: Colors.black),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  item.label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (final sub in item.subItems ?? const <SettingsSubMenuItem>[])
+            _buildEmbeddedSubItem(sub),
+          const SizedBox(height: 14),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildEmbeddedSubItem(SettingsSubMenuItem subItem) {
+    final isSelected = selectedItemId == subItem.id;
+    return InkWell(
+      onTap: () {
+        widget.onMenuItemSelected(subItem.id);
+        setState(() => selectedItemId = subItem.id);
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(38, 6, 8, 6),
+        child: Text(
+          subItem.label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? _teal : const Color(0xFFA8A8A8),
+          ),
+        ),
       ),
     );
   }

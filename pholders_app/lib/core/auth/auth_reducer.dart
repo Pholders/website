@@ -6,7 +6,18 @@ import 'auth_state.dart';
 /// Takes the current state and an action, returns the next immutable state.
 /// No side effects — all async work happens in middleware.
 AuthState authReducer(AuthState state, dynamic action) {
-  if (action is LoginRequestAction || action is DoctorSignupRequestAction) {
+  if (action is LoginRequestAction) {
+    return state.copyWith(
+      isLoading: true,
+      isSigningIn: true,
+      // A new sign-in takes over from a sign-out still waiting on the server.
+      isSigningOut: false,
+      clearError: true,
+    );
+  }
+
+  if (action is DoctorSignupRequestAction ||
+      action is PharmacySignupRequestAction) {
     return state.copyWith(isLoading: true, clearError: true);
   }
 
@@ -17,6 +28,7 @@ AuthState authReducer(AuthState state, dynamic action) {
       userName: action.userName,
       doctor: action.doctor,
       isLoading: false,
+      isSigningIn: false,
       isRestoring: false,
       clearError: true,
     );
@@ -25,6 +37,7 @@ AuthState authReducer(AuthState state, dynamic action) {
   if (action is LoginFailureAction) {
     return state.copyWith(
       isLoading: false,
+      isSigningIn: false,
       errorMessage: action.errorMessage,
     );
   }
@@ -36,8 +49,15 @@ AuthState authReducer(AuthState state, dynamic action) {
     // the doctor, and refetching it on every login is wasted.
     return AuthState.initial().copyWith(
       isRestoring: false,
+      // Only a sign-out the user chose waits on the server; an expired
+      // session has nothing left to end.
+      isSigningOut: action is LogoutAction,
       medicalAidCatalogue: state.medicalAidCatalogue,
     );
+  }
+
+  if (action is LogoutCompletedAction) {
+    return state.copyWith(isSigningOut: false);
   }
 
   if (action is RestoreSessionAction) {
@@ -85,12 +105,24 @@ AuthState authReducer(AuthState state, dynamic action) {
     return state.copyWith(
       isLoading: false,
       signupEmail: action.email,
+      signupRole: 'doctor',
+      clearError: true,
+    );
+  }
+
+  if (action is PharmacySignupSuccessAction) {
+    return state.copyWith(
+      isLoading: false,
+      signupEmail: action.email,
+      signupRole: 'pharmacy',
+      devOtpCode: action.devCode,
       clearError: true,
     );
   }
 
   if (action is ResetSignupAction) {
-    return state.copyWith(isLoading: false, clearSignup: true, clearError: true);
+    return state.copyWith(
+        isLoading: false, clearSignup: true, clearError: true);
   }
 
   if (action is RequestVerificationOtpAction ||

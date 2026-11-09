@@ -32,6 +32,29 @@ class TokenStorage {
     await _write(AppConstants.userNameStorageKey, userName);
   }
 
+  /// The email to fill in on the login form, kept by "Remember me", or
+  /// null. Only the email: the app never keeps a password. The browser's
+  /// own password manager can, out of reach of the page's scripts.
+  Future<String?> readRememberedEmail() =>
+      _read(AppConstants.rememberedEmailStorageKey);
+
+  /// Keeps [email] for the next visit, or forgets it when null.
+  ///
+  /// Either way, any password an earlier build kept is deleted.
+  Future<void> rememberEmail(String? email) async {
+    try {
+      await _storage.delete(
+          key: AppConstants.legacyRememberedPasswordStorageKey);
+      if (email == null) {
+        await _storage.delete(key: AppConstants.rememberedEmailStorageKey);
+      } else {
+        await _write(AppConstants.rememberedEmailStorageKey, email);
+      }
+    } catch (_) {
+      // A browser that blocks storage just means nothing is remembered.
+    }
+  }
+
   /// Removes every stored credential. Called on logout and session expiry.
   Future<void> clear() async {
     for (final key in const [
@@ -39,6 +62,7 @@ class TokenStorage {
       AppConstants.refreshTokenStorageKey,
       AppConstants.userRoleStorageKey,
       AppConstants.userNameStorageKey,
+      AppConstants.legacyRememberedPasswordStorageKey,
     ]) {
       try {
         await _storage.delete(key: key);

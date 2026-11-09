@@ -25,7 +25,11 @@ const _danger = Color(0xFFFF6B6B);
 /// medicine. The script is left unsigned; signing is a separate, deliberate
 /// action from the row menu because it cannot be undone.
 class NewPrescriptionDialog extends StatefulWidget {
-  const NewPrescriptionDialog({super.key});
+  const NewPrescriptionDialog({super.key, this.patientId});
+
+  /// When set, only this patient's consultations are offered, and if there
+  /// is just one it is chosen already. Used from the Patients page.
+  final int? patientId;
 
   @override
   State<NewPrescriptionDialog> createState() => _NewPrescriptionDialogState();
@@ -36,6 +40,15 @@ class _NewPrescriptionDialogState extends State<NewPrescriptionDialog> {
   final _notesCtrl = TextEditingController();
 
   Appointment? _appointment;
+
+  /// The one consultation for [NewPrescriptionDialog.patientId], if there is
+  /// exactly one and nothing has been chosen yet.
+  Appointment? _onlyConsultationFor(List<Appointment> appointments) {
+    final id = widget.patientId;
+    if (id == null) return null;
+    final theirs = appointments.where((a) => a.patientId == id).toList();
+    return theirs.length == 1 ? theirs.single : null;
+  }
   final List<MedicineDraft> _medicines = [];
   String? _error;
 
@@ -67,7 +80,9 @@ class _NewPrescriptionDialogState extends State<NewPrescriptionDialog> {
   }
 
   void _submit() {
-    final appointment = _appointment;
+    final appointment = _appointment ??
+        _onlyConsultationFor(
+            StoreProvider.of<AppState>(context).state.appointmentsState.appointments);
     String? problem;
     if (appointment == null) {
       problem = 'Choose the consultation this prescription is for.';
@@ -142,9 +157,15 @@ class _NewPrescriptionDialogState extends State<NewPrescriptionDialog> {
                         children: [
                           _label('Consultation'),
                           _AppointmentPicker(
-                            appointments: vm.appointments,
+                            appointments: widget.patientId == null
+                                ? vm.appointments
+                                : vm.appointments
+                                    .where((a) =>
+                                        a.patientId == widget.patientId)
+                                    .toList(),
                             isLoading: vm.appointmentsLoading,
-                            selected: _appointment,
+                            selected:
+                                _appointment ?? _onlyConsultationFor(vm.appointments),
                             onChanged: (a) => setState(() => _appointment = a),
                           ),
                           const SizedBox(height: 16),

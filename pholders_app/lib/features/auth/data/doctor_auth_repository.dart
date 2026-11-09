@@ -175,11 +175,13 @@ class DoctorAuthRepository {
   }) async {
     final slash = contentType.indexOf('/');
     final media = slash > 0
-        ? DioMediaType(contentType.substring(0, slash), contentType.substring(slash + 1))
+        ? DioMediaType(
+            contentType.substring(0, slash), contentType.substring(slash + 1))
         : DioMediaType('image', 'jpeg');
 
     final form = FormData.fromMap({
-      'image': MultipartFile.fromBytes(bytes, filename: filename, contentType: media),
+      'image': MultipartFile.fromBytes(bytes,
+          filename: filename, contentType: media),
     });
 
     final data = await _api.putMultipart(
@@ -190,7 +192,8 @@ class DoctorAuthRepository {
     final url = data['profile_image'];
     if (url is! String || url.isEmpty) {
       throw const ApiException(
-        message: 'The image was uploaded but the server did not say where it lives.',
+        message:
+            'The image was uploaded but the server did not say where it lives.',
         kind: ApiErrorKind.badResponse,
       );
     }
@@ -213,6 +216,7 @@ class DoctorAuthRepository {
     double? consultationFee,
     List<int>? medicalAidIds,
     Map<String, List<String>>? availability,
+    Map<String, bool>? notificationPreferences,
   }) async {
     final data = await _api.put(
       '/users/doctor/profile',
@@ -237,10 +241,52 @@ class DoctorAuthRepository {
         // Sent whole: a day with an empty list means closed, which a merge
         // could never express.
         if (availability != null) 'availability': availability,
+        if (notificationPreferences != null)
+          'notification_preferences': notificationPreferences,
       },
     );
     return Doctor.fromJson(data);
   }
+
+  /// Needs the current password. The server signs out every other device
+  /// when it changes, and says how many.
+  Future<int> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final data = await _api.post(
+      '/users/doctor/change-password',
+      body: {'currentPassword': currentPassword, 'newPassword': newPassword},
+    );
+    return int.tryParse('${data['otherDevicesSignedOut']}') ?? 0;
+  }
+
+  /// Signs out one of the doctor's other devices.
+  Future<void> revokeSession(String sessionId) =>
+      _api.delete('/users/doctor/sessions/${Uri.encodeComponent(sessionId)}');
+
+  /// Signs out every device but this one, and says how many.
+  Future<int> revokeOtherSessions() async {
+    final data = await _api.post('/users/doctor/sessions/revoke-others');
+    return int.tryParse('${data['revoked']}') ?? 0;
+  }
+
+  /// Sends a message to Pholders support as a ticket.
+  Future<void> contactSupport({
+    required String email,
+    required String firstName,
+    required String lastName,
+    required String subject,
+    required String message,
+  }) =>
+      _api.post('/support/tickets', body: {
+        'category': 'account',
+        'email': email,
+        'first_name': firstName,
+        'last_name': lastName,
+        'subject': subject,
+        'message': message,
+      });
 
   /// Lists the doctor's active sessions.
   Future<List<ActiveSession>> fetchSessions() async {

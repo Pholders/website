@@ -48,62 +48,110 @@ List<Middleware<AppState>> createAuthMiddleware({
     }
   }
 
+  /// True when a login endpoint answered but would not sign these credentials
+  /// in — wrong password, or no such account there. A network or server
+  /// failure is not a reason to try the other endpoint.
+  bool rejectsCredentials(ApiException e) =>
+      const {400, 401, 403, 404}.contains(e.statusCode);
+
+  /// Signs in as a doctor. Throws [ApiException] when the login call fails.
+  Future<void> loginDoctor(
+    Store<AppState> store,
+    LoginRequestAction action,
+  ) async {
+    final session = await doctorAuth.login(
+      email: action.email,
+      password: action.password,
+    );
+
+    // Store the token before anything else — the ApiClient interceptor reads
+    // it from storage, so the profile call below depends on it being there.
+    await tokenStorage.saveSession(
+      token: session.token,
+      role: AppConstants.roleDoctor,
+      userName: session.doctor.fullName,
+    );
+
+    store.dispatch(LoginSuccessAction(
+      token: session.token,
+      role: AppConstants.roleDoctor,
+      userName: session.doctor.fullName,
+      doctor: session.doctor,
+    ));
+
+    // The login payload is only a summary; fetch the full profile so the
+    // settings screens have clinic details, fees and so on.
+    try {
+      final doctor = await doctorAuth.fetchProfile();
+      store.dispatch(DoctorProfileLoadedAction(doctor: doctor));
+    } on ApiException {
+      // Non-fatal: the user is signed in with the summary from login.
+    }
+  }
+
+  /// Signs in as a pharmacy. Throws [ApiException] when the login call fails.
+  Future<void> loginPharmacy(
+    Store<AppState> store,
+    LoginRequestAction action,
+  ) async {
+    final session = await pharmacyAuth.login(
+      email: action.email,
+      password: action.password,
+    );
+    await tokenStorage.saveSession(
+      token: session.token,
+      role: AppConstants.rolePharmacy,
+      userName: session.pharmacyName,
+    );
+    store.dispatch(LoginSuccessAction(
+      token: session.token,
+      role: AppConstants.rolePharmacy,
+      userName: session.pharmacyName,
+    ));
+  }
+
   Future<void> handleLogin(
     Store<AppState> store,
     LoginRequestAction action,
   ) async {
-    if (action.role != AppConstants.roleDoctor) {
-      try {
-        final session = await pharmacyAuth.login(
-          email: action.email,
-          password: action.password,
-        );
-        await tokenStorage.saveSession(
-          token: session.token,
-          role: AppConstants.rolePharmacy,
-          userName: session.pharmacyName,
-        );
-        store.dispatch(LoginSuccessAction(
-          token: session.token,
-          role: AppConstants.rolePharmacy,
-          userName: session.pharmacyName,
-        ));
-      } on ApiException catch (e) {
-        store.dispatch(LoginFailureAction(errorMessage: e.message));
-      }
-      return;
-    }
-
     try {
-      final session = await doctorAuth.login(
-        email: action.email,
-        password: action.password,
-      );
-
-      // Store the token before anything else — the ApiClient interceptor reads
-      // it from storage, so the profile call below depends on it being there.
-      await tokenStorage.saveSession(
-        token: session.token,
-        role: AppConstants.roleDoctor,
-        userName: session.doctor.fullName,
-      );
-
-      store.dispatch(LoginSuccessAction(
-        token: session.token,
-        role: AppConstants.roleDoctor,
-        userName: session.doctor.fullName,
-        doctor: session.doctor,
-      ));
-
-      // The login payload is only a summary; fetch the full profile so the
-      // settings screens have clinic details, fees and so on.
-      try {
-        final doctor = await doctorAuth.fetchProfile();
-        store.dispatch(DoctorProfileLoadedAction(doctor: doctor));
-      } on ApiException {
-        // Non-fatal: the user is signed in with the summary from login.
+      switch (action.role) {
+        case AppConstants.roleDoctor:
+          await loginDoctor(store, action);
+        case AppConstants.rolePharmacy:
+          await loginPharmacy(store, action);
+        default:
+          // The login form does not ask which kind of account this is, so
+          // try the doctor endpoint and fall back to the pharmacy one.
+          try {
+            await loginDoctor(store, action);
+          } on ApiException catch (doctorError) {
+            if (!rejectsCredentials(doctorError)) rethrow;
+            try {
+              await loginPharmacy(store, action);
+            } on ApiException catch (pharmacyError) {
+              // Neither knows these credentials: report the doctor endpoint's
+              // message. Any other pharmacy failure (offline, server error)
+              // is the more useful one to show.
+              throw rejectsCredentials(pharmacyError)
+                  ? doctorError
+                  : pharmacyError;
+            }
+          }
+      }
+      // Only an email that signed in is worth remembering.
+      switch (action.rememberMe) {
+        case true:
+          await tokenStorage.rememberEmail(action.email);
+        case false:
+          await tokenStorage.rememberEmail(null);
+        case null:
+          break;
       }
     } on ApiException catch (e) {
+      if (action.rememberMe == false) {
+        await tokenStorage.rememberEmail(null);
+      }
       store.dispatch(LoginFailureAction(errorMessage: e.message));
     }
   }
@@ -134,7 +182,8 @@ List<Middleware<AppState>> createAuthMiddleware({
       // one explicitly, otherwise the verification screen has nothing to
       // verify. A failure here is not fatal: the account still works.
       try {
-        final devCode = await doctorAuth.resendVerification(email: doctor.email);
+        final devCode =
+            await doctorAuth.resendVerification(email: doctor.email);
         store.dispatch(VerificationOtpSentAction(
           email: doctor.email,
           devCode: devCode,
@@ -151,12 +200,41 @@ List<Middleware<AppState>> createAuthMiddleware({
     }
   }
 
+  Future<void> handlePharmacySignup(
+    Store<AppState> store,
+    PharmacySignupRequestAction action,
+  ) async {
+    try {
+      // Unlike the doctor's, this signup emails its own code.
+      final devCode = await pharmacyAuth.signup(
+        pharmacyName: action.pharmacyName,
+        firstName: action.firstName,
+        lastName: action.lastName,
+        email: action.email,
+        phone: action.phone,
+        password: action.password,
+        licenseNumber: action.licenseNumber,
+        city: action.city,
+        province: action.province,
+      );
+      store.dispatch(
+          PharmacySignupSuccessAction(email: action.email, devCode: devCode));
+    } on ApiException catch (e) {
+      store.dispatch(DoctorSignupFailureAction(
+        errorMessage: [e.message, ...?e.fieldErrors].join('\n'),
+      ));
+    }
+  }
+
   Future<void> requestOtp(
     Store<AppState> store,
     RequestVerificationOtpAction action,
   ) async {
     try {
-      final devCode = await doctorAuth.resendVerification(email: action.email);
+      // A pharmacy and a doctor resend their codes at different endpoints.
+      final devCode = store.state.authState.isPharmacySignup
+          ? await pharmacyAuth.resendVerification(email: action.email)
+          : await doctorAuth.resendVerification(email: action.email);
       store.dispatch(
         VerificationOtpSentAction(email: action.email, devCode: devCode),
       );
@@ -170,10 +248,17 @@ List<Middleware<AppState>> createAuthMiddleware({
     VerifyEmailRequestAction action,
   ) async {
     try {
-      await doctorAuth.verifyEmail(
-        email: action.email,
-        otpCode: action.otpCode,
-      );
+      if (store.state.authState.isPharmacySignup) {
+        await pharmacyAuth.verifyOtp(
+          email: action.email,
+          otpCode: action.otpCode,
+        );
+      } else {
+        await doctorAuth.verifyEmail(
+          email: action.email,
+          otpCode: action.otpCode,
+        );
+      }
       store.dispatch(const VerifyEmailSuccessAction());
     } on ApiException catch (e) {
       store.dispatch(VerifyEmailFailureAction(errorMessage: e.message));
@@ -206,9 +291,12 @@ List<Middleware<AppState>> createAuthMiddleware({
         city: action.city,
         province: action.province,
         zipCode: action.zipCode,
+        qualification: action.qualification,
+        bio: action.bio,
         consultationFee: action.consultationFee,
         medicalAidIds: action.medicalAidIds,
         availability: action.availability,
+        notificationPreferences: action.notificationPreferences,
       );
       store.dispatch(DoctorProfileLoadedAction(doctor: doctor));
       // Keep the stored display name in step with the change.
@@ -241,7 +329,8 @@ List<Middleware<AppState>> createAuthMiddleware({
       final doctor = await doctorAuth.fetchProfile();
       store.dispatch(DoctorProfileLoadedAction(doctor: doctor));
     } on ApiException catch (e) {
-      store.dispatch(UploadDoctorProfileImageFailedAction(errorMessage: e.message));
+      store.dispatch(
+          UploadDoctorProfileImageFailedAction(errorMessage: e.message));
     }
   }
 
@@ -250,13 +339,15 @@ List<Middleware<AppState>> createAuthMiddleware({
     final wasPharmacy = store.state.authState.role == AppConstants.rolePharmacy;
     // Clear locally first so the UI signs out immediately even if the network
     // call hangs on a cold-started server.
-    await tokenStorage.clear();
     try {
+      await tokenStorage.clear();
       if (wasDoctor) await doctorAuth.logout();
       if (wasPharmacy) await pharmacyAuth.logout();
     } on ApiException {
       // The local session is already gone; a failed server-side revoke is
       // not worth blocking the user on.
+    } finally {
+      store.dispatch(const LogoutCompletedAction());
     }
   }
 
@@ -275,6 +366,8 @@ List<Middleware<AppState>> createAuthMiddleware({
       handleLogin(store, action);
     } else if (action is DoctorSignupRequestAction) {
       handleSignup(store, action);
+    } else if (action is PharmacySignupRequestAction) {
+      handlePharmacySignup(store, action);
     } else if (action is LoadMedicalAidCatalogueAction) {
       loadMedicalAidCatalogue(store);
     } else if (action is UpdateDoctorProfileAction) {

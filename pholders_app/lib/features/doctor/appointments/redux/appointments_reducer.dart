@@ -42,6 +42,12 @@ AppointmentsState appointmentsReducer(
     );
   }
 
+  if (action is AppointmentActionSucceededAction) {
+    return state.copyWith(
+      pendingActionIds: {...state.pendingActionIds}..remove(action.appointmentId),
+    );
+  }
+
   if (action is AcceptAppointmentFailedAction) {
     return state.copyWith(
       pendingActionIds: {...state.pendingActionIds}..remove(action.appointmentId),

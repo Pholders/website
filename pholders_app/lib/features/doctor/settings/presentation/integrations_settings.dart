@@ -1,169 +1,74 @@
-// ignore_for_file: prefer_const_constructors
-
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../shared/widgets/settings_shell.dart';
+import 'settings_frame.dart';
 
+/// Linked Services.
+///
+/// It listed Discovery "last synced 2 hours ago", Google and Outlook
+/// calendars "last synced 5 minutes ago", PayPal and WhatsApp, with Connect
+/// and Disconnect labels that did nothing, and had no settings sidebar.
+/// Nothing can be linked yet, so it says so and points to where each of
+/// those things is really handled.
 class IntegrationsSettings extends StatelessWidget {
   const IntegrationsSettings({super.key});
 
+  static const _instead = <(IconData, String, String, String?)>[
+    (Icons.health_and_safety_outlined, 'Medical aid',
+        'Choose the schemes you accept on Professional Details. Claims are not sent to schemes from Pholders yet.',
+        AppRoutes.doctorSettingsProfessional),
+    (Icons.payments_outlined, 'Payments',
+        'Card payments go through Pholders, by Stripe. See what patients paid on Billing.',
+        AppRoutes.doctorBilling),
+    (Icons.calendar_month_outlined, 'Calendar',
+        'Your bookings are on the Appointments page. Syncing with Google or Outlook is not available.',
+        AppRoutes.doctorAppointments),
+    (Icons.notifications_none, 'Messages and alerts',
+        'You are told about bookings, cancellations, dispensed scripts and reviews in the portal. WhatsApp and SMS are not available.',
+        AppRoutes.doctorNotifications),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return SettingsContentCard(
+    return DoctorSettingsFrame(
+      selectedItemId: 'linked_services',
       title: 'Linked Services',
-      children: const [
-        _IntegrationSection(
-          title: 'Medical Aid',
-          rows: [
-            _IntegrationRow(
-                icon: Icons.health_and_safety,
-                color: Color(0xFFE94162),
-                title: 'Discovery',
-                subtitle: 'Last synced 2 hours ago',
-                action: 'Disconnect'),
-            _IntegrationRow(
-                icon: Icons.shield,
-                color: Color(0xFF77A5FF),
-                title: 'Bonitas',
-                action: 'Connect'),
-            _IntegrationRow(
-                icon: Icons.local_hospital,
-                color: Color(0xFF3A9EA5),
-                title: 'Momentum',
-                action: 'Connect'),
-          ],
+      children: [
+        const Text(
+          'No outside services can be linked to your account yet. This is '
+          'where each of these is handled instead.',
+          style: settingsNote,
         ),
-        _ThinDivider(),
-        _IntegrationSection(
-          title: 'Calendar',
-          rows: [
-            _IntegrationRow(
-                icon: Icons.calendar_month,
-                color: Color(0xFF4285F4),
-                title: 'Google Calendar',
-                subtitle: 'Last synced 5 minutes ago',
-                action: 'Connect'),
-            _IntegrationRow(
-                icon: Icons.email,
-                color: Color(0xFF2D9CDB),
-                title: 'Outlook Calendar',
-                subtitle: 'Last synced 5 minutes ago',
-                action: 'Disconnect'),
-          ],
-        ),
-        _ThinDivider(),
-        _IntegrationSection(
-          title: 'Payments',
-          rows: [
-            _IntegrationRow(
-                icon: Icons.payment,
-                color: Color(0xFF1B73E8),
-                title: 'PayPal',
-                subtitle: 'Last synced 4 hours ago',
-                action: 'Connect'),
-          ],
-        ),
-        _ThinDivider(),
-        _IntegrationSection(
-          title: 'Communication',
-          rows: [
-            _IntegrationRow(
-                icon: Icons.chat,
-                color: Color(0xFF25D366),
-                title: 'WhatsApp Notifications',
-                action: 'Connect'),
-          ],
-        ),
-        SizedBox(height: 18),
-        SettingsFullWidthAction('Manage Integrations'),
+        const SizedBox(height: 16),
+        for (final (icon, title, text, route) in _instead)
+          InkWell(
+            onTap: route == null ? null : () => context.go(route),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  CircleIconButton(icon: icon, size: 30),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 3),
+                        Text(text, style: const TextStyle(fontSize: 12, color: SettingsShell.muted)),
+                      ],
+                    ),
+                  ),
+                  if (route != null)
+                    const Icon(Icons.chevron_right, size: 18, color: Color(0xFF8E8E8E)),
+                ],
+              ),
+            ),
+          ),
       ],
-    );
-  }
-}
-
-class _IntegrationSection extends StatelessWidget {
-  const _IntegrationSection({required this.title, required this.rows});
-
-  final String title;
-  final List<_IntegrationRow> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 10, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SettingsSectionTitle(title),
-          const SizedBox(height: 8),
-          ...rows,
-        ],
-      ),
-    );
-  }
-}
-
-class _IntegrationRow extends StatelessWidget {
-  const _IntegrationRow({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.action,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String action;
-  final String? subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 10, bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 14)),
-                if (subtitle != null)
-                  Text(subtitle!,
-                      style: const TextStyle(fontSize: 9, color: Colors.black)),
-              ],
-            ),
-          ),
-          Container(
-            height: 24,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: SettingsShell.panelMint,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFFCFECEE)),
-            ),
-            child: Text(action,
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ThinDivider extends StatelessWidget {
-  const _ThinDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Divider(color: SettingsShell.divider, thickness: 2, height: 2),
     );
   }
 }

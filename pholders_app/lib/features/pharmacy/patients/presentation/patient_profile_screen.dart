@@ -40,14 +40,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     'Planned Treatments',
   ];
 
-  // Mock vitals
-  final _vitals = [
-    const _Vital(icon: Icons.favorite_rounded, label: 'Blood Pressure', value: '180/20', unit: 'mmHg', status: 'In the norm', isNorm: true),
-    const _Vital(icon: Icons.monitor_heart_outlined, label: 'Heart Rate', value: '120', unit: 'bpm', status: 'Above the norm', isNorm: false),
-    const _Vital(icon: Icons.accessibility_new_rounded, label: 'Body Weight', value: '74', unit: 'kg', status: 'In the norm', isNorm: true),
-    const _Vital(icon: Icons.water_drop_outlined, label: 'Cholesterol', value: '130', unit: 'mg/dl', status: 'Above the norm', isNorm: false),
-  ];
-
   // Mock visits
   final _visits = [
     const _Visit(time: '11:00–12:00', date: '26 Apr 2026', service: 'Treatment of diabetes', doctor: 'Dr Sam Smith', status: 'Scheduled'),
@@ -320,22 +312,14 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
                 const SizedBox(height: 20),
 
-                // Vitals label
-                const Text('Vitals',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppProfileColors.textSecondary)),
-                const SizedBox(height: 12),
-
-                // Vitals row
-                Row(
-                  children: _vitals.map((v) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _VitalCard(vital: v),
-                    ),
-                  )).toList(),
+                // Vitals used to be four invented readings, two of them
+                // flagged "Above the norm". Patients now log real ones, but
+                // a pharmacy has no route to them yet.
+                const _RecordNotice(
+                  title: 'Vitals are not shared with pharmacies',
+                  detail: 'Patients log their own vitals in the Pholders app. '
+                      'Whether a pharmacy the patient is linked to may see '
+                      'them is still being decided.',
                 ),
               ],
             ),
@@ -476,23 +460,6 @@ class AppProfileColors {
 }
 
 // ─── Data classes ─────────────────────────────────────────────────────────────
-class _Vital {
-  const _Vital({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.unit,
-    required this.status,
-    required this.isNorm,
-  });
-  final IconData icon;
-  final String label;
-  final String value;
-  final String unit;
-  final String status;
-  final bool isNorm;
-}
-
 class _Visit {
   const _Visit({
     required this.time,
@@ -544,61 +511,53 @@ class _InfoField extends StatelessWidget {
   }
 }
 
-// ─── Vital card ───────────────────────────────────────────────────────────────
-class _VitalCard extends StatelessWidget {
-  const _VitalCard({required this.vital});
-  final _Vital vital;
+// ─── Record notice ────────────────────────────────────────────────────────────
+class _RecordNotice extends StatelessWidget {
+  const _RecordNotice({required this.title, required this.detail});
+
+  final String title;
+  final String detail;
 
   @override
   Widget build(BuildContext context) {
-    final color = vital.isNorm ? AppProfileColors.normGreen : AppProfileColors.aboveRed;
-    final bg = vital.isNorm ? AppProfileColors.normBg : AppProfileColors.aboveBg;
-
     return Container(
-      padding: const EdgeInsets.all(10),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppProfileColors.border),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(vital.icon, size: 18, color: color),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(vital.label,
-              style: const TextStyle(
-                  fontSize: 10,
-                  color: AppProfileColors.textSecondary)),
-          const SizedBox(height: 2),
-          RichText(
-            text: TextSpan(
+          const Icon(Icons.info_outline_rounded,
+              size: 18, color: AppProfileColors.textSecondary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextSpan(
-                    text: vital.value,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppProfileColors.textPrimary)),
-                TextSpan(
-                    text: ' ${vital.unit}',
-                    style: const TextStyle(
-                        fontSize: 10,
-                        color: AppProfileColors.textSecondary)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppProfileColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  detail,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: AppProfileColors.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(vital.status,
-              style: TextStyle(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight: FontWeight.w500)),
         ],
       ),
     );

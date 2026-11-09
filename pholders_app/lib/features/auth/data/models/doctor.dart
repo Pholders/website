@@ -57,6 +57,7 @@ class Doctor extends Equatable {
     this.emailVerified = false,
     this.medicalAids = const [],
     this.availability,
+    this.notificationPreferences = const {},
   });
 
   /// Builds a [Doctor] from either the login or the profile payload.
@@ -86,7 +87,17 @@ class Doctor extends Equatable {
       emailVerified: json['email_verified'] == true,
       medicalAids: _schemesFrom(json['medicalAids'] ?? json['medical_aids']),
       availability: _availabilityFrom(json['availability']),
+      notificationPreferences:
+          _preferencesFrom(json['notification_preferences']),
     );
+  }
+
+  static Map<String, bool> _preferencesFrom(dynamic value) {
+    if (value is! Map) return const {};
+    return {
+      for (final entry in value.entries)
+        if (entry.value is bool) entry.key.toString(): entry.value as bool,
+    };
   }
 
   final int id;
@@ -120,6 +131,13 @@ class Doctor extends Equatable {
   /// Consulting windows per weekday, e.g. `{'monday': ['08:00-17:00']}`.
   /// Null when the doctor has never set any.
   final Map<String, List<String>>? availability;
+
+  /// Which notification kinds the doctor switched on or off, by key:
+  /// newBookings, appointmentChanges, prescriptionsDispensed, reviews. A
+  /// missing key means on.
+  final Map<String, bool> notificationPreferences;
+
+  bool wantsNotification(String key) => notificationPreferences[key] ?? true;
 
   /// "John Smith", or the email local part when the name is missing.
   String get fullName {

@@ -13,6 +13,7 @@ class AppRoutes {
   static const String services = '/services';
   static const String howItWorks = '/how-it-works';
   static const String support = '/support';
+  static const String contact = '/contact';
   static const String login = '/login';
   static const String register = '/register';
   static const String registerStep2 = '/register/step-2';
@@ -41,11 +42,13 @@ class AppRoutes {
   static const String doctorPrescriptionDetail =
       '/doctor/prescriptions/:prescriptionId';
   static const String doctorNewPrescription = '/doctor/prescriptions/new';
-  static const String doctorPreviewPrescription = '/doctor/prescriptions/preview';
+  static const String doctorPreviewPrescription =
+      '/doctor/prescriptions/preview';
   static const String doctorSearchScripts = '/doctor/search-scripts';
   static const String doctorSickNotes = '/doctor/sick-notes';
   static const String doctorAppointments = '/doctor/appointments';
   static const String doctorBilling = '/doctor/billing';
+
   /// Public: the page a prescription QR code opens. The backend builds the
   /// link as `${FRONTEND_URL}/prescriptions/qr/<token>`, so this path is
   /// fixed by what it mints.
@@ -78,7 +81,8 @@ class AppRoutes {
   static const String pharmacyReports = '/pharmacy/reports';
   static const String pharmacyBilling = '/pharmacy/billing';
   static const String pharmacySettings = '/pharmacy/settings';
-  static const String pharmacySettingsLinkedServices = '/pharmacy/settings/linked-services';
+  static const String pharmacySettingsLinkedServices =
+      '/pharmacy/settings/linked-services';
 
   // Routes recovered from 9068f13, dropped by the 2026-08-17 merge.
   static const String adminDashboard = '/admin/dashboard';
@@ -87,14 +91,20 @@ class AppRoutes {
   static const String doctorInformation = '/doctor/information';
   static const String doctorNotifications = '/doctor/notifications';
   static const String doctorSettingsPractice = '/doctor/settings/practice';
-  static const String doctorSettingsPracticePage = '/doctor/settings/practice-page';
-  static const String doctorSettingsPreferences = '/doctor/settings/preferences';
-  static const String doctorSettingsSupportLegal = '/doctor/settings/support-legal';
+  static const String doctorSettingsPreferences =
+      '/doctor/settings/preferences';
+  static const String doctorSettingsSupportLegal =
+      '/doctor/settings/support-legal';
   static const String pharmacyNotifications = '/pharmacy/notifications';
-  static const String pharmacySettingsNotificationCenter = '/pharmacy/settings/notifications/center';
-  static const String pharmacySettingsNotifications = '/pharmacy/settings/notifications';
-  static const String pharmacySettingsPersonalInfo = '/pharmacy/settings/personal-info';
-  static const String pharmacySettingsPharmacyDetails = '/pharmacy/settings/pharmacy-details';
-  static const String pharmacySettingsProfessional = '/pharmacy/settings/professional';
+  static const String pharmacySettingsNotificationCenter =
+      '/pharmacy/settings/notifications/center';
+  static const String pharmacySettingsNotifications =
+      '/pharmacy/settings/notifications';
+  static const String pharmacySettingsPersonalInfo =
+      '/pharmacy/settings/personal-info';
+  static const String pharmacySettingsPharmacyDetails =
+      '/pharmacy/settings/pharmacy-details';
+  static const String pharmacySettingsProfessional =
+      '/pharmacy/settings/professional';
   static const String pharmacySettingsProfile = '/pharmacy/settings/profile';
 }

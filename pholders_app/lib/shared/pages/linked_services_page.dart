@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/routing/app_routes.dart';
 import '../widgets/settings_sidebar.dart';
 
 /// Linked Services settings page — used by both doctor and pharmacy.
@@ -171,7 +172,18 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
     return Row(
       children: [
         InkWell(
-          onTap: () => context.pop(),
+          // The settings pages open this with go(), which leaves nothing
+          // underneath to pop back to; pop() then crashed.
+          onTap: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              final path = GoRouterState.of(context).uri.path;
+              context.go(path.startsWith('/pharmacy')
+                  ? AppRoutes.pharmacySettings
+                  : AppRoutes.doctorSettings);
+            }
+          },
           borderRadius: BorderRadius.circular(12),
           child: Container(
             width: 34,

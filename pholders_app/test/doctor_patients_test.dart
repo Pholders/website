@@ -86,6 +86,49 @@ void main() {
     expect(list.single.nextVisit, isNull);
   });
 
+  test('the last reason is from the latest visit up to today', () {
+    // A consultation completed early keeps its later booked day; its reason
+    // is not the last one. Nor is a cancelled booking's.
+    final list = patientsFromAppointments([
+      appointment(
+          id: 1, patientId: 7, date: DateTime(2026, 10, 10), reason: 'Rash'),
+      appointment(
+          id: 2,
+          patientId: 7,
+          date: DateTime(2026, 10, 12),
+          reason: 'Cancelled one',
+          status: 'cancelled'),
+      appointment(
+          id: 3,
+          patientId: 7,
+          date: DateTime(2026, 10, 20),
+          reason: 'Done early',
+          status: 'completed'),
+    ], now: now);
+    expect(list.single.lastReason, 'Rash');
+
+    // Someone not yet seen shows what they booked for.
+    final fresh = patientsFromAppointments([
+      appointment(
+          id: 4, patientId: 8, date: DateTime(2026, 10, 30), reason: 'Back pain'),
+    ], now: now);
+    expect(fresh.single.lastReason, 'Back pain');
+  });
+
+  test('a later booking already completed or cancelled is not the next visit',
+      () {
+    // Completed early: its booked day is still ahead, but it has happened.
+    final list = patientsFromAppointments([
+      appointment(
+          id: 1, patientId: 7, date: DateTime(2026, 10, 20), status: 'completed'),
+      appointment(
+          id: 2, patientId: 7, date: DateTime(2026, 10, 22), status: 'cancelled'),
+      appointment(
+          id: 3, patientId: 7, date: DateTime(2026, 10, 30), status: 'scheduled'),
+    ], now: now);
+    expect(list.single.nextVisit, DateTime(2026, 10, 30));
+  });
+
   test('a completed appointment marks an established relationship', () {
     final booked = patientsFromAppointments([
       appointment(id: 1, patientId: 7, date: DateTime(2026, 11, 1), status: 'scheduled'),
@@ -190,5 +233,21 @@ void liveShapeTest() {
     // Booked but not yet consulted, and the visit is still ahead.
     expect(patient.hasCompletedVisit, isFalse);
     expect(patient.nextVisit, isNotNull);
+  });
+
+  test("the patient's photo carries through from their bookings", () {
+    final withPhoto = Appointment.fromJson({
+      'id': 2,
+      'patientId': 7,
+      'patientName': 'Thandi Mokoena',
+      'patientAvatarUrl': 'https://example.test/api/profile/avatars/p7.jpg',
+      'appointmentDate': DateTime(2026, 10, 1).toIso8601String(),
+    });
+    final list = patientsFromAppointments(
+        [appointment(id: 1, patientId: 7, date: DateTime(2026, 9, 1)), withPhoto],
+        now: DateTime(2026, 10, 15, 12));
+    expect(list.single.avatarUrl, 'https://example.test/api/profile/avatars/p7.jpg');
+    expect(patientsFromAppointments([appointment(id: 3, patientId: 9)], now: DateTime(2026, 10, 15, 12))
+        .single.avatarUrl, isNull);
   });
 }

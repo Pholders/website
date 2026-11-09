@@ -19,6 +19,7 @@ class Appointment extends Equatable {
     this.consultationFee,
     this.status,
     this.doctorAccepted = false,
+    this.patientAvatarUrl,
   });
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
@@ -35,6 +36,7 @@ class Appointment extends Equatable {
       consultationFee: _asDouble(json['consultationFee']),
       status: _asString(json['status']),
       doctorAccepted: json['doctorAccepted'] == true,
+      patientAvatarUrl: _asString(json['patientAvatarUrl']),
     );
   }
 
@@ -46,6 +48,9 @@ class Appointment extends Equatable {
   final int? patientId;
 
   final String? patientEmail;
+
+  /// The patient's profile photo, or null when they have not set one.
+  final String? patientAvatarUrl;
   final String? patientPhone;
   final DateTime? date;
 
@@ -57,7 +62,8 @@ class Appointment extends Equatable {
   final String? reason;
   final double? consultationFee;
 
-  /// 'pending_payment' | 'scheduled' | 'completed' | 'cancelled'.
+  /// 'pending_payment' | 'scheduled' | 'rescheduled' | 'completed' |
+  /// 'cancelled'. 'rescheduled' is a paid appointment that was moved.
   final String? status;
   final bool doctorAccepted;
 
@@ -87,18 +93,39 @@ class Appointment extends Equatable {
     return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
+  /// A visit that is over: completed, or its day has gone by. Drives the
+  /// Past visits tab; everything else is a future visit.
+  bool isPastAt(DateTime now) {
+    if (status == 'completed') return true;
+    final d = date?.toLocal();
+    if (d == null) return false;
+    return DateTime(d.year, d.month, d.day)
+        .isBefore(DateTime(now.year, now.month, now.day));
+  }
+
+  /// Paid and not yet seen: the only state the server lets a doctor complete.
+  bool get canComplete => status == 'scheduled' || status == 'rescheduled';
+
   /// A human label for the status badge.
+  ///
+  /// A finished or cancelled appointment says so even if the doctor accepted
+  /// it first. Checking acceptance first left a completed consultation
+  /// reading "Accepted", so completing one looked like it had done nothing.
   String get statusLabel {
+    switch (status) {
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+    }
     if (doctorAccepted) return 'Accepted';
     switch (status) {
       case 'pending_payment':
         return 'Awaiting payment';
       case 'scheduled':
         return 'Scheduled';
-      case 'completed':
-        return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
+      case 'rescheduled':
+        return 'Rescheduled';
       default:
         return status ?? 'Unknown';
     }

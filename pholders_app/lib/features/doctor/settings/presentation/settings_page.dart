@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
-import '../../../../shared/widgets/settings_sidebar.dart';
+import 'settings_frame.dart';
 
-/// Doctor Settings page — hosts the SettingsSidebar and routes to sub-pages.
+/// The settings home: the settings frame with nothing chosen yet, and two
+/// shortcuts.
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -16,132 +17,43 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgLight,
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Settings sidebar ──────────────────────────────────────────────
-          SettingsSidebar(
-            selectedItemId: 'linked_services',
-            onMenuItemSelected: (id) => _navigate(context, id),
-          ),
-          // ── Welcome / landing content ─────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: _buildWelcomeCard(context),
+    // Nothing is chosen in the menu here. It used to show Linked Services
+    // as the current page, which it is not.
+    return DoctorSettingsLayout(
+      selectedItemId: '',
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(30, 26, 30, 26),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Choose a setting',
+              style: TextStyle(fontSize: 20, color: Colors.black),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-        void _navigate(BuildContext context, String id) {
-    switch (id) {
-      case 'personal_information':
-        context.go(AppRoutes.doctorSettingsProfile);
-        break;
-      case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
-        break;
-      case 'fees_setup':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
-        break;
-      case 'notification_settings':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
-        break;
-      case 'notification_center':
-        context.go(AppRoutes.doctorNotifications);
-        break;
-      case 'security_settings':
-        context.go(AppRoutes.doctorSettingsSecurity);
-        break;
-      case 'device_management':
-        context.go(AppRoutes.doctorSettingsDevices);
-        break;
-      case 'login_activity':
-        context.go(AppRoutes.doctorSettingsLoginActivity);
-        break;
-      case 'preferences_settings':
-        context.go(AppRoutes.doctorSettingsPreferences);
-        break;
-      case 'linked_services':
-        context.go(AppRoutes.doctorSettingsLinkedServices);
-        break;
-      case 'help_center':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
-        break;
-      case 'privacy_policy':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
-        break;
-      case 'terms_of_service':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
-        break;
-      case 'contact_support':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
-        break;
-      default:
-        break;
-    }
-  }
-
-  Widget _buildWelcomeCard(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(25),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(width: 11, color: _tealBorder),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Settings',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          color: _textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Select a category from the sidebar to manage your settings.',
-                        style: const TextStyle(fontSize: 14, color: _textMuted),
-                      ),
-                      const SizedBox(height: 32),
-                      // Quick links
-                      _buildQuickLink(
-                        context,
-                        icon: Icons.notifications_active_outlined,
-                        label: 'Notification Centre',
-                        subtitle: 'Review your notifications and alert history',
-                        onTap: () => context.go(AppRoutes.doctorNotifications),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildQuickLink(
-                        context,
-                        icon: Icons.cable_outlined,
-                        label: 'Linked Services',
-                        subtitle: 'Connect medical aid, calendar, and payment integrations',
-                        onTap: () => context.go(AppRoutes.doctorSettingsLinkedServices),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            const SizedBox(height: 8),
+            const Text(
+              'Pick a page from the menu on the left, or jump straight to one '
+              'of these.',
+              style: TextStyle(fontSize: 14, color: _textMuted),
+            ),
+            const SizedBox(height: 28),
+            _buildQuickLink(
+              context,
+              icon: Icons.notifications_active_outlined,
+              label: 'Notification Centre',
+              subtitle: 'Review your notifications and alert history',
+              onTap: () => context.go(AppRoutes.doctorNotifications),
+            ),
+            const SizedBox(height: 12),
+            _buildQuickLink(
+              context,
+              icon: Icons.cable_outlined,
+              label: 'Linked Services',
+              subtitle:
+                  'Connect medical aid, calendar, and payment integrations',
+              onTap: () => context.go(AppRoutes.doctorSettingsLinkedServices),
+            ),
+          ],
         ),
       ),
     );
@@ -169,9 +81,9 @@ class SettingsPage extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0x33309CA3),
-                borderRadius: BorderRadius.circular(10),
+              decoration: const BoxDecoration(
+                color: Color(0x33309CA3),
+                shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 20, color: _teal),
             ),

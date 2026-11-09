@@ -1,4 +1,5 @@
 import '../../appointments/data/models/appointment.dart';
+import '../../dashboard/data/dashboard_summary.dart' show lastVisitReason;
 
 /// A patient as this doctor is entitled to see them.
 ///
@@ -23,12 +24,16 @@ class DoctorPatient {
     this.lastReason,
     this.nextVisit,
     this.hasCompletedVisit = false,
+    this.avatarUrl,
   });
 
   final int id;
   final String name;
   final String? email;
   final String? phone;
+
+  /// Their profile photo, or null when they have not set one.
+  final String? avatarUrl;
 
   /// How many times they have booked this doctor.
   final int visits;
@@ -76,24 +81,31 @@ List<DoctorPatient> patientsFromAppointments(
 
     DateTime? latest;
     DateTime? next;
-    String? lastReason;
+    // From the latest visit up to today, as on the profile.
+    final lastReason = lastVisitReason(visits, moment);
     String? email;
     String? phone;
+    String? avatarUrl;
     var completed = false;
 
     for (final visit in visits) {
       if ((visit.status ?? '').toLowerCase() == 'completed') completed = true;
       email ??= _blankToNull(visit.patientEmail);
       phone ??= _blankToNull(visit.patientPhone);
+      avatarUrl ??= _blankToNull(visit.patientAvatarUrl);
 
       final date = visit.date;
       if (date == null) continue;
 
-      if (latest == null || date.isAfter(latest)) {
-        latest = date;
-        lastReason = _blankToNull(visit.reason) ?? lastReason;
-      }
-      if (date.isAfter(moment) && (next == null || date.isBefore(next))) {
+      // Latest booking of any kind: it orders the list.
+      if (latest == null || date.isAfter(latest)) latest = date;
+      // Only a visit still to happen is next: a completed or cancelled one
+      // dated later is not (one completed early showed as the next visit).
+      final status = (visit.status ?? '').toLowerCase();
+      final open = status != 'completed' && status != 'cancelled';
+      if (open &&
+          date.isAfter(moment) &&
+          (next == null || date.isBefore(next))) {
         next = date;
       }
     }
@@ -114,6 +126,7 @@ List<DoctorPatient> patientsFromAppointments(
       lastReason: lastReason,
       nextVisit: next,
       hasCompletedVisit: completed,
+      avatarUrl: avatarUrl,
     );
   }).toList();
 

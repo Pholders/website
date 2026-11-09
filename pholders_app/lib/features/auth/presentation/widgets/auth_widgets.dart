@@ -33,7 +33,6 @@ class AuthFieldPair extends StatelessWidget {
 
 /// Reusable text field for all auth screens.
 class AuthTextField extends StatelessWidget {
-
   const AuthTextField({
     super.key,
     required this.controller,
@@ -43,6 +42,7 @@ class AuthTextField extends StatelessWidget {
     this.suffixIcon,
     this.keyboardType,
     this.validator,
+    this.autofillHints,
   });
   final TextEditingController controller;
   final String hint;
@@ -52,6 +52,9 @@ class AuthTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
 
+  /// What the browser's password manager should fill in here.
+  final Iterable<String>? autofillHints;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
@@ -59,6 +62,7 @@ class AuthTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      autofillHints: autofillHints,
       style: const TextStyle(fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
@@ -94,7 +98,6 @@ class AuthTextField extends StatelessWidget {
 
 /// Gradient submit button used across all auth screens.
 class AuthSubmitButton extends StatelessWidget {
-
   const AuthSubmitButton({
     super.key,
     required this.label,
