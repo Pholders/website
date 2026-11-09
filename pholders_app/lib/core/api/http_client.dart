@@ -24,8 +24,8 @@ class HttpClient {
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: AppConstants.apiTimeout,
-        receiveTimeout: AppConstants.apiTimeout,
+        connectTimeout: AppConstants.apiConnectTimeout,
+        receiveTimeout: AppConstants.apiReceiveTimeout,
         responseType: ResponseType.json,
         headers: {'Accept': 'application/json'},
       ),

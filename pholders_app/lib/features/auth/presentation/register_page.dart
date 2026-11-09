@@ -300,44 +300,63 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ),
                               ),
                             ),
-                          ]),
-                          if (_error != null) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFFB3261E),
-                                fontWeight: FontWeight.w500,
+                            if (_error != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                _error!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFFB3261E),
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          ],
-                          const SizedBox(height: 24),
-                          // Dots + Next
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(width: 10, height: 10, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF6DD0D8))),
-                              const SizedBox(width: 6),
-                              Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.4))),
                             ],
-                          ),
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: _next,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                decoration: BoxDecoration(color: const Color(0xFF1A5C5F), borderRadius: BorderRadius.circular(6)),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('Next', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                                    SizedBox(width: 4),
-                                    Icon(Icons.arrow_forward, size: 14, color: Colors.white),
-                                  ],
+                            const SizedBox(height: 24),
+                            // Dots + Next
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Color(0xFF6DD0D8))),
+                                const SizedBox(width: 6),
+                                Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white
+                                            .withValues(alpha: 0.4))),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: GestureDetector(
+                                onTap: _next,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 8),
+                                  decoration: BoxDecoration(
+                                      color: const Color(0xFF1A5C5F),
+                                      borderRadius: BorderRadius.circular(6)),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('Next',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500)),
+                                      SizedBox(width: 4),
+                                      Icon(Icons.arrow_forward,
+                                          size: 14, color: Colors.white),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -366,7 +385,6 @@ class _RegisterPageState extends State<RegisterPage> {
 // ─── Role selector ────────────────────────────────────────────────────────────
 
 class _RoleSelector extends StatelessWidget {
-
   const _RoleSelector({required this.selectedRole, required this.onChanged});
   final String selectedRole;
   final ValueChanged<String> onChanged;
@@ -392,8 +410,8 @@ class _RoleSelector extends StatelessWidget {
 }
 
 class _RoleOption extends StatelessWidget {
-
-  const _RoleOption({required this.label, required this.selected, required this.onTap});
+  const _RoleOption(
+      {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -438,8 +456,12 @@ class _RoleOption extends StatelessWidget {
 // ─── Form field ───────────────────────────────────────────────────────────────
 
 class _Field extends StatelessWidget {
-
-  const _Field({required this.controller, required this.hint, required this.icon, this.obscureText = false, this.suffixIcon});
+  const _Field(
+      {required this.controller,
+      required this.hint,
+      required this.icon,
+      this.obscureText = false,
+      this.suffixIcon});
   final TextEditingController controller;
   final String hint;
   final IconData icon;
