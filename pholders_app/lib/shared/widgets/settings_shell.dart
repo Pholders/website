@@ -30,6 +30,8 @@ class SettingsContentCard extends StatelessWidget {
     required this.children,
     this.showEdit = true,
     this.padding = const EdgeInsets.fromLTRB(28, 24, 28, 24),
+    this.framed = true,
+    this.onBack,
   });
 
   final String title;
@@ -37,23 +39,37 @@ class SettingsContentCard extends StatelessWidget {
   final bool showEdit;
   final EdgeInsets padding;
 
+  /// False when the card already sits inside a framed settings layout, so
+  /// it does not draw a second card inside the first.
+  final bool framed;
+
+  /// What the round back arrow in the header does. Without it the arrow is
+  /// not shown, rather than shown and dead.
+  final VoidCallback? onBack;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: const Border(
-          left: BorderSide(color: SettingsShell.accent, width: 1),
-          bottom: BorderSide(color: SettingsShell.accent, width: 6),
-        ),
-      ),
+      decoration: framed
+          ? BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: const Border(
+                left: BorderSide(color: SettingsShell.accent, width: 1),
+                bottom: BorderSide(color: SettingsShell.accent, width: 6),
+              ),
+            )
+          : null,
       child: SingleChildScrollView(
         padding: padding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SettingsCardHeader(title: title, showEdit: showEdit),
+            SettingsCardHeader(
+                title: title,
+                showEdit: showEdit,
+                onBack: onBack,
+                showBack: framed || onBack != null),
             const SettingsDivider(),
             const SizedBox(height: 18),
             ...children,
@@ -69,21 +85,37 @@ class SettingsCardHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.showEdit = true,
+    this.onBack,
+    this.showBack = true,
   });
 
   final String title;
   final bool showEdit;
+  final VoidCallback? onBack;
+  final bool showBack;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const CircleIconButton(icon: Icons.arrow_back, size: 28),
-        const SizedBox(width: 14),
+        if (showBack) ...[
+          if (onBack == null)
+            const CircleIconButton(icon: Icons.arrow_back, size: 28)
+          else
+            Tooltip(
+              message: 'Back',
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onBack,
+                child: const CircleIconButton(icon: Icons.arrow_back, size: 34),
+              ),
+            ),
+          const SizedBox(width: 14),
+        ],
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 17,
+          style: TextStyle(
+            fontSize: onBack == null ? 17 : 20,
             fontWeight: FontWeight.w500,
             color: SettingsShell.text,
           ),

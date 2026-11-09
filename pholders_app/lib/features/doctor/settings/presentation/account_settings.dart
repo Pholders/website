@@ -8,12 +8,10 @@ import '../../../../core/network/secure_url.dart';
 import '../../../auth/data/models/doctor.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/settings_shell.dart';
-import '../../../../shared/widgets/settings_sidebar.dart';
+import 'settings_frame.dart';
 import '../../../../core/images/background_removal.dart';
-import '../../../../core/routing/app_routes.dart';
 
 class AccountSettings extends StatelessWidget {
   const AccountSettings({super.key, this.initialTab = 0});
@@ -27,57 +25,7 @@ class AccountSettings extends StatelessWidget {
         : const _ProfileDetails();
   }
 
-  void _navigate(BuildContext context, String id) {
-    switch (id) {
-      case 'personal_information':
-        context.go(AppRoutes.doctorSettingsProfile);
-        break;
-      case 'professional':
-        context.go(AppRoutes.doctorSettingsProfessional);
-        break;
-      case 'fees_setup':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=0');
-        break;
-      case 'practice_settings':
-        context.go(AppRoutes.doctorSettingsPractice);
-        break;
-      case 'notification_settings':
-        context.go('${AppRoutes.doctorSettingsPractice}?tab=1');
-        break;
-      case 'notification_center':
-        context.go(AppRoutes.doctorNotifications);
-        break;
-      case 'security_settings':
-        context.go(AppRoutes.doctorSettingsSecurity);
-        break;
-      case 'device_management':
-        context.go(AppRoutes.doctorSettingsDevices);
-        break;
-      case 'login_activity':
-        context.go(AppRoutes.doctorSettingsLoginActivity);
-        break;
-      case 'preferences_settings':
-        context.go(AppRoutes.doctorSettingsPreferences);
-        break;
-      case 'linked_services':
-        context.go(AppRoutes.doctorSettingsLinkedServices);
-        break;
-      case 'help_center':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=0');
-        break;
-      case 'privacy_policy':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=1');
-        break;
-      case 'terms_of_service':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=2');
-        break;
-      case 'contact_support':
-        context.go('${AppRoutes.doctorSettingsSupportLegal}?tab=3');
-        break;
-      default:
-        break;
-    }
-  }
+  // The menu's links are in navigateDoctorSettings (settings_frame.dart).
 }
 
 /// Personal Information: photo, the About text patients read, name and phone.
@@ -193,22 +141,10 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
   }
 
   Widget _buildScreen(BuildContext context, _ProfileViewModel vm) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Settings sidebar ──────────────────────────────────────────────
-          SettingsSidebar(
-            selectedItemId: 'personal_information',
-            onMenuItemSelected: (id) =>
-                const AccountSettings()._navigate(context, id),
-          ),
-          // ── Content area ──────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: SettingsContentCard(
+    return DoctorSettingsLayout(
+      selectedItemId: 'personal_information',
+      child: doctorSettingsCard(
+                context,
                 title: 'Profile Details',
                 children: [
                   Row(
@@ -239,10 +175,6 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -774,22 +706,10 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
   }
 
   Widget _buildScreen(BuildContext context, _ProfileViewModel vm) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Settings sidebar ──────────────────────────────────────────────
-          SettingsSidebar(
-            selectedItemId: 'professional',
-            onMenuItemSelected: (id) =>
-                const AccountSettings()._navigate(context, id),
-          ),
-          // ── Content area ────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: SettingsContentCard(
+    return DoctorSettingsLayout(
+      selectedItemId: 'professional',
+      child: doctorSettingsCard(
+                context,
                 title: 'Professional Details',
                 children: [
                   Padding(
@@ -991,10 +911,6 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
