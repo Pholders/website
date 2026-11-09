@@ -81,7 +81,6 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
       builder: (_) => _RecordVitalsDialog(
         kinds: kinds,
         lastWeightKg: last((v) => v.weightKg),
-        lastHeightCm: last((v) => v.heightCm),
         save: (values) => _repo.recordVitals(widget.patientId, values),
       ),
     );
@@ -311,15 +310,14 @@ class _RecordVitalsDialog extends StatefulWidget {
     required this.kinds,
     required this.save,
     this.lastWeightKg,
-    this.lastHeightCm,
   });
 
   final List<VitalKindDef> kinds;
   final Future<PatientVital> Function(Map<String, dynamic> values) save;
 
-  /// The latest on record, for the BMI preview when only one is taken today.
+  /// The latest weight on record, for the BMI when height is taken today
+  /// but weight is not.
   final double? lastWeightKg;
-  final double? lastHeightCm;
 
   @override
   State<_RecordVitalsDialog> createState() => _RecordVitalsDialogState();
@@ -415,26 +413,22 @@ class _RecordVitalsDialogState extends State<_RecordVitalsDialog> {
   }
 
   /// "BMI 26.5" with where each figure came from, or a hint how to get one.
+  /// BMI is worked out only when height is recorded at this visit (Prince,
+  /// 9 Nov), with today's weight or, if none was taken, the last on record.
   String? _bmiLine() {
-    final hasHeightKind = widget.kinds.any((k) => k.key == 'height_cm');
     final weightToday = _entered('weight_kg');
     final heightToday = _shown.contains('height_cm') ? _entered('height_cm') : null;
-    if (weightToday == null && heightToday == null) return null;
-    final weight = weightToday ?? widget.lastWeightKg;
-    final height = heightToday ?? widget.lastHeightCm;
-    final bmi = bmiOf(weight, height);
-    if (bmi == null) {
-      if (height == null && hasHeightKind && !_shown.contains('height_cm')) {
-        return 'Add height to work out the BMI.';
-      }
-      return null;
+    if (heightToday == null) {
+      final canAddHeight = widget.kinds.any((k) => k.key == 'height_cm') &&
+          !_shown.contains('height_cm');
+      return weightToday != null && canAddHeight
+          ? 'Add height to work out the BMI.'
+          : null;
     }
-    final from = [
-      if (weightToday == null) 'last weight',
-      if (heightToday == null) 'last height',
-    ];
+    final bmi = bmiOf(weightToday ?? widget.lastWeightKg, heightToday);
+    if (bmi == null) return 'Enter a weight to work out the BMI.';
     return 'BMI ${bmi.toStringAsFixed(1)}'
-        '${from.isEmpty ? '' : ' (using the ${from.join(' and ')} on record)'}';
+        '${weightToday == null ? ' (using the last weight on record)' : ''}';
   }
 
   Widget _kindRow(VitalKindDef kind) {

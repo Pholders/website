@@ -202,7 +202,8 @@ void main() {
     expect(server.bodies['POST /users/phr/20/vitals'], {'weight_kg': 81, 'height_cm': 180});
   });
 
-  testWidgets('weight alone uses the height on record for the BMI', (tester) async {
+  testWidgets('BMI only when height is recorded today, even with a height on record',
+      (tester) async {
     await show(tester, {
       vitalsKey: (200, rows([
         {'measured_at': '2026-10-28T06:30:00Z', 'height_cm': '175.0', 'weight_kg': '80'},
@@ -212,7 +213,23 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('field-weight_kg')), '81.2');
     await tester.pump();
-    expect(find.text('BMI 26.5 (using the last height on record)'), findsOneWidget);
+    expect(find.textContaining('BMI 2'), findsNothing);
+    expect(find.text('Add height to work out the BMI.'), findsOneWidget);
+  });
+
+  testWidgets('height today with no weight uses the last weight on record', (tester) async {
+    await show(tester, {
+      vitalsKey: (200, rows([
+        {'measured_at': '2026-10-28T06:30:00Z', 'weight_kg': '72'},
+      ])),
+    });
+    await tester.tap(find.text('Record vitals'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('add-height_cm')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('field-height_cm')), '170');
+    await tester.pump();
+    expect(find.text('BMI 24.9 (using the last weight on record)'), findsOneWidget);
   });
 
   testWidgets('a vital the server adds reaches the form without a portal change',
