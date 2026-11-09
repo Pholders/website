@@ -86,6 +86,35 @@ void main() {
     expect(list.single.nextVisit, isNull);
   });
 
+  test('the last reason is from the latest visit up to today', () {
+    // A consultation completed early keeps its later booked day; its reason
+    // is not the last one. Nor is a cancelled booking's.
+    final list = patientsFromAppointments([
+      appointment(
+          id: 1, patientId: 7, date: DateTime(2026, 10, 10), reason: 'Rash'),
+      appointment(
+          id: 2,
+          patientId: 7,
+          date: DateTime(2026, 10, 12),
+          reason: 'Cancelled one',
+          status: 'cancelled'),
+      appointment(
+          id: 3,
+          patientId: 7,
+          date: DateTime(2026, 10, 20),
+          reason: 'Done early',
+          status: 'completed'),
+    ], now: now);
+    expect(list.single.lastReason, 'Rash');
+
+    // Someone not yet seen shows what they booked for.
+    final fresh = patientsFromAppointments([
+      appointment(
+          id: 4, patientId: 8, date: DateTime(2026, 10, 30), reason: 'Back pain'),
+    ], now: now);
+    expect(fresh.single.lastReason, 'Back pain');
+  });
+
   test('a later booking already completed or cancelled is not the next visit',
       () {
     // Completed early: its booked day is still ahead, but it has happened.

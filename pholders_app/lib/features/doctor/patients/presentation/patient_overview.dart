@@ -274,8 +274,8 @@ class _ProfileCard extends StatelessWidget {
         .where((a) => !a.isPastAt(now) && !(_day(a)?.isBefore(today) ?? true))
         .toList();
     final first = held.isEmpty ? null : held.first.date;
-    final lastReason =
-        past.reversed.map((a) => a.reason).whereType<String>().firstOrNull;
+    // The same rule as the Patients list, so the two agree.
+    final lastReason = summary.lastVisitReason(appointments, now);
     final patientId = int.tryParse(patient.id);
     final lastVisit = patientId == null
         ? null

@@ -1,4 +1,5 @@
 import '../../appointments/data/models/appointment.dart';
+import '../../dashboard/data/dashboard_summary.dart' show lastVisitReason;
 
 /// A patient as this doctor is entitled to see them.
 ///
@@ -80,7 +81,8 @@ List<DoctorPatient> patientsFromAppointments(
 
     DateTime? latest;
     DateTime? next;
-    String? lastReason;
+    // From the latest visit up to today, as on the profile.
+    final lastReason = lastVisitReason(visits, moment);
     String? email;
     String? phone;
     String? avatarUrl;
@@ -95,10 +97,8 @@ List<DoctorPatient> patientsFromAppointments(
       final date = visit.date;
       if (date == null) continue;
 
-      if (latest == null || date.isAfter(latest)) {
-        latest = date;
-        lastReason = _blankToNull(visit.reason) ?? lastReason;
-      }
+      // Latest booking of any kind: it orders the list.
+      if (latest == null || date.isAfter(latest)) latest = date;
       // Only a visit still to happen is next: a completed or cancelled one
       // dated later is not (one completed early showed as the next visit).
       final status = (visit.status ?? '').toLowerCase();

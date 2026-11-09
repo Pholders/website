@@ -106,6 +106,46 @@ int newPatientsThisMonth(List<Appointment> all, DateTime now) {
       .length;
 }
 
+/// Why one patient last came: the reason on their latest visit up to today,
+/// or failing that the nearest earlier visit that gave one.
+///
+/// For someone not yet seen, the reason on their soonest open booking, so a
+/// new patient's row still says what they booked for. Cancelled bookings
+/// never count. [visits] should all be one patient's.
+///
+/// A consultation completed early keeps its later booked day, so taking the
+/// latest booking by date gave a reason from the future, and the Patients
+/// list and the profile broke ties on that day differently.
+String? lastVisitReason(Iterable<Appointment> visits, DateTime now) {
+  final today = _dayOf(now);
+  int byWhen(Appointment a, Appointment b) {
+    final c = _day(a)!.compareTo(_day(b)!);
+    return c != 0 ? c : startMinutes(a).compareTo(startMinutes(b));
+  }
+
+  String? reasonOf(Appointment a) {
+    final r = a.reason?.trim();
+    return r == null || r.isEmpty ? null : r;
+  }
+
+  final dated = visits.where((a) => !_cancelled(a) && _day(a) != null);
+  final had = dated.where((a) => !_day(a)!.isAfter(today)).toList()
+    ..sort(byWhen);
+  for (final a in had.reversed) {
+    final r = reasonOf(a);
+    if (r != null) return r;
+  }
+  final ahead = dated
+      .where((a) => _day(a)!.isAfter(today) && a.status != 'completed')
+      .toList()
+    ..sort(byWhen);
+  for (final a in ahead) {
+    final r = reasonOf(a);
+    if (r != null) return r;
+  }
+  return null;
+}
+
 /// The most recent appointment day on or before today for one patient.
 DateTime? lastVisit(List<Appointment> all, int patientId, DateTime now) {
   final today = _dayOf(now);
