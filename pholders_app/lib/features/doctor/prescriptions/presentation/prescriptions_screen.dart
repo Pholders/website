@@ -403,13 +403,27 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
       final fill = c.hasBoundedHeight && c.maxHeight >= 420;
       final rows = _filtered;
 
-      final card = _RxEdgedCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
-          children: [
-            // ── Header ────────────────────────────────────────────────────────
-            Row(
+      final standalone = widget.patient == null;
+
+      // ── Header ──────────────────────────────────────────────────────────
+      // On its own page the title sits on the pale panel, large, as in the
+      // design. Inside a patient's profile it stays the small card heading.
+      final header = standalone
+          ? Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Prescriptions',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 30, color: Colors.black),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _NewPrescriptionButton(onTap: _newPrescription, solid: true),
+              ],
+            )
+          : Row(
               children: [
                 Container(
                   width: 34,
@@ -429,153 +443,214 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
                 const Spacer(),
                 _NewPrescriptionButton(onTap: _newPrescription),
               ],
-            ),
-            const SizedBox(height: 10),
-            const Text(
+            );
+
+      final subtitle = Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Text(
               'Create, review, and manage patient prescriptions',
-              style: TextStyle(fontSize: 16, color: Color(0xFF9AA5A6)),
+              style: TextStyle(
+                  fontSize: standalone ? 18 : 16,
+                  color: const Color(0xFF7C8B8D)),
             ),
-            const SizedBox(height: 22),
-
-            // ── Filter tabs and search ────────────────────────────────────────
-            Row(
-              children: [
-                // On a narrow window the chips scroll sideways rather than
-                // pushing the search box off the edge.
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (var i = 0; i < _filters.length; i++)
-                          _RxFilterChip(
-                            label: _filters[i],
-                            selected: i == _filterIndex,
-                            onTap: () => setState(() => _filterIndex = i),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 280,
-                  height: 36,
-                  child: ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: _searchController,
-                    builder: (context, value, _) => TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _query = v),
-                      style: const TextStyle(fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'Search patient, diagnosis or reference',
-                        hintStyle: const TextStyle(
-                            fontSize: 12, color: RxColors.textSecondary),
-                        prefixIcon: const Icon(Icons.search,
-                            size: 18, color: RxColors.textPrimary),
-                        suffixIcon: value.text.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Clear search',
-                                icon: const Icon(Icons.close, size: 16),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() => _query = '');
-                                },
-                              ),
-                        filled: true,
-                        fillColor: RxColors.tealLight,
-                        contentPadding: EdgeInsets.zero,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(18),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          ),
+          if (standalone)
+            Text(
+              'Total: ${_source.length}',
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4A5A5C)),
             ),
-            const SizedBox(height: 22),
+        ],
+      );
 
-            // ── Table header ──────────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-              decoration: const BoxDecoration(
-                border: Border(
-                    bottom: BorderSide(color: RxColors.border, width: 2)),
-              ),
-              child: const Row(
+      // ── Filter tabs and search ──────────────────────────────────────────
+      final filters = Row(
+        children: [
+          // On a narrow window the chips scroll sideways rather than
+          // pushing the search box off the edge.
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 children: [
-                  Expanded(flex: _patientFlex, child: _RxHeaderCell('Patient')),
-                  // The list carries no medicines, so the diagnosis and the
-                  // reference stand where the design has medication and dosage.
-                  Expanded(
-                      flex: _diagnosisFlex, child: _RxHeaderCell('Diagnosis')),
-                  Expanded(
-                      flex: _referenceFlex, child: _RxHeaderCell('Reference')),
-                  Expanded(
-                      flex: _dateFlex, child: _RxHeaderCell('Date Issued')),
-                  Expanded(flex: _statusFlex, child: _RxHeaderCell('Status')),
-                  SizedBox(
-                      width: _actionsWidth,
-                      child: Center(child: _RxHeaderCell('Actions'))),
+                  for (var i = 0; i < _filters.length; i++)
+                    _RxFilterChip(
+                      label: _filters[i],
+                      selected: i == _filterIndex,
+                      onTap: () => setState(() => _filterIndex = i),
+                    ),
                 ],
               ),
             ),
-
-            // ── Table rows ────────────────────────────────────────────────────
-            if (rows.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: Text(
-                      _query.trim().isEmpty
-                          ? 'No prescriptions found'
-                          : 'No prescriptions match "${_query.trim()}"',
-                      style: const TextStyle(color: RxColors.textSecondary)),
-                ),
-              )
-            else if (fill)
-              Expanded(
-                child: Scrollbar(
-                  controller: _rowsScroll,
-                  thumbVisibility: true,
-                  child: ListView.builder(
-                    controller: _rowsScroll,
-                    padding: const EdgeInsets.only(right: 12),
-                    itemCount: rows.length,
-                    itemBuilder: (_, i) => row(rows[i]),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 280,
+            height: 36,
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _searchController,
+              builder: (context, value, _) => TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _query = v),
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Search patient, diagnosis or reference',
+                  hintStyle: const TextStyle(
+                      fontSize: 12, color: RxColors.textSecondary),
+                  prefixIcon: const Icon(Icons.search,
+                      size: 18, color: RxColors.textPrimary),
+                  suffixIcon: value.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear search',
+                          icon: const Icon(Icons.close, size: 16),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
+                  filled: true,
+                  // White on the pale panel, pale inside the white card.
+                  fillColor: standalone ? Colors.white : RxColors.tealLight,
+                  contentPadding: EdgeInsets.zero,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
                   ),
                 ),
-              )
-            else
-              Column(children: [for (final rx in rows) row(rx)]),
+              ),
+            ),
+          ),
+        ],
+      );
+
+      // ── Table header ────────────────────────────────────────────────────
+      // Standalone, the labels sit on the panel above the card, so they are
+      // inset by the card's teal edge and padding to line up with the rows.
+      final tableHeader = Container(
+        padding: standalone
+            ? const EdgeInsets.fromLTRB(40, 0, 44, 8)
+            : const EdgeInsets.fromLTRB(8, 0, 8, 8),
+        decoration: BoxDecoration(
+          border: Border(
+              bottom: BorderSide(
+                  color: standalone ? const Color(0xFFD3E6E7) : RxColors.border,
+                  width: 2)),
+        ),
+        child: const Row(
+          children: [
+            Expanded(flex: _patientFlex, child: _RxHeaderCell('Patient')),
+            // The list carries no medicines, so the diagnosis and the
+            // reference stand where the design has medication and dosage.
+            Expanded(flex: _diagnosisFlex, child: _RxHeaderCell('Diagnosis')),
+            Expanded(flex: _referenceFlex, child: _RxHeaderCell('Reference')),
+            Expanded(flex: _dateFlex, child: _RxHeaderCell('Date Issued')),
+            Expanded(flex: _statusFlex, child: _RxHeaderCell('Status')),
+            SizedBox(
+                width: _actionsWidth,
+                child: Center(child: _RxHeaderCell('Actions'))),
           ],
         ),
       );
 
-      // Inside a patient's profile the tab already sits on the pale panel;
-      // on its own page the card gets one, as in the design.
-      final padding = widget.patient == null
-          ? const EdgeInsets.all(24)
-          : const EdgeInsets.all(4);
-      final framed = widget.patient == null
-          ? Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE3F5F6),
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: card,
-            )
-          : card;
+      // ── Table rows ──────────────────────────────────────────────────────
+      final Widget rowsArea;
+      if (rows.isEmpty) {
+        rowsArea = Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Center(
+            child: Text(
+                _query.trim().isEmpty
+                    ? 'No prescriptions found'
+                    : 'No prescriptions match "${_query.trim()}"',
+                style: const TextStyle(color: RxColors.textSecondary)),
+          ),
+        );
+      } else if (fill) {
+        rowsArea = Scrollbar(
+          controller: _rowsScroll,
+          thumbVisibility: true,
+          child: ListView.builder(
+            controller: _rowsScroll,
+            padding: const EdgeInsets.only(right: 12),
+            itemCount: rows.length,
+            itemBuilder: (_, i) => row(rows[i]),
+          ),
+        );
+      } else {
+        rowsArea = Column(children: [for (final rx in rows) row(rx)]);
+      }
 
+      if (standalone) {
+        // As the patients page: the pale panel holds the title, filters and
+        // column labels; only the rows sit in the white card on its teal edge.
+        final rowsCard = _RxEdgedCard(
+          child: rows.isNotEmpty && fill
+              ? rowsArea
+              : Align(alignment: Alignment.topCenter, child: rowsArea),
+        );
+        final panel = Container(
+          padding: const EdgeInsets.fromLTRB(33, 30, 33, 22),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE3F5F6),
+            borderRadius: BorderRadius.circular(32),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              header,
+              const SizedBox(height: 6),
+              subtitle,
+              const SizedBox(height: 18),
+              filters,
+              const SizedBox(height: 20),
+              tableHeader,
+              const SizedBox(height: 14),
+              if (fill) Expanded(child: rowsCard) else rowsCard,
+            ],
+          ),
+        );
+        const outer = EdgeInsets.fromLTRB(31, 0, 38, 26);
+        return Material(
+          color: Colors.white,
+          child: fill
+              ? Padding(padding: outer, child: panel)
+              : SingleChildScrollView(padding: outer, child: panel),
+        );
+      }
+
+      final card = _RxEdgedCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            header,
+            const SizedBox(height: 10),
+            subtitle,
+            const SizedBox(height: 22),
+            filters,
+            const SizedBox(height: 22),
+            tableHeader,
+            if (fill && rows.isNotEmpty)
+              Expanded(child: rowsArea)
+            else
+              rowsArea,
+          ],
+        ),
+      );
+
+      // Inside a patient's profile the tab already sits on the pale panel.
+      const padding = EdgeInsets.all(4);
       return Material(
         color: Colors.transparent,
         child: fill
-            ? Padding(padding: padding, child: framed)
-            : SingleChildScrollView(padding: padding, child: framed),
+            ? Padding(padding: padding, child: card)
+            : SingleChildScrollView(padding: padding, child: card),
       );
     });
   }
@@ -616,11 +691,40 @@ class _RxEdgedCard extends StatelessWidget {
 
 /// The pale pill with a teal plus, top right.
 class _NewPrescriptionButton extends StatelessWidget {
-  const _NewPrescriptionButton({required this.onTap});
+  const _NewPrescriptionButton({required this.onTap, this.solid = false});
   final VoidCallback onTap;
+
+  /// The page's own button: solid teal, as in the design. Inside a
+  /// patient's profile it stays the pale pill.
+  final bool solid;
 
   @override
   Widget build(BuildContext context) {
+    if (solid) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 8, 22, 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E9FA5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_box_outlined, size: 22, color: Colors.black),
+              SizedBox(width: 12),
+              Text('New Prescription',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white)),
+            ],
+          ),
+        ),
+      );
+    }
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: onTap,

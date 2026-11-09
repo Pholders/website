@@ -14,17 +14,17 @@ import 'pdf_download_stub.dart'
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 ({Color bg, Color fg, String label}) _statusStyle(TxStatus s) => switch (s) {
-  TxStatus.paid       => (bg: const Color(0xFFE1F5EE), fg: const Color(0xFF0F6E56), label: 'Paid'),
-  TxStatus.pending    => (bg: const Color(0xFFFAEEDA), fg: const Color(0xFF854F0B), label: 'Pending'),
-  TxStatus.cancelled  => (bg: const Color(0xFFF1EFE8), fg: const Color(0xFF5F5E5A), label: 'Cancelled'),
-  TxStatus.failed     => (bg: const Color(0xFFFCEBEB), fg: const Color(0xFFA32D2D), label: 'Failed'),
+  TxStatus.paid       => (bg: const Color(0xFFC4EDF0), fg: const Color(0xFF2E9FA5), label: 'Paid'),
+  TxStatus.pending    => (bg: const Color(0xFFFFF0CE), fg: const Color(0xFFE0951A), label: 'Pending'),
+  TxStatus.cancelled  => (bg: const Color(0xFFE2E4E4), fg: const Color(0xFF6C6C6C), label: 'Cancelled'),
+  TxStatus.failed     => (bg: const Color(0xFFFFB4B4), fg: const Color(0xFFC62828), label: 'Failed'),
 };
 
 Color _dotColor(TxStatus s) => switch (s) {
-  TxStatus.paid       => const Color(0xFF1D9E75),
-  TxStatus.pending    => const Color(0xFFBA7517),
-  TxStatus.cancelled  => const Color(0xFF888780),
-  TxStatus.failed     => const Color(0xFFE24B4A),
+  TxStatus.paid       => const Color(0xFF2E9FA5),
+  TxStatus.pending    => const Color(0xFFF5A623),
+  TxStatus.cancelled  => const Color(0xFF6C6C6C),
+  TxStatus.failed     => const Color(0xFFE53935),
 };
 
 // ─── BillingPage ──────────────────────────────────────────────────────────────
@@ -121,13 +121,35 @@ class _BillingBodyState extends State<_BillingBody> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+    // As the patients page: white round the edge, the pale rounded panel
+    // filling the rest, at least as tall as the window.
+    return LayoutBuilder(builder: (context, c) {
+      const outer = EdgeInsets.fromLTRB(31, 0, 38, 26);
+      final minPanel = c.hasBoundedHeight ? c.maxHeight - outer.vertical : 0.0;
+      return Material(
+        color: Colors.white,
+        child: SingleChildScrollView(
+          padding: outer,
+          child: Container(
+            constraints: BoxConstraints(minHeight: minPanel < 0 ? 0 : minPanel),
+            padding: const EdgeInsets.fromLTRB(33, 30, 33, 26),
+            decoration: BoxDecoration(
+              color: _panelBg,
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: _content(),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _content() {
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Text('Billing & Payments', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+            const Text('Billing & Payments', style: TextStyle(fontSize: 30, color: Colors.black)),
             const Spacer(),
             if (!_loading)
               IconButton(
@@ -146,18 +168,37 @@ class _BillingBodyState extends State<_BillingBody> {
             _LoadError(message: _error!, onRetry: _load)
           else ...[
             _StatBox(summary: _summary!),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             _TransactionsHeader(controller: _searchController),
-            const SizedBox(height: 10),
+            const SizedBox(height: 22),
             const _ColumnHeaders(),
-            const SizedBox(height: 6),
+            const SizedBox(height: 14),
             _DataRowsBox(
               transactions: _filtered,
               searching: _searchController.text.trim().isNotEmpty,
             ),
           ],
-          const SizedBox(height: 24),
         ],
+    );
+  }
+}
+
+const Color _panelBg = Color(0xFFE3F5F6);
+const Color _aqua = Color(0xFF6DD0D8);
+
+/// A white card on the design's aqua left edge.
+class _EdgedCard extends StatelessWidget {
+  const _EdgedCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: 8),
+      decoration: BoxDecoration(color: _aqua, borderRadius: BorderRadius.circular(24)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: ColoredBox(color: Colors.white, child: child),
       ),
     );
   }
@@ -203,26 +244,11 @@ class _StatBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 0.5),
-      ),
+    return _EdgedCard(
       child: Stack(
         children: [
-          Positioned(
-            left: 0, top: 0, bottom: 0,
-            child: Container(
-              width: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.activeTeal,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
-              ),
-            ),
-          ),
           Padding(
-            padding: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: IntrinsicHeight(
               child: Row(
                 children: [
@@ -242,7 +268,7 @@ class _StatBox extends StatelessWidget {
     );
   }
 
-  static Widget _vDiv() => Container(width: 0.5, color: AppColors.divider, margin: const EdgeInsets.symmetric(vertical: 16));
+  static Widget _vDiv() => Container(width: 1, color: const Color(0xFFD0D5D6), margin: const EdgeInsets.symmetric(vertical: 18));
 }
 
 class _StatItem extends StatelessWidget {
@@ -259,16 +285,16 @@ class _StatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(24, 16, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(width: 32, height: 32, decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: iconColor, size: 18)),
+            Container(width: 38, height: 38, decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle), child: Icon(icon, color: iconColor, size: 20)),
             const SizedBox(height: 10),
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-            const SizedBox(height: 3),
+            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black)),
+            const SizedBox(height: 6),
+            Text(value, style: const TextStyle(fontSize: 28, color: Colors.black)),
+            const SizedBox(height: 6),
             Text(sub, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
           ],
         ),
@@ -298,14 +324,19 @@ class _TransactionsHeaderState extends State<_TransactionsHeader> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Row(children: [
-          const Icon(Icons.swap_horiz, color: AppColors.activeTeal, size: 18),
-          SizedBox(width: 8),
-          const Text('Transactions', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+        Row(children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(color: Color(0xFFC4EDF0), shape: BoxShape.circle),
+            child: const Icon(Icons.swap_horiz, color: Colors.black, size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Text('Transactions', style: TextStyle(fontSize: 20, color: Colors.black)),
         ]),
         SizedBox(
-          width: 220,
-          height: 36,
+          width: 280,
+          height: 40,
           child: TextField(
             controller: widget.controller,
             style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
@@ -320,11 +351,11 @@ class _TransactionsHeaderState extends State<_TransactionsHeader> {
                     )
                   : null,
               filled: true,
-              fillColor: AppColors.brandTeal.withValues(alpha: 0.12),
+              fillColor: const Color(0xFFC4EDF0),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.divider, width: 0.5)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.divider, width: 0.5)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.activeTeal, width: 1.5)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: AppColors.activeTeal, width: 1.5)),
             ),
           ),
         ),
@@ -342,15 +373,14 @@ class _ColumnHeaders extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-      decoration: BoxDecoration(
-        border: const Border(bottom: const BorderSide(color: AppColors.divider, width: 1.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 2))],
+      padding: const EdgeInsets.fromLTRB(28, 0, 24, 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFD3E6E7), width: 2)),
       ),
       child: Row(
         children: List.generate(_cols.length, (i) => Expanded(
           flex: _flex[i],
-          child: Text(_cols[i], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+          child: Text(_cols[i], style: const TextStyle(fontSize: 13, color: Color(0xFF7C8B8D))),
         )),
       ),
     );
@@ -369,14 +399,10 @@ class _DataRowsBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (transactions.isEmpty) {
-      return Container(
+      return _EdgedCard(
+        child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 40),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.divider, width: 0.5),
-        ),
         child: Center(
           child: Column(children: [
             Icon(searching ? Icons.search_off_rounded : Icons.receipt_long_outlined, size: 40, color: AppColors.textSecondary),
@@ -391,29 +417,15 @@ class _DataRowsBox extends StatelessWidget {
             ),
           ]),
         ),
+      ),
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 0.5),
-      ),
+    return _EdgedCard(
       child: Stack(
         children: [
-          Positioned(
-            left: 0, top: 0, bottom: 0,
-            child: Container(
-              width: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.activeTeal,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
-              ),
-            ),
-          ),
           Padding(
-            padding: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               children: List.generate(
                 transactions.length,
@@ -1162,16 +1174,22 @@ class _TxRowState extends State<_TxRow> {
           color: _hovered ? AppColors.brandTeal.withValues(alpha: 0.04) : Colors.transparent,
           border: widget.isLast ? null : const Border(bottom: const BorderSide(color: AppColors.divider, width: 0.5)),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
         child: Row(
           children: [
             Expanded(
               flex: 25,
               child: Row(children: [
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: const Color(0xFFD9F5F5),
-                  child: Text(widget.tx.initials, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF0F6E56))),
+                Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1FAFA),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _aqua, width: 1.5),
+                  ),
+                  child: Text(widget.tx.initials, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF2E9FA5))),
                 ),
                 const SizedBox(width: 10),
                 Flexible(child: Text(widget.tx.patient, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
@@ -1186,12 +1204,13 @@ class _TxRowState extends State<_TxRow> {
                 alignment: Alignment.centerLeft,
                 fit: BoxFit.scaleDown,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(color: style.bg, borderRadius: BorderRadius.circular(20)),
+                  constraints: const BoxConstraints(minWidth: 108),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: style.bg, borderRadius: BorderRadius.circular(4)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: _dotColor(widget.tx.status), shape: BoxShape.circle)),
-                    const SizedBox(width: 5),
-                    Text(style.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: style.fg)),
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: _dotColor(widget.tx.status), shape: BoxShape.circle)),
+                    const SizedBox(width: 10),
+                    Text(style.label, style: TextStyle(fontSize: 13, color: style.fg)),
                   ]),
                 ),
               ),
