@@ -204,13 +204,13 @@ void main() {
               w.decoration is BoxDecoration &&
               (w.decoration as BoxDecoration).color == Colors.white &&
               (w.decoration as BoxDecoration).borderRadius ==
-                  BorderRadius.circular(20)),
+                  BorderRadius.circular(28)),
         )
         .first);
     final overview = tester.getRect(find.byType(PatientOverview));
     expect(overview.height, 900);
     // Both panels end at the overview's bottom padding.
-    expect(panel('Timeline').bottom, closeTo(overview.bottom - 18, 1));
-    expect(panel('Future visits (1)').bottom, closeTo(overview.bottom - 18, 1));
+    expect(panel('Timeline').bottom, closeTo(overview.bottom - 26, 1));
+    expect(panel('Future visits (1)').bottom, closeTo(overview.bottom - 26, 1));
   });
 }

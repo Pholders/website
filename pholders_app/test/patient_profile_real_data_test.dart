@@ -238,18 +238,17 @@ void main() {
     });
 
     testWidgets(
-        'the pencil cannot edit, and the bin revokes rather than deletes',
+        'no edit or delete is offered; revoke has its own icon',
         (tester) async {
       await show(tester, store(prescriptions: [rx(1, 17, 'Hypertension')]),
           PrescriptionsScreen(patient: patient));
-      // They once only changed the list on screen. Now the pencil is shown,
-      // as designed, but does nothing: nothing can edit a prescription.
-      final pencil = tester.widget<IconButton>(
-          find.widgetWithIcon(IconButton, Icons.edit_outlined));
-      expect(pencil.onPressed, isNull);
+      // They once only changed the list on screen. A written prescription
+      // cannot be edited and nothing is deleted, so neither is shown.
+      expect(find.byIcon(Icons.edit_outlined), findsNothing);
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
 
-      // The bin revokes this signed prescription, after asking why.
-      await tester.tap(find.byIcon(Icons.delete_outline));
+      // Revoke stops this signed prescription, after asking why.
+      await tester.tap(find.byIcon(Icons.block));
       await tester.pumpAndSettle();
       expect(find.text('Revoke this prescription?'), findsOneWidget);
     });

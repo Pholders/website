@@ -146,7 +146,8 @@ class _PatientOverviewState extends State<PatientOverview> {
           );
           return Container(
             height: fill ? widget.height : null,
-            padding: const EdgeInsets.all(18),
+            // Lined up with the tabs above it on the panel.
+            padding: const EdgeInsets.fromLTRB(32, 26, 32, 26),
             decoration: widget.framed
                 ? BoxDecoration(
                     color: _panelBg,
@@ -292,39 +293,41 @@ class _ProfileCard extends StatelessWidget {
           // The photo side, on the teal edge the design curves around.
           Container(
             // Wide enough for an email address on one line.
-            width: 320,
+            width: 360,
             decoration: BoxDecoration(
               color: _aqua,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(28),
             ),
-            padding: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.only(left: 10),
             child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+              padding: const EdgeInsets.fromLTRB(24, 22, 20, 24),
               decoration: BoxDecoration(
                 color: const Color(0xFFD3EEF0),
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _Photo(patient: patient),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 22),
                   Text(
                     patient.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 24,
+                      fontSize: 30,
                       fontWeight: FontWeight.w400,
-                      color: _ink,
+                      color: Colors.black,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   // One line; an unusually long address scrolls rather than
                   // breaking mid-word.
                   SelectableText(
                     patient.email ?? 'No email on file',
                     maxLines: 1,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       color: _muted,
                       decoration: TextDecoration.underline,
                       decorationColor: _muted,
@@ -337,10 +340,10 @@ class _ProfileCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.fromLTRB(22, 18, 22, 16),
+              padding: const EdgeInsets.fromLTRB(32, 26, 28, 20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,10 +361,10 @@ class _ProfileCard extends StatelessWidget {
                     ),
                     ('Last reason for visit', lastReason ?? '—'),
                   ]),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 18),
                   const Text('Vitals',
-                      style: TextStyle(fontSize: 11, color: _label)),
-                  const SizedBox(height: 6),
+                      style: TextStyle(fontSize: 14, color: _label)),
+                  const SizedBox(height: 10),
                   _VitalsStrip(vitals: vitals),
                 ],
               ),
@@ -387,15 +390,15 @@ class _Photo extends StatelessWidget {
       ),
     );
     return Container(
-      width: 104,
-      height: 112,
+      width: 150,
+      height: 150,
       decoration: BoxDecoration(
         color: _darkTeal,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _darkTeal, width: 1.5),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16.5),
+        borderRadius: BorderRadius.circular(20.5),
         child: patient.avatarUrl == null
             ? fallback
             : Image.network(
@@ -419,13 +422,13 @@ class _InfoGrid extends StatelessWidget {
     Widget cell((String, String) field) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(field.$1, style: const TextStyle(fontSize: 11, color: _label)),
-            const SizedBox(height: 6),
+            Text(field.$1, style: const TextStyle(fontSize: 14, color: _label)),
+            const SizedBox(height: 10),
             Text(
               field.$2,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, color: _ink),
+              style: const TextStyle(fontSize: 15, color: Colors.black),
             ),
           ],
         );
@@ -436,7 +439,7 @@ class _InfoGrid extends StatelessWidget {
       children: [
         for (var start = 0; start < fields.length; start += _columns)
           Padding(
-            padding: EdgeInsets.only(top: start == 0 ? 0 : 14),
+            padding: EdgeInsets.only(top: start == 0 ? 0 : 22),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -539,22 +542,34 @@ class _VitalsStrip extends StatelessWidget {
       ),
     ];
 
+    // As in the design: the readings sit on the white card, held by a
+    // curved aqua edge on the left.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: box,
-      child: Row(
-        children: [
-          for (var i = 0; i < tiles.length; i++) ...[
-            if (i > 0)
-              Container(
-                width: 1,
-                height: 44,
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                color: const Color(0xFFD9E6E6),
-              ),
-            Expanded(child: tiles[i]),
+      padding: const EdgeInsets.only(left: 4),
+      decoration: BoxDecoration(
+        color: _aqua,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 10, 12, 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            for (var i = 0; i < tiles.length; i++) ...[
+              if (i > 0)
+                Container(
+                  width: 1,
+                  height: 56,
+                  margin: const EdgeInsets.symmetric(horizontal: 14),
+                  color: const Color(0xFFD9E6E6),
+                ),
+              Expanded(child: tiles[i]),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -583,31 +598,31 @@ class _VitalTile extends StatelessWidget {
         Text(label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10, color: _ink)),
-        const SizedBox(height: 4),
+            style: const TextStyle(fontSize: 12, color: Colors.black)),
+        const SizedBox(height: 6),
         Row(
           children: [
             Container(
-              width: 26,
-              height: 26,
+              width: 34,
+              height: 34,
               decoration: const BoxDecoration(
                 color: Color(0xFFD3EEF0),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 15, color: _darkTeal),
+              child: Icon(icon, size: 19, color: _darkTeal),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Flexible(
               child: Text.rich(
                 TextSpan(children: [
                   TextSpan(
                     text: value ?? '—',
-                    style: const TextStyle(fontSize: 12, color: _ink),
+                    style: const TextStyle(fontSize: 14, color: Colors.black),
                   ),
                   if (value != null)
                     TextSpan(
                       text: ' $unit',
-                      style: const TextStyle(fontSize: 9, color: _label),
+                      style: const TextStyle(fontSize: 10, color: _label),
                     ),
                 ]),
                 maxLines: 1,
@@ -616,10 +631,13 @@ class _VitalTile extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 6),
         Text(
           taken == null ? 'Not recorded' : 'Taken ${_date(taken)}',
-          style: const TextStyle(fontSize: 9, color: _darkTeal),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: _darkTeal),
         ),
       ],
     );
@@ -707,25 +725,24 @@ class _VisitsPanelState extends State<_VisitsPanel> {
             children: [
               for (var i = 0; i < tabs.length; i++)
                 Padding(
-                  padding: const EdgeInsets.only(right: 22),
+                  padding: const EdgeInsets.only(right: 40),
                   child: InkWell(
                     onTap: () => setState(() => _tab = i),
                     child: Container(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
                             color: _tab == i ? _darkTeal : Colors.transparent,
-                            width: 3,
+                            width: 5,
                           ),
                         ),
                       ),
                       child: Text(
                         tabs[i],
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight:
-                              _tab == i ? FontWeight.w600 : FontWeight.w400,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                           color: _tab == i ? _darkTeal : _label,
                         ),
                       ),
@@ -734,18 +751,18 @@ class _VisitsPanelState extends State<_VisitsPanel> {
                 ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(Icons.calendar_month_outlined, size: 14, color: _ink),
-              const SizedBox(width: 6),
+              const Icon(Icons.calendar_month_outlined, size: 18, color: _ink),
+              const SizedBox(width: 8),
               Text(
                 'Today, ${_weekdays[n.weekday - 1]} ${_longDate(n)}',
-                style: const TextStyle(fontSize: 11, color: _ink),
+                style: const TextStyle(fontSize: 13, color: Colors.black),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Expanded(child: list),
         ],
       ),
@@ -823,46 +840,46 @@ class _VisitCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 11, color: _label)),
-              const SizedBox(height: 3),
+              Text(label, style: const TextStyle(fontSize: 14, color: _label)),
+              const SizedBox(height: 4),
               Text(value,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: _ink)),
+                  style: const TextStyle(fontSize: 12, color: Colors.black)),
             ],
           ),
         );
     Widget rule() => Container(
           width: 1,
-          height: 34,
-          margin: const EdgeInsets.symmetric(horizontal: 10),
-          color: const Color(0xFFB9D6D8),
+          height: 46,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          color: const Color(0xFF9FB2B4),
         );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: highlighted ? _purpleBg : _visitBg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border(
-          left: BorderSide(color: highlighted ? _purple : _darkTeal, width: 3),
+          left: BorderSide(color: highlighted ? _purple : _darkTeal, width: 4),
         ),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 90,
+            width: 104,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(a.timeRange.isEmpty ? '—' : a.timeRange,
-                    style: const TextStyle(fontSize: 11, color: _muted)),
+                    style: const TextStyle(fontSize: 14, color: _muted)),
                 const SizedBox(height: 3),
                 Text(a.formattedDate,
                     style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _ink)),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black)),
               ],
             ),
           ),
@@ -872,28 +889,28 @@ class _VisitCard extends StatelessWidget {
           column('Doctor', doctorName ?? 'You', flex: 3),
           rule(),
           SizedBox(
-            width: 104,
+            width: 112,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Status',
-                    style: TextStyle(fontSize: 11, color: _label)),
-                const SizedBox(height: 3),
+                    style: TextStyle(fontSize: 14, color: _label)),
+                const SizedBox(height: 4),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
                     color: a.status == 'cancelled'
                         ? const Color(0xFFBDBDBD)
                         : _teal,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     a.statusLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 13,
                         color: Colors.white,
                         fontWeight: FontWeight.w600),
                   ),
@@ -958,21 +975,23 @@ class _TimelinePanelState extends State<_TimelinePanel> {
           Row(
             children: [
               Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
                   color: _panelBg,
-                  borderRadius: BorderRadius.circular(8),
+                  shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.calendar_month_rounded,
-                    size: 17, color: _ink),
+                    size: 20, color: Colors.black),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               const Text('Timeline',
-                  style: TextStyle(fontSize: 16, color: _ink)),
+                  style: TextStyle(fontSize: 22, color: Colors.black)),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: Color(0xFFE3ECEC)),
+          const SizedBox(height: 14),
           Expanded(child: body),
         ],
       ),
@@ -1070,10 +1089,10 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 14, 14),
+      padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(28),
       ),
       child: child,
     );

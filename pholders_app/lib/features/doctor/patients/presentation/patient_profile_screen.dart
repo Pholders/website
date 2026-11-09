@@ -49,16 +49,18 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         Expanded(
           child: Container(
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            // The same white margin and rounded panel as the other doctor
+            // pages.
+            padding: const EdgeInsets.fromLTRB(31, 0, 38, 26),
             child: Container(
               decoration: BoxDecoration(
                 color: _panelBg,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(32),
               ),
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                    padding: const EdgeInsets.fromLTRB(32, 20, 32, 0),
                     child: _buildProfileTabs(),
                   ),
                   Expanded(child: _tabContent()),
@@ -137,7 +139,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   Widget _buildTopBar() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(31, 10, 24, 16),
       child: Row(
         children: [
           GestureDetector(
@@ -145,14 +147,13 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             child: Row(
               children: [
                 const Icon(Icons.arrow_back_rounded,
-                    color: AppProfileColors.teal, size: 20),
-                const SizedBox(width: 8),
+                    color: _darkTeal, size: 30),
+                const SizedBox(width: 16),
                 Text(
                   widget.patient.name,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppProfileColors.textPrimary,
+                    fontSize: 24,
+                    color: Colors.black,
                   ),
                 ),
               ],
@@ -173,31 +174,33 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       alignment: Alignment.bottomLeft,
       children: [
         Container(height: 2, color: _tabLine),
-        Row(
+        // On a narrow window the tabs scroll sideways rather than overflow.
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
           children: List.generate(_profileTabs.length, (i) {
             final active = i == _tabIndex;
             return InkWell(
               onTap: () => setState(() => _tabIndex = i),
               child: Padding(
-                padding: const EdgeInsets.only(right: 24),
+                padding: const EdgeInsets.only(right: 28),
                 child: IntrinsicWidth(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         child: Text(
                           _profileTabs[i],
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight:
-                                active ? FontWeight.w600 : FontWeight.w400,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                             color: active ? _darkTeal : _tabIdle,
                           ),
                         ),
                       ),
                       Container(
-                        height: 4,
+                        height: 5,
                         decoration: BoxDecoration(
                           color: active ? _darkTeal : Colors.transparent,
                           borderRadius: BorderRadius.circular(2),
@@ -209,6 +212,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
               ),
             );
           }),
+        ),
         ),
       ],
     );
