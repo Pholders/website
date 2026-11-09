@@ -66,9 +66,22 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
   }
 
   Future<void> _record() async {
+    final kinds = await _repo.fetchVitalKinds();
+    if (!mounted) return;
+    double? last(double? Function(PatientVital v) pick) {
+      for (final v in _vitals) {
+        final value = pick(v);
+        if (value != null) return value;
+      }
+      return null;
+    }
+
     final saved = await showDialog<PatientVital>(
       context: context,
       builder: (_) => _RecordVitalsDialog(
+        kinds: kinds,
+        lastWeightKg: last((v) => v.weightKg),
+        lastHeightCm: last((v) => v.heightCm),
         save: (values) => _repo.recordVitals(widget.patientId, values),
       ),
     );
@@ -155,8 +168,9 @@ class _VitalsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final tiles = <(String, String, String? Function(PatientVital))>[
       ('Blood pressure', 'mmHg', (v) => v.bloodPressure),
-      ('Heart rate', 'bpm', (v) => v.heartRate?.toString()),
+      ('Pulse', 'bpm', (v) => v.heartRate?.toString()),
       ('Weight', 'kg', (v) => _fmt(v.weightKg)),
+      ('Height', 'cm', (v) => _fmt(v.heightCm)),
       ('BMI', '', (v) => _fmt(v.bmi)),
       ('Blood glucose', 'mmol/L', (v) => _fmt(v.bloodGlucose)),
       ('Oxygen', '%', (v) => _fmt(v.oxygenSaturation)),
@@ -243,8 +257,10 @@ class _VitalsView extends StatelessWidget {
                     child: Text(
                       [
                         if (v.bloodPressure != null) 'BP ${v.bloodPressure}',
-                        if (v.heartRate != null) 'HR ${v.heartRate} bpm',
+                        if (v.heartRate != null) 'Pulse ${v.heartRate} bpm',
                         if (v.weightKg != null) '${_fmt(v.weightKg)} kg',
+                        if (v.heightCm != null) '${_fmt(v.heightCm)} cm',
+                        if (v.bmi != null) 'BMI ${_fmt(v.bmi)}',
                         if (v.bloodGlucose != null)
                           'Glucose ${_fmt(v.bloodGlucose)} mmol/L',
                         if (v.oxygenSaturation != null)
@@ -278,35 +294,32 @@ class _VitalsView extends StatelessWidget {
   }
 }
 
-/// One measurement in the record form. The limits mirror the backend's
-/// services/vitalsService.js, so a typo is caught before the round trip; the
-/// server still checks and its message is shown if it disagrees.
-class _Field {
-  const _Field(this.key, this.label, this.unit, this.min, this.max,
-      {this.integer = false});
-  final String key;
-  final String label;
-  final String unit;
-  final num min;
-  final num max;
-  final bool integer;
+/// BMI from weight in kg and height in cm, rounded as the server does.
+double? bmiOf(double? weightKg, double? heightCm) {
+  if (weightKg == null || heightCm == null || heightCm <= 0) return null;
+  final m = heightCm / 100;
+  return (weightKg / (m * m) * 100).round() / 100;
 }
 
-const _fields = <_Field>[
-  _Field('systolic_bp', 'Systolic BP', 'mmHg', 50, 260, integer: true),
-  _Field('diastolic_bp', 'Diastolic BP', 'mmHg', 30, 160, integer: true),
-  _Field('heart_rate', 'Heart rate', 'bpm', 25, 250, integer: true),
-  _Field('temperature_c', 'Temperature', '°C', 30, 45),
-  _Field('oxygen_saturation', 'Oxygen saturation', '%', 50, 100),
-  _Field('blood_glucose', 'Blood glucose', 'mmol/L', 1, 40),
-  _Field('weight_kg', 'Weight', 'kg', 1, 350),
-  _Field('height_cm', 'Height', 'cm', 40, 250),
-];
-
+/// The record form. Blood pressure, pulse and weight are always on it, as a
+/// consultation records them as a rule; the doctor adds height, temperature
+/// and the rest when measured (Prince, 9 Nov). The list and its limits come
+/// from the server, so a typo is caught before the round trip; the server
+/// still checks and its message is shown if it disagrees.
 class _RecordVitalsDialog extends StatefulWidget {
-  const _RecordVitalsDialog({required this.save});
+  const _RecordVitalsDialog({
+    required this.kinds,
+    required this.save,
+    this.lastWeightKg,
+    this.lastHeightCm,
+  });
 
+  final List<VitalKindDef> kinds;
   final Future<PatientVital> Function(Map<String, dynamic> values) save;
+
+  /// The latest on record, for the BMI preview when only one is taken today.
+  final double? lastWeightKg;
+  final double? lastHeightCm;
 
   @override
   State<_RecordVitalsDialog> createState() => _RecordVitalsDialogState();
@@ -315,11 +328,20 @@ class _RecordVitalsDialog extends StatefulWidget {
 class _RecordVitalsDialogState extends State<_RecordVitalsDialog> {
   final _formKey = GlobalKey<FormState>();
   late final Map<String, TextEditingController> _controllers = {
-    for (final f in _fields) f.key: TextEditingController(),
+    for (final k in widget.kinds)
+      for (final f in k.fields) f.key: TextEditingController()..addListener(_refresh),
   };
   final _notes = TextEditingController();
+
+  /// Kinds on the form: the defaults, then whatever the doctor added.
+  late final List<String> _shown = [
+    for (final k in widget.kinds)
+      if (k.isDefault) k.key,
+  ];
   bool _saving = false;
   String? _error;
+
+  void _refresh() => setState(() {});
 
   @override
   void dispose() {
@@ -330,31 +352,45 @@ class _RecordVitalsDialogState extends State<_RecordVitalsDialog> {
     super.dispose();
   }
 
-  String? _validate(_Field f, String? raw) {
+  VitalKindDef _kind(String key) => widget.kinds.firstWhere((k) => k.key == key);
+
+  double? _entered(String key) =>
+      double.tryParse(_controllers[key]?.text.trim().replaceAll(',', '.') ?? '');
+
+  String? _validate(VitalFieldDef f, String unit, String? raw) {
     final text = raw?.trim() ?? '';
     if (text.isEmpty) return null;
     final n = num.tryParse(text.replaceAll(',', '.'));
     if (n == null) return 'Enter a number';
     if (f.integer && n != n.roundToDouble()) return 'Whole number';
-    if (n < f.min || n > f.max) return '${f.min}–${f.max} ${f.unit}';
+    if (n < f.min || n > f.max) return '${f.min}–${f.max} $unit';
     return null;
   }
+
+  void _add(String key) => setState(() => _shown.add(key));
+
+  void _remove(VitalKindDef kind) => setState(() {
+        _shown.remove(kind.key);
+        for (final f in kind.fields) {
+          _controllers[f.key]!.clear();
+        }
+      });
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final values = <String, dynamic>{};
-    for (final f in _fields) {
-      final text = _controllers[f.key]!.text.trim().replaceAll(',', '.');
-      if (text.isNotEmpty) values[f.key] = num.parse(text);
+    for (final key in _shown) {
+      for (final f in _kind(key).fields) {
+        final text = _controllers[f.key]!.text.trim().replaceAll(',', '.');
+        if (text.isNotEmpty) values[f.key] = num.parse(text);
+      }
     }
-    final hasMeasurement = values.keys.any((k) => k != 'height_cm');
-    if (!hasMeasurement) {
+    if (values.isEmpty) {
       setState(() => _error = 'Enter at least one reading.');
       return;
     }
-    if (values.containsKey('systolic_bp') !=
-        values.containsKey('diastolic_bp')) {
+    if (values.containsKey('systolic_bp') != values.containsKey('diastolic_bp')) {
       setState(() => _error = 'Enter both blood pressure numbers, or neither.');
       return;
     }
@@ -378,8 +414,73 @@ class _RecordVitalsDialogState extends State<_RecordVitalsDialog> {
     }
   }
 
+  /// "BMI 26.5" with where each figure came from, or a hint how to get one.
+  String? _bmiLine() {
+    final hasHeightKind = widget.kinds.any((k) => k.key == 'height_cm');
+    final weightToday = _entered('weight_kg');
+    final heightToday = _shown.contains('height_cm') ? _entered('height_cm') : null;
+    if (weightToday == null && heightToday == null) return null;
+    final weight = weightToday ?? widget.lastWeightKg;
+    final height = heightToday ?? widget.lastHeightCm;
+    final bmi = bmiOf(weight, height);
+    if (bmi == null) {
+      if (height == null && hasHeightKind && !_shown.contains('height_cm')) {
+        return 'Add height to work out the BMI.';
+      }
+      return null;
+    }
+    final from = [
+      if (weightToday == null) 'last weight',
+      if (heightToday == null) 'last height',
+    ];
+    return 'BMI ${bmi.toStringAsFixed(1)}'
+        '${from.isEmpty ? '' : ' (using the ${from.join(' and ')} on record)'}';
+  }
+
+  Widget _kindRow(VitalKindDef kind) {
+    return Padding(
+      key: ValueKey('vital-${kind.key}'),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final f in kind.fields) ...[
+            Expanded(
+              child: TextFormField(
+                key: ValueKey('field-${f.key}'),
+                controller: _controllers[f.key],
+                enabled: !_saving,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) => _validate(f, kind.unit, v),
+                decoration: InputDecoration(
+                  labelText: f.label,
+                  suffixText: kind.unit,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
+          SizedBox(
+            width: 36,
+            child: kind.isDefault
+                ? null
+                : IconButton(
+                    tooltip: 'Remove ${kind.label.toLowerCase()}',
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: _saving ? null : () => _remove(kind),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final addable = widget.kinds.where((k) => !_shown.contains(k.key)).toList();
+    final bmi = _bmiLine();
     return AlertDialog(
       title: const Text('Record vitals'),
       content: SizedBox(
@@ -392,35 +493,39 @@ class _RecordVitalsDialogState extends State<_RecordVitalsDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Fill in what you measured; leave the rest blank. The '
-                  'patient sees these in their app.',
+                  'Blood pressure, pulse and weight are taken at most visits. '
+                  'Add anything else you measured. Leave blank what you did '
+                  'not take. The patient sees these in their app.',
                   style: TextStyle(fontSize: 13, height: 1.5),
                 ),
                 const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    for (final f in _fields)
-                      SizedBox(
-                        width: 240,
-                        child: TextFormField(
-                          controller: _controllers[f.key],
-                          enabled: !_saving,
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
-                          validator: (v) => _validate(f, v),
-                          decoration: InputDecoration(
-                            labelText: f.label,
-                            suffixText: f.unit,
-                            border: const OutlineInputBorder(),
-                            isDense: true,
-                          ),
+                for (final key in _shown) _kindRow(_kind(key)),
+                if (addable.isNotEmpty) ...[
+                  const Text('Add a vital',
+                      style: TextStyle(fontSize: 12, color: RecordColors.muted)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final k in addable)
+                        ActionChip(
+                          key: ValueKey('add-${k.key}'),
+                          avatar: const Icon(Icons.add, size: 16),
+                          label: Text(k.label),
+                          onPressed: _saving ? null : () => _add(k.key),
                         ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (bmi != null) ...[
+                  Text(bmi,
+                      key: const ValueKey('bmi-preview'),
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600, color: RecordColors.ink)),
+                  const SizedBox(height: 12),
+                ],
                 TextField(
                   controller: _notes,
                   enabled: !_saving,
@@ -456,8 +561,7 @@ class _RecordVitalsDialogState extends State<_RecordVitalsDialog> {
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : const Text('Save'),
         ),
       ],

@@ -102,9 +102,9 @@ void main() {
     });
     await tester.tap(find.text('Record vitals'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextFormField, 'Systolic BP'), '120');
-    await tester.enterText(find.widgetWithText(TextFormField, 'Diastolic BP'), '80');
-    await tester.enterText(find.widgetWithText(TextFormField, 'Heart rate'), '70');
+    await tester.enterText(find.byKey(const ValueKey('field-systolic_bp')), '120');
+    await tester.enterText(find.byKey(const ValueKey('field-diastolic_bp')), '80');
+    await tester.enterText(find.byKey(const ValueKey('field-heart_rate')), '70');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -118,7 +118,7 @@ void main() {
     await show(tester, {vitalsKey: (200, rows([]))});
     await tester.tap(find.text('Record vitals'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextFormField, 'Heart rate'), '9999');
+    await tester.enterText(find.byKey(const ValueKey('field-heart_rate')), '9999');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -130,7 +130,7 @@ void main() {
     await show(tester, {vitalsKey: (200, rows([]))});
     await tester.tap(find.text('Record vitals'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextFormField, 'Systolic BP'), '120');
+    await tester.enterText(find.byKey(const ValueKey('field-systolic_bp')), '120');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -151,5 +151,86 @@ void main() {
       vitalsKey: (401, {'success': false, 'message': 'Session expired or revoked. Please login again.'}),
     });
     expect(signedOut, isTrue);
+  });
+  // Prince, 9 Nov: blood pressure, pulse and weight are what a consultation
+  // records, so they are always on the form; the doctor adds the rest; and
+  // height with weight gives the BMI.
+  testWidgets('blood pressure, pulse and weight are on the form; the rest are added',
+      (tester) async {
+    await show(tester, {vitalsKey: (200, rows([]))});
+    await tester.tap(find.text('Record vitals'));
+    await tester.pumpAndSettle();
+
+    for (final key in ['systolic_bp', 'diastolic_bp', 'heart_rate', 'weight_kg']) {
+      expect(find.byKey(ValueKey('field-$key')), findsOneWidget, reason: key);
+    }
+    for (final key in ['height_cm', 'temperature_c', 'oxygen_saturation', 'blood_glucose']) {
+      expect(find.byKey(ValueKey('field-$key')), findsNothing, reason: '$key waits to be added');
+      expect(find.byKey(ValueKey('add-$key')), findsOneWidget);
+    }
+
+    await tester.tap(find.byKey(const ValueKey('add-temperature_c')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('field-temperature_c')), findsOneWidget);
+    expect(find.byKey(const ValueKey('add-temperature_c')), findsNothing);
+
+    await tester.tap(find.byTooltip('Remove temperature'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('field-temperature_c')), findsNothing);
+  });
+
+  testWidgets('weight and an added height show the BMI and are both sent', (tester) async {
+    await show(tester, {
+      vitalsKey: (200, rows([])),
+      'POST /users/phr/20/vitals': (201, {'success': true, 'data': {
+        'measured_at': '2026-11-09T08:00:00Z', 'weight_kg': 81, 'height_cm': 180, 'bmi': 25}}),
+    });
+    await tester.tap(find.text('Record vitals'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('field-weight_kg')), '81');
+    await tester.pump();
+    expect(find.text('Add height to work out the BMI.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('add-height_cm')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('field-height_cm')), '180');
+    await tester.pump();
+    expect(find.text('BMI 25.0'), findsOneWidget);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(server.bodies['POST /users/phr/20/vitals'], {'weight_kg': 81, 'height_cm': 180});
+  });
+
+  testWidgets('weight alone uses the height on record for the BMI', (tester) async {
+    await show(tester, {
+      vitalsKey: (200, rows([
+        {'measured_at': '2026-10-28T06:30:00Z', 'height_cm': '175.0', 'weight_kg': '80'},
+      ])),
+    });
+    await tester.tap(find.text('Record vitals'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('field-weight_kg')), '81.2');
+    await tester.pump();
+    expect(find.text('BMI 26.5 (using the last height on record)'), findsOneWidget);
+  });
+
+  testWidgets('a vital the server adds reaches the form without a portal change',
+      (tester) async {
+    await show(tester, {
+      vitalsKey: (200, rows([])),
+      'GET /users/phr/vitals/kinds': (200, {'success': true, 'data': {'kinds': [
+        {'key': 'heart_rate', 'label': 'Pulse', 'unit': 'bpm', 'default': true,
+         'fields': [{'key': 'heart_rate', 'label': 'Pulse (heart rate)', 'min': 25, 'max': 250, 'integer': true}]},
+        {'key': 'respiratory_rate', 'label': 'Respiratory rate', 'unit': 'breaths/min', 'default': false,
+         'fields': [{'key': 'respiratory_rate', 'label': 'Respiratory rate', 'min': 5, 'max': 60, 'integer': true}]},
+      ]}}),
+    });
+    await tester.tap(find.text('Record vitals'));
+    await tester.pumpAndSettle();
+    expect(find.text('Respiratory rate'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('add-respiratory_rate')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('field-respiratory_rate')), findsOneWidget);
   });
 }

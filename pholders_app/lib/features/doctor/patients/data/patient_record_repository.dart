@@ -55,6 +55,7 @@ class PatientVital {
     this.bloodGlucose,
     this.oxygenSaturation,
     this.temperatureC,
+    this.heightCm,
     this.notes,
     this.recordedByName,
   });
@@ -71,6 +72,7 @@ class PatientVital {
       bloodGlucose: _num(json['blood_glucose'])?.toDouble(),
       oxygenSaturation: _num(json['oxygen_saturation'])?.toDouble(),
       temperatureC: _num(json['temperature_c'])?.toDouble(),
+      heightCm: _num(json['height_cm'])?.toDouble(),
       notes: (notes == null || notes.isEmpty) ? null : notes,
       recordedByName: json['recorded_by_name']?.toString(),
     );
@@ -85,6 +87,7 @@ class PatientVital {
   final double? bloodGlucose;
   final double? oxygenSaturation;
   final double? temperatureC;
+  final double? heightCm;
   final String? notes;
 
   /// "Dr Thandi Nkosi", or null for a reading the patient logged themselves.
@@ -93,6 +96,70 @@ class PatientVital {
   String? get bloodPressure => systolicBp == null || diastolicBp == null
       ? null
       : '$systolicBp/$diastolicBp';
+}
+
+/// One input of a vital, e.g. systolic blood pressure, with the server's
+/// limits so a typo is caught before the round trip.
+class VitalFieldDef {
+  const VitalFieldDef(this.key, this.label, this.min, this.max, {this.integer = false});
+
+  factory VitalFieldDef.fromJson(Map<String, dynamic> json) => VitalFieldDef(
+        json['key']?.toString() ?? '',
+        json['label']?.toString() ?? '',
+        num.tryParse('${json['min']}') ?? 0,
+        num.tryParse('${json['max']}') ?? 1e9,
+        integer: json['integer'] == true,
+      );
+
+  final String key;
+  final String label;
+  final num min;
+  final num max;
+  final bool integer;
+}
+
+/// A vital the doctor can record. Defaults are always on the form; the rest
+/// are added when measured.
+class VitalKindDef {
+  const VitalKindDef(this.key, this.label, this.unit, this.fields, {this.isDefault = false});
+
+  factory VitalKindDef.fromJson(Map<String, dynamic> json) => VitalKindDef(
+        json['key']?.toString() ?? '',
+        json['label']?.toString() ?? '',
+        json['unit']?.toString() ?? '',
+        [
+          for (final f in (json['fields'] as List? ?? const []).whereType<Map>())
+            VitalFieldDef.fromJson(Map<String, dynamic>.from(f)),
+        ],
+        isDefault: json['default'] == true,
+      );
+
+  final String key;
+  final String label;
+  final String unit;
+  final List<VitalFieldDef> fields;
+  final bool isDefault;
+
+  /// The same list as the server's VITAL_KINDS, for a server without the
+  /// endpoint.
+  static const builtIn = <VitalKindDef>[
+    VitalKindDef('blood_pressure', 'Blood pressure', 'mmHg', [
+      VitalFieldDef('systolic_bp', 'Systolic (top)', 50, 260, integer: true),
+      VitalFieldDef('diastolic_bp', 'Diastolic (bottom)', 30, 160, integer: true),
+    ], isDefault: true),
+    VitalKindDef('heart_rate', 'Pulse', 'bpm', [
+      VitalFieldDef('heart_rate', 'Pulse (heart rate)', 25, 250, integer: true),
+    ], isDefault: true),
+    VitalKindDef('weight_kg', 'Weight', 'kg', [VitalFieldDef('weight_kg', 'Weight', 1, 350)], isDefault: true),
+    VitalKindDef('height_cm', 'Height', 'cm', [VitalFieldDef('height_cm', 'Height', 40, 250)]),
+    VitalKindDef('temperature_c', 'Temperature', '°C', [VitalFieldDef('temperature_c', 'Temperature', 30, 45)]),
+    VitalKindDef('oxygen_saturation', 'Oxygen saturation', '%', [
+      VitalFieldDef('oxygen_saturation', 'Oxygen saturation', 50, 100),
+    ]),
+    VitalKindDef('blood_glucose', 'Blood glucose', 'mmol/L', [
+      VitalFieldDef('blood_glucose', 'Blood glucose', 1, 40),
+    ]),
+  ];
 }
 
 /// A medication the patient is currently taking, from their health record
@@ -319,6 +386,26 @@ class PatientRecordRepository {
         .map((e) => PatientVital.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
+
+  /// The vitals a doctor can record, from the server's one list: which the
+  /// form always shows and which can be added. Falls back to [VitalKindDef.
+  /// builtIn] when the server predates the list, so the form still works.
+  Future<List<VitalKindDef>> fetchVitalKinds() => _once('vital-kinds', () async {
+        try {
+          final data = await _api.get('/users/phr/vitals/kinds');
+          final kinds = data['kinds'];
+          if (kinds is List && kinds.isNotEmpty) {
+            return kinds
+                .whereType<Map>()
+                .map((e) => VitalKindDef.fromJson(Map<String, dynamic>.from(e)))
+                .where((k) => k.fields.isNotEmpty)
+                .toList();
+          }
+        } on ApiException {
+          // An older server: use the list the portal ships with.
+        }
+        return VitalKindDef.builtIn;
+      });
 
   /// Records a reading for a patient who booked this doctor. [values] uses
   /// the server's field names (systolic_bp, heart_rate, …); BMI is worked out
