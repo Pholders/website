@@ -54,6 +54,15 @@ void main() {
       expect(patientStatus(list, 1, now), PatientStatus.upcomingVisit);
     });
 
+    test('a later consultation already completed is not an upcoming visit',
+        () {
+      // Completed early: the booked day is ahead, but it has happened.
+      final list = [appt(1, DateTime(2026, 11, 12), status: 'completed')];
+      expect(patientStatus(list, 1, now), PatientStatus.seen);
+      // Nor is it the last visit: that is the latest day up to today.
+      expect(lastVisit(list, 1, now), isNull);
+    });
+
     test('cancelled and past bookings, and other patients, do not count', () {
       final list = [
         appt(1, DateTime(2026, 12, 1), status: 'cancelled'),

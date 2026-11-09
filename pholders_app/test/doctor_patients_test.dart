@@ -86,6 +86,20 @@ void main() {
     expect(list.single.nextVisit, isNull);
   });
 
+  test('a later booking already completed or cancelled is not the next visit',
+      () {
+    // Completed early: its booked day is still ahead, but it has happened.
+    final list = patientsFromAppointments([
+      appointment(
+          id: 1, patientId: 7, date: DateTime(2026, 10, 20), status: 'completed'),
+      appointment(
+          id: 2, patientId: 7, date: DateTime(2026, 10, 22), status: 'cancelled'),
+      appointment(
+          id: 3, patientId: 7, date: DateTime(2026, 10, 30), status: 'scheduled'),
+    ], now: now);
+    expect(list.single.nextVisit, DateTime(2026, 10, 30));
+  });
+
   test('a completed appointment marks an established relationship', () {
     final booked = patientsFromAppointments([
       appointment(id: 1, patientId: 7, date: DateTime(2026, 11, 1), status: 'scheduled'),

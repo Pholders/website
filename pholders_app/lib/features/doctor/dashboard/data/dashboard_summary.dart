@@ -155,7 +155,9 @@ PatientStatus patientStatus(
     if (!a.doctorAccepted && open) return PatientStatus.awaitingAcceptance;
     if (d == today && open) {
       visitToday = true;
-    } else if (d.isAfter(today)) {
+    } else if (d.isAfter(today) && a.status != 'completed') {
+      // A consultation already completed is not still to come, even when
+      // its booked day is later (completed early).
       upcoming = true;
     }
   }

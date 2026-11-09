@@ -99,7 +99,13 @@ List<DoctorPatient> patientsFromAppointments(
         latest = date;
         lastReason = _blankToNull(visit.reason) ?? lastReason;
       }
-      if (date.isAfter(moment) && (next == null || date.isBefore(next))) {
+      // Only a visit still to happen is next: a completed or cancelled one
+      // dated later is not (one completed early showed as the next visit).
+      final status = (visit.status ?? '').toLowerCase();
+      final open = status != 'completed' && status != 'cancelled';
+      if (open &&
+          date.isAfter(moment) &&
+          (next == null || date.isBefore(next))) {
         next = date;
       }
     }

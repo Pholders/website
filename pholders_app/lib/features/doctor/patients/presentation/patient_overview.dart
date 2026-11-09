@@ -276,6 +276,10 @@ class _ProfileCard extends StatelessWidget {
     final first = held.isEmpty ? null : held.first.date;
     final lastReason =
         past.reversed.map((a) => a.reason).whereType<String>().firstOrNull;
+    final patientId = int.tryParse(patient.id);
+    final lastVisit = patientId == null
+        ? null
+        : summary.lastVisit(appointments, patientId, now);
 
     final statusLabel = switch (status) {
       summary.PatientStatus.awaitingAcceptance => 'Awaiting acceptance',
@@ -354,7 +358,14 @@ class _ProfileCard extends StatelessWidget {
                     ('Status', statusLabel),
                     ('Patient since', _date(first)),
                     ('Visits', '${past.length}'),
-                    ('Last visit', _date(past.isEmpty ? null : past.last.date)),
+                    // As on the dashboard and the patients list: the latest
+                    // day up to today. A consultation completed early still
+                    // carries its later booked day, and showed as a last
+                    // visit in the future.
+                    (
+                      'Last visit',
+                      _date(lastVisit)
+                    ),
                     (
                       'Next visit',
                       _date(ahead.isEmpty ? null : ahead.first.date)
