@@ -19,7 +19,11 @@ void main() {
   late Store<AppState> store;
   late List<Object> seen;
 
-  Future<void> show(WidgetTester tester) async {
+  /// [before] runs on the store before the first frame, for a session that
+  /// is already restored when the app starts (a hot restart, say).
+  Future<void> show(WidgetTester tester,
+      {void Function(Store<AppState>)? before,
+      bool attachLikeRunApp = false}) async {
     seen = [];
     store = Store<AppState>(
       (state, action) {
@@ -28,13 +32,22 @@ void main() {
       },
       initialState: AppState.initial(),
     );
-    await tester.pumpWidget(StoreProvider<AppState>(
+    before?.call(store);
+    final app = StoreProvider<AppState>(
       store: store,
       child: MaterialApp(
         builder: (context, child) => SplashGate(child: child!),
         home: const Scaffold(body: Text('The page')),
       ),
-    ));
+    );
+    if (attachLikeRunApp) {
+      // runApp's first build happens as the root is attached, outside any
+      // frame; pumpWidget builds inside one and would hide the problem.
+      tester.binding.attachRootWidget(tester.binding.wrapWithDefaultView(app));
+      await tester.pump();
+    } else {
+      await tester.pumpWidget(app);
+    }
   }
 
   Future<void> settle(WidgetTester tester,
@@ -132,6 +145,21 @@ void main() {
         token: 'p', role: 'pharmacy', userName: 'Corner Pharmacy'));
     await tester.pump();
     await tester.pump();
+    expect(splash(), isTrue);
+    await settle(tester, const Duration(seconds: 2));
+    expect(splash(), isFalse);
+  });
+
+  testWidgets('a pharmacy already signed in at startup builds cleanly',
+      (tester) async {
+    // The first build runs outside a frame, so the scheduler says idle;
+    // marking the gate dirty from inside it threw "setState() called
+    // during build" on every start with a stored pharmacy session.
+    await show(tester,
+        attachLikeRunApp: true,
+        before: (store) => store.dispatch(const RestoreSessionAction(
+            token: 'p', role: 'pharmacy', userName: 'Corner Pharmacy')));
+    expect(tester.takeException(), isNull);
     expect(splash(), isTrue);
     await settle(tester, const Duration(seconds: 2));
     expect(splash(), isFalse);

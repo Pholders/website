@@ -66,6 +66,9 @@ class _SplashGateState extends State<SplashGate> {
   /// data, or a page that reloads it, does not bring the splash back.
   String? _releasedFor;
 
+  /// True while the connector's onInit runs, inside its build.
+  bool _initialising = false;
+
   /// The session a fetch has been started for, so it is started once.
   String? _fetchedFor;
 
@@ -177,7 +180,12 @@ class _SplashGateState extends State<SplashGate> {
   void _set(bool showing) {
     if (_showing == showing) return;
     _showing = showing;
-    if (!mounted) return;
+    // From onInit the connector is mid-build and its builder, which reads
+    // [_showing], has not run yet: nothing needs marking. The scheduler can
+    // still say idle there (the first build after runApp or a hot restart
+    // is outside any frame), so the phase check below would let setState
+    // through and throw.
+    if (!mounted || _initialising) return;
     // The store can notify mid-build, when setState is not allowed; then the
     // rebuild waits for the frame to finish, and a frame is asked for so
     // there is one. From a timer, outside any frame, it happens at once.
@@ -199,13 +207,18 @@ class _SplashGateState extends State<SplashGate> {
       distinct: true,
       converter: _Gate.from,
       onInit: (store) {
-        final gate = _Gate.from(store);
-        // At startup the splash is up from the very first frame.
-        if (gate.restoring || gate.waitingForData) {
-          _showing = true;
-          _startMinimum();
+        _initialising = true;
+        try {
+          final gate = _Gate.from(store);
+          // At startup the splash is up from the very first frame.
+          if (gate.restoring || gate.waitingForData) {
+            _showing = true;
+            _startMinimum();
+          }
+          _update(store, gate);
+        } finally {
+          _initialising = false;
         }
-        _update(store, gate);
       },
       onWillChange: (_, next) =>
           _update(StoreProvider.of<AppState>(context, listen: false), next),
