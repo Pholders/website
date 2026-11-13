@@ -350,12 +350,16 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         child: Row(
           children: [
             const SizedBox(width: 8),
-            Text(
-              subItem.label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? _teal : _textMuted,
+            // Flexible: a long label shortens instead of overflowing.
+            Flexible(
+              child: Text(
+                subItem.label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? _teal : _textMuted,
+                ),
               ),
             ),
           ],
