@@ -61,7 +61,11 @@ import '../../features/pharmacy/dispensing_queue/presentation/dispensing_queue_p
 import '../../features/pharmacy/patients/presentation/pharmacy_patients_page.dart';
 import '../../features/pharmacy/billing/presentation/pharmacy_billing_page.dart';
 import '../../features/pharmacy/reports/presentation/pharmacy_reports_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_details_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_personal_info_page.dart';
 import '../../features/pharmacy/settings/presentation/pharmacy_settings_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_professional_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_profile_page.dart';
 
 // ─── Shell layouts ────────────────────────────────────────────────────────────
 import '../../shared/widgets/shell_layout.dart';
@@ -390,6 +394,24 @@ GoRouter createRouter(Store<AppState> store) {
           GoRoute(
             path: AppRoutes.pharmacySettingsLinkedServices,
             builder: (context, state) => const LinkedServicesPage(),
+          ),
+          // Recovered as route names but never registered, so every link
+          // to them from the settings sidebar went nowhere.
+          GoRoute(
+            path: AppRoutes.pharmacySettingsPersonalInfo,
+            builder: (context, state) => const PharmacyPersonalInfoPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsPharmacyDetails,
+            builder: (context, state) => const PharmacyDetailsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsProfessional,
+            builder: (context, state) => const PharmacyProfessionalPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsProfile,
+            builder: (context, state) => const PharmacyProfilePage(),
           ),
         ],
       ),

@@ -1,482 +1,212 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../../../../core/api/api_exception.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_exception.dart';
+import '../data/inventory_item.dart';
 import '../data/inventory_repository.dart';
-import '../domain/inventory_item.dart';
 
-class InventoryPage extends StatefulWidget {
-  const InventoryPage({super.key, this.repository});
+/// Stock management: what the pharmacy has on its shelves.
+///
+/// Everything here is saved on the server, so a refresh or another device
+/// shows the same stock. Quantity only ever changes through an adjustment
+/// with a reason, which the backend logs.
+class InventoryPage extends StatelessWidget {
+  const InventoryPage({super.key, this.repository, this.today});
 
+  /// Injected by tests; the app uses the registered one.
   final InventoryRepository? repository;
 
+  /// Fixed by tests so expiry labels do not depend on the clock.
+  final DateTime? today;
+
   @override
-  State<InventoryPage> createState() => _InventoryPageState();
+  Widget build(BuildContext context) {
+    return _InventoryBody(
+      repository: repository ?? sl<InventoryRepository>(),
+      today: today,
+    );
+  }
 }
 
-class _InventoryPageState extends State<InventoryPage> {
-  static const _pageSize = 50;
-  static const _teal = Color(0xFF309CA3);
-  static const _textDark = Color(0xFF1F2937);
-  static const _textMuted = Color(0xFF6B7280);
+// ─── Colours ─────────────────────────────────────────────────────────────────
+const Color _teal = Color(0xFF309CA3);
+const Color _aqua = Color(0xFF6DD0D8);
+const Color _textDark = Color(0xFF1F2937);
+const Color _textMuted = Color(0xFF6B7280);
+const Color _rule = Color(0xFFF3F4F6);
+const Color _okGreen = Color(0xFF16A34A);
+const Color _lowOrange = Color(0xFFF59E0B);
+const Color _outRed = Color(0xFFDC2626);
 
-  late final InventoryRepository _repository;
-  final _searchController = TextEditingController();
-  Timer? _searchTimer;
+/// Below this width the table scrolls sideways instead of squashing.
+const double _tableMinWidth = 980;
+
+class _InventoryBody extends StatefulWidget {
+  const _InventoryBody({required this.repository, this.today});
+
+  final InventoryRepository repository;
+  final DateTime? today;
+
+  @override
+  State<_InventoryBody> createState() => _InventoryBodyState();
+}
+
+class _InventoryBodyState extends State<_InventoryBody> {
+  static const _tabs = <(InventoryFilter, String)>[
+    (InventoryFilter.all, 'All'),
+    (InventoryFilter.lowStock, 'Low stock'),
+    (InventoryFilter.expiringSoon, 'Expiring soon'),
+  ];
+
+  InventoryFilter _filter = InventoryFilter.all;
+  final _search = TextEditingController();
+  Timer? _searchDebounce;
+
   List<InventoryItem> _items = const [];
   InventorySummary? _summary;
-  int _total = 0;
-  int _requestId = 0;
-  bool _isLoading = true;
-  bool _isLoadingMore = false;
-  bool _isMutating = false;
-  bool _lowStockOnly = false;
-  bool _expiringSoonOnly = false;
-  bool _includeInactive = false;
-  String? _errorMessage;
-  String? _summaryError;
+  bool _loading = true;
+  String? _error;
+
+  /// Ignores answers to a request that a newer one has replaced.
+  int _generation = 0;
+
+  DateTime get _today => widget.today ?? DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? sl<InventoryRepository>();
     _load();
   }
 
   @override
   void dispose() {
-    _searchTimer?.cancel();
-    _searchController.dispose();
+    _searchDebounce?.cancel();
+    _search.dispose();
     super.dispose();
   }
 
-  Future<void> _load({bool append = false}) async {
-    if (append && (_isLoading || _isLoadingMore)) return;
-    final requestId = ++_requestId;
+  Future<void> _load() async {
+    final generation = ++_generation;
     setState(() {
-      if (append) {
-        _isLoadingMore = true;
-      } else {
-        _isLoading = true;
-        _errorMessage = null;
-        _summary = null;
-        _summaryError = null;
-      }
+      _loading = true;
+      _error = null;
     });
-
     try {
-      final page = await _repository.fetchItems(
-        search: _searchController.text,
-        lowStock: _lowStockOnly,
-        expiringWithinDays: _expiringSoonOnly ? 30 : null,
-        includeInactive: _includeInactive,
-        limit: _pageSize,
-        offset: append ? _items.length : 0,
-      );
-      InventorySummary? summary = _summary;
-      String? summaryError;
-      if (!append) {
-        try {
-          summary = await _repository.fetchSummary();
-        } on ApiException catch (error) {
-          summaryError = error.message;
-        }
-      }
-      if (!mounted || requestId != _requestId) return;
+      final results = await Future.wait<Object>([
+        widget.repository.fetchItems(filter: _filter, search: _search.text),
+        widget.repository.fetchSummary(),
+      ]);
+      if (!mounted || generation != _generation) return;
       setState(() {
-        _items = append ? [..._items, ...page.items] : page.items;
-        _total = page.total;
-        _summary = summary;
-        _summaryError = summaryError;
-        _errorMessage = null;
+        _items = results[0] as List<InventoryItem>;
+        _summary = results[1] as InventorySummary;
+        _loading = false;
       });
-    } on ApiException catch (error) {
-      if (mounted && requestId == _requestId) {
-        setState(() => _errorMessage = error.message);
-      }
     } catch (error) {
-      if (mounted && requestId == _requestId) {
-        setState(() => _errorMessage = 'Inventory could not be loaded: $error');
-      }
-    } finally {
-      if (mounted && requestId == _requestId) {
-        setState(() {
-          _isLoading = false;
-          _isLoadingMore = false;
-        });
-      }
+      if (!mounted || generation != _generation) return;
+      setState(() {
+        _loading = false;
+        _error = _messageFor(error, 'Your stock could not be loaded.');
+      });
     }
   }
 
   void _onSearchChanged(String _) {
-    _searchTimer?.cancel();
-    setState(() {});
-    _searchTimer = Timer(const Duration(milliseconds: 350), _load);
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), _load);
   }
 
-  Future<void> _showEditor([InventoryItem? item]) async {
-    final formKey = GlobalKey<FormState>();
-    final fields = <String, TextEditingController>{
-      'sku': TextEditingController(text: item?.sku ?? ''),
-      'medication_name':
-          TextEditingController(text: item?.medicationName ?? ''),
-      'generic_name': TextEditingController(text: item?.genericName ?? ''),
-      'dosage': TextEditingController(text: item?.dosage ?? ''),
-      'pack_size': TextEditingController(text: item?.packSize ?? ''),
-      'unit': TextEditingController(text: item?.unit ?? ''),
-      'quantity_on_hand': TextEditingController(
-        text: item == null ? '0' : '${item.quantityOnHand}',
-      ),
-      'low_stock_threshold': TextEditingController(
-        text: item == null ? '0' : '${item.lowStockThreshold}',
-      ),
-      'unit_price': TextEditingController(
-        text: item?.unitPrice?.toStringAsFixed(2) ?? '',
-      ),
-      'expiry_date': TextEditingController(
-        text: item?.expiryDate?.toIso8601String().split('T').first ?? '',
-      ),
-      'supplier': TextEditingController(text: item?.supplier ?? ''),
-      'notes': TextEditingController(text: item?.notes ?? ''),
-    };
+  void _selectFilter(InventoryFilter filter) {
+    if (filter == _filter) return;
+    setState(() => _filter = filter);
+    _load();
+  }
 
-    final payload = await showDialog<Map<String, dynamic>>(
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // ─── Actions ───────────────────────────────────────────────────────────────
+
+  Future<void> _addItem() async {
+    final saved = await showDialog<InventoryItem>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(item == null ? 'Add stock item' : 'Edit stock item'),
-        content: SizedBox(
-          width: 520,
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _editorField(fields['medication_name']!, 'Medication name',
-                      required: true),
-                  _editorField(fields['sku']!, 'SKU'),
-                  _editorField(fields['generic_name']!, 'Generic name'),
-                  _editorField(fields['dosage']!, 'Dosage'),
-                  _editorField(fields['pack_size']!, 'Pack size'),
-                  _editorField(fields['unit']!, 'Unit'),
-                  if (item == null)
-                    _editorField(
-                      fields['quantity_on_hand']!,
-                      'Starting quantity',
-                      numeric: true,
-                      integer: true,
-                    ),
-                  _editorField(
-                    fields['low_stock_threshold']!,
-                    'Low-stock threshold',
-                    numeric: true,
-                    integer: true,
-                  ),
-                  _editorField(fields['unit_price']!, 'Unit price',
-                      numeric: true),
-                  _editorField(
-                    fields['expiry_date']!,
-                    'Expiry date (YYYY-MM-DD)',
-                    date: true,
-                  ),
-                  _editorField(fields['supplier']!, 'Supplier'),
-                  _editorField(fields['notes']!, 'Notes', maxLines: 3),
-                ],
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() != true) return;
-              final result = <String, dynamic>{};
-              for (final key in [
-                'sku',
-                'medication_name',
-                'generic_name',
-                'dosage',
-                'pack_size',
-                'unit',
-                'low_stock_threshold',
-                'unit_price',
-                'expiry_date',
-                'supplier',
-                'notes',
-              ]) {
-                final value = fields[key]!.text.trim();
-                if (key == 'medication_name' || value.isNotEmpty) {
-                  result[key] = value;
-                }
-              }
-              if (item == null) {
-                result['quantity_on_hand'] =
-                    int.tryParse(fields['quantity_on_hand']!.text.trim()) ?? 0;
-              } else {
-                result.remove('low_stock_threshold');
-                final threshold = fields['low_stock_threshold']!.text.trim();
-                if (threshold.isNotEmpty) {
-                  result['low_stock_threshold'] = int.parse(threshold);
-                }
-              }
-              Navigator.pop(context, result);
-            },
-            child: Text(item == null ? 'Create item' : 'Save changes'),
-          ),
-        ],
+      builder: (_) => _ItemFormDialog(
+        onSave: (fields) => widget.repository.create(fields),
       ),
     );
-
-    for (final controller in fields.values) {
-      controller.dispose();
-    }
-    if (payload == null) return;
-    await _runMutation(() async {
-      if (item == null) {
-        await _repository.createItem(payload);
-      } else {
-        await _repository.updateItem(item.id, payload);
-      }
-    },
-        successMessage:
-            item == null ? 'Stock item added.' : 'Stock item updated.');
+    if (saved == null) return;
+    _toast('${saved.medicationName} added to your stock');
+    await _load();
   }
 
-  Widget _editorField(
-    TextEditingController controller,
-    String label, {
-    bool required = false,
-    bool numeric = false,
-    bool integer = false,
-    bool date = false,
-    int maxLines = 1,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: numeric
-            ? const TextInputType.numberWithOptions(decimal: true)
-            : TextInputType.text,
-        decoration: InputDecoration(labelText: label, isDense: true),
-        validator: (value) {
-          final text = value?.trim() ?? '';
-          final parsedInteger = int.tryParse(text);
-          if (required && text.isEmpty) return 'Required';
-          if (integer && text.isNotEmpty && parsedInteger == null) {
-            return 'Enter a whole number';
-          }
-          if (integer && parsedInteger != null && parsedInteger < 0) {
-            return 'Cannot be negative';
-          }
-          if (numeric && text.isNotEmpty && double.tryParse(text) == null) {
-            return 'Enter a valid number';
-          }
-          if (date && text.isNotEmpty && DateTime.tryParse(text) == null) {
-            return 'Use YYYY-MM-DD';
-          }
-          return null;
-        },
-      ),
-    );
-  }
-
-  Future<void> _adjustQuantity(InventoryItem item) async {
-    final formKey = GlobalKey<FormState>();
-    final deltaController = TextEditingController();
-    final notesController = TextEditingController();
-    const reasons = [
-      'initial_stock',
-      'restock',
-      'manual_adjust',
-      'expired',
-      'damaged',
-      'return',
-      'correction',
-    ];
-    var reason = 'restock';
-    final payload = await showDialog<Map<String, dynamic>>(
+  Future<void> _editItem(InventoryItem item) async {
+    final saved = await showDialog<InventoryItem>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Adjust ${item.medicationName}'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                    'Current quantity: ${item.quantityOnHand} ${item.unit ?? ''}'),
-                TextFormField(
-                  controller: deltaController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(signed: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Change (+/- whole number)',
-                  ),
-                  validator: (value) {
-                    final delta = int.tryParse(value?.trim() ?? '');
-                    if (delta == null || delta == 0) {
-                      return 'Enter a non-zero whole number';
-                    }
-                    if (item.quantityOnHand + delta < 0) {
-                      return 'Stock cannot be reduced below zero';
-                    }
-                    return null;
-                  },
-                ),
-                DropdownButtonFormField<String>(
-                  initialValue: reason,
-                  decoration: const InputDecoration(labelText: 'Reason'),
-                  items: [
-                    for (final value in reasons)
-                      DropdownMenuItem(
-                          value: value,
-                          child: Text(value.replaceAll('_', ' '))),
-                  ],
-                  onChanged: (value) =>
-                      setDialogState(() => reason = value ?? reason),
-                ),
-                TextFormField(
-                  controller: notesController,
-                  decoration: const InputDecoration(labelText: 'Notes'),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() != true) return;
-                Navigator.pop(context, {
-                  'delta': int.parse(deltaController.text.trim()),
-                  'reason': reason,
-                  'notes': notesController.text.trim(),
-                });
-              },
-              child: const Text('Apply adjustment'),
-            ),
-          ],
-        ),
+      builder: (_) => _ItemFormDialog(
+        existing: item,
+        onSave: (fields) => widget.repository.update(item.id, fields),
       ),
     );
-    deltaController.dispose();
-    notesController.dispose();
-    if (payload == null) return;
-    await _runMutation(
-      () => _repository.adjustQuantity(
-        item.id,
-        delta: payload['delta'] as int,
-        reason: payload['reason'] as String,
-        notes: payload['notes'] as String,
+    if (saved == null) return;
+    _toast('${saved.medicationName} saved');
+    await _load();
+  }
+
+  Future<void> _adjustStock(InventoryItem item) async {
+    final saved = await showDialog<InventoryItem>(
+      context: context,
+      builder: (_) => _AdjustDialog(
+        item: item,
+        onSave: (delta, reason, notes) => widget.repository
+            .adjust(item.id, delta: delta, reason: reason, notes: notes),
       ),
-      successMessage: 'Stock quantity adjusted.',
     );
+    if (saved == null) return;
+    _toast('${saved.medicationName}: ${saved.quantityOnHand} on hand');
+    await _load();
   }
 
-  Future<void> _showHistory(InventoryItem item) async {
-    try {
-      final adjustments = await _repository.fetchAdjustments(item.id);
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('${item.medicationName} adjustments'),
-          content: SizedBox(
-            width: 520,
-            child: adjustments.isEmpty
-                ? const Center(child: Text('No stock adjustments recorded.'))
-                : ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: adjustments.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final entry = adjustments[index];
-                      final delta =
-                          entry['delta'] ?? entry['quantity_delta'] ?? '';
-                      final reason = entry['reason'] ?? 'Adjustment';
-                      final notes = entry['notes']?.toString();
-                      final date = entry['created_at'] ?? entry['createdAt'];
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text('$reason · $delta'),
-                        subtitle: Text([
-                          if (date != null) date.toString(),
-                          if (notes != null && notes.isNotEmpty) notes,
-                        ].join('\n')),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close')),
-          ],
-        ),
-      );
-    } on ApiException catch (error) {
-      _showMessage(error.message);
-    }
-  }
-
-  Future<void> _deactivate(InventoryItem item) async {
+  Future<void> _removeItem(InventoryItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Deactivate stock item?'),
-        content: Text('${item.medicationName} will no longer be active.'),
+        title: Text('Remove ${item.medicationName}?'),
+        content: const Text(
+          'It leaves your stock list. Its stock history is kept.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Deactivate')),
+            style: FilledButton.styleFrom(backgroundColor: _outRed),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );
     if (confirmed != true) return;
-    await _runMutation(
-      () => _repository.deactivateItem(item.id),
-      successMessage: 'Stock item deactivated.',
-    );
-  }
-
-  Future<void> _runMutation(
-    Future<void> Function() action, {
-    required String successMessage,
-  }) async {
-    setState(() => _isMutating = true);
     try {
-      await action();
+      await widget.repository.remove(item.id);
       if (!mounted) return;
-      _showMessage(successMessage);
+      _toast('${item.medicationName} removed');
       await _load();
-    } on ApiException catch (error) {
-      if (mounted) _showMessage(error.message);
     } catch (error) {
-      if (mounted) _showMessage('Inventory update failed: $error');
-    } finally {
-      if (mounted) setState(() => _isMutating = false);
+      if (!mounted) return;
+      _toast(_messageFor(error, 'It could not be removed.'));
     }
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
+  // ─── Layout ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -492,9 +222,8 @@ class _InventoryPageState extends State<InventoryPage> {
             _buildSummary(),
             const SizedBox(height: 16),
             _buildFilters(),
-            const SizedBox(height: 12),
-            if (_isMutating) const LinearProgressIndicator(minHeight: 2),
-            Expanded(child: _buildBody()),
+            const SizedBox(height: 4),
+            Expanded(child: _buildTable()),
           ],
         ),
       ),
@@ -519,10 +248,32 @@ class _InventoryPageState extends State<InventoryPage> {
             ],
           ),
         ),
-        FilledButton.icon(
-          onPressed: _isMutating ? null : () => _showEditor(),
-          icon: const Icon(Icons.add),
-          label: const Text('Add stock'),
+        Material(
+          color: _teal,
+          shape: const StadiumBorder(),
+          child: InkWell(
+            key: const ValueKey('inventory-add'),
+            customBorder: const StadiumBorder(),
+            onTap: _addItem,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 18, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text(
+                    'Add Item',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -530,246 +281,929 @@ class _InventoryPageState extends State<InventoryPage> {
 
   Widget _buildSummary() {
     final summary = _summary;
-    if (summary == null && _summaryError != null) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text('Summary unavailable: $_summaryError',
-            style: const TextStyle(color: _textMuted)),
-      );
-    }
-    if (summary == null) return const LinearProgressIndicator(minHeight: 2);
-    final values = [
-      ('Active items', summary.totalActive, Icons.medication_outlined),
-      ('Low stock', summary.lowStock, Icons.warning_amber_outlined),
-      ('Out of stock', summary.outOfStock, Icons.remove_shopping_cart_outlined),
-      ('Expiring soon', summary.expiringSoon, Icons.event_outlined),
-      ('Expired', summary.expired, Icons.error_outline),
-    ];
+    String count(int Function(InventorySummary) pick) =>
+        summary == null ? '–' : '${pick(summary)}';
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 12,
+      runSpacing: 12,
       children: [
-        for (final (label, value, icon) in values)
-          SizedBox(
-            width: 150,
-            child: Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Icon(icon, size: 20, color: _teal),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text('$value',
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w700)),
-                          Text(label,
-                              style: const TextStyle(
-                                  fontSize: 11, color: _textMuted),
-                              overflow: TextOverflow.ellipsis)
-                        ])),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        _StatTile(
+          label: 'Items in stock list',
+          value: count((s) => s.totalActive),
+          colour: _teal,
+        ),
+        _StatTile(
+          label: 'Low stock',
+          value: count((s) => s.lowStock),
+          colour: _lowOrange,
+        ),
+        _StatTile(
+          label: 'Out of stock',
+          value: count((s) => s.outOfStock),
+          colour: _outRed,
+        ),
+        _StatTile(
+          label: 'Expiring in $expiringSoonDays days',
+          value: count((s) => s.expiringSoon),
+          colour: _lowOrange,
+        ),
+        _StatTile(
+          label: 'Expired',
+          value: count((s) => s.expired),
+          colour: _outRed,
+        ),
       ],
     );
   }
 
   Widget _buildFilters() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SizedBox(
-          width: 280,
-          child: TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            decoration: InputDecoration(
-              hintText: 'Search name, SKU or supplier',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Clear search',
-                      onPressed: () {
-                        _searchController.clear();
-                        _load();
-                      },
-                      icon: const Icon(Icons.close),
+        Expanded(
+          child: Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (final (filter, label) in _tabs)
+                InkWell(
+                  key: ValueKey('inventory-tab-${filter.name}'),
+                  onTap: () => _selectFilter(filter),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color:
+                          _filter == filter ? Colors.black : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-              isDense: true,
-              filled: true,
-              fillColor: Colors.white,
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _filter == filter ? Colors.white : _textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-        FilterChip(
-          label: const Text('Low stock'),
-          selected: _lowStockOnly,
-          onSelected: (value) => setState(() {
-            _lowStockOnly = value;
-            _load();
-          }),
-        ),
-        FilterChip(
-          label: const Text('Expiry: 30 days (includes expired)'),
-          selected: _expiringSoonOnly,
-          onSelected: (value) => setState(() {
-            _expiringSoonOnly = value;
-            _load();
-          }),
-        ),
-        FilterChip(
-          label: const Text('Include inactive'),
-          selected: _includeInactive,
-          onSelected: (value) => setState(() {
-            _includeInactive = value;
-            _load();
-          }),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_errorMessage != null && _items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 36, color: _textMuted),
-            const SizedBox(height: 10),
-            Text(_errorMessage!, textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-                onPressed: _load,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try again')),
-          ],
-        ),
-      );
-    }
-    if (_items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.inventory_2_outlined, size: 36, color: _textMuted),
-            const SizedBox(height: 10),
-            const Text('No stock items found.'),
-            if (_errorMessage != null) Text(_errorMessage!),
-          ],
-        ),
-      );
-    }
-    return Column(
-      children: [
-        if (_errorMessage != null)
-          Align(
-              alignment: Alignment.centerLeft,
-              child: Text(_errorMessage!,
-                  style: const TextStyle(color: Colors.red))),
-        Expanded(
-          child: Card(
-            margin: EdgeInsets.zero,
-            clipBehavior: Clip.antiAlias,
-            child: SingleChildScrollView(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('Medication')),
-                    DataColumn(label: Text('SKU')),
-                    DataColumn(label: Text('Stock'), numeric: true),
-                    DataColumn(label: Text('Threshold'), numeric: true),
-                    DataColumn(label: Text('Unit price'), numeric: true),
-                    DataColumn(label: Text('Expiry')),
-                    DataColumn(label: Text('Status')),
-                    DataColumn(label: Text('Actions')),
-                  ],
-                  rows: [for (final item in _items) _buildRow(item)],
-                ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 240,
+          height: 38,
+          child: TextField(
+            key: const ValueKey('inventory-search'),
+            controller: _search,
+            onChanged: _onSearchChanged,
+            style: const TextStyle(fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Search name, generic or SKU',
+              hintStyle: const TextStyle(fontSize: 13, color: _textMuted),
+              prefixIcon: const Icon(Icons.search, size: 18),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: EdgeInsets.zero,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide.none,
               ),
             ),
           ),
         ),
-        if (_items.length < _total)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: OutlinedButton(
-              onPressed: _isLoadingMore ? null : () => _load(append: true),
-              child: Text(_isLoadingMore
-                  ? 'Loading...'
-                  : 'Load more (${_total - _items.length} remaining)'),
-            ),
-          ),
       ],
     );
   }
 
-  DataRow _buildRow(InventoryItem item) {
-    final statusColor = switch (item.stockStatus) {
-      'In stock' => const Color(0xFF15803D),
-      'Low stock' => const Color(0xFFB45309),
-      'Out of stock' || 'Expired' => const Color(0xFFB91C1C),
-      _ => _textMuted,
-    };
-    return DataRow(
-      cells: [
-        DataCell(SizedBox(
-            width: 190,
-            child: Text(item.medicationName, overflow: TextOverflow.ellipsis))),
-        DataCell(Text(item.sku ?? '—')),
-        DataCell(Text('${item.quantityOnHand} ${item.unit ?? ''}'.trim())),
-        DataCell(Text('${item.lowStockThreshold}')),
-        DataCell(Text(item.unitPrice == null
-            ? '—'
-            : 'R ${item.unitPrice!.toStringAsFixed(2)}')),
-        DataCell(
-            Text(item.expiryDate?.toIso8601String().split('T').first ?? '—')),
-        DataCell(Text(item.stockStatus,
-            style: TextStyle(color: statusColor, fontWeight: FontWeight.w600))),
-        DataCell(
-          PopupMenuButton<String>(
-            tooltip: 'Stock item actions',
-            onSelected: (action) {
-              switch (action) {
-                case 'edit':
-                  _showEditor(item);
-                case 'adjust':
-                  _adjustQuantity(item);
-                case 'history':
-                  _showHistory(item);
-                case 'deactivate':
-                  _deactivate(item);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Text('Edit details')),
-              const PopupMenuItem(
-                  value: 'adjust', child: Text('Adjust quantity')),
-              const PopupMenuItem(
-                  value: 'history', child: Text('Adjustment history')),
-              if (item.isActive)
-                const PopupMenuItem(
-                    value: 'deactivate', child: Text('Deactivate')),
-            ],
+  Widget _buildTable() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(25),
+      child: Container(
+        margin: const EdgeInsets.only(top: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          children: [
+            Container(width: 11, color: _aqua),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width =
+                      math.max(constraints.maxWidth, _tableMinWidth);
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: width,
+                      height: constraints.maxHeight,
+                      child: Column(
+                        children: [
+                          const _HeaderRow(),
+                          Expanded(child: _buildRows()),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRows() {
+    if (_loading && _items.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: _teal));
+    }
+    final error = _error;
+    if (error != null) {
+      return _Message(
+        icon: Icons.cloud_off_outlined,
+        text: error,
+        action: TextButton(onPressed: _load, child: const Text('Try again')),
+      );
+    }
+    if (_items.isEmpty) {
+      final searching = _search.text.trim().isNotEmpty;
+      final text = searching
+          ? 'Nothing in your stock matches "${_search.text.trim()}".'
+          : switch (_filter) {
+              InventoryFilter.all =>
+                'No stock yet. Add the medicines you keep with Add Item.',
+              InventoryFilter.lowStock => 'Nothing is low on stock.',
+              InventoryFilter.expiringSoon =>
+                'Nothing expires in the next $expiringSoonDays days.',
+            };
+      return _Message(icon: Icons.inventory_2_outlined, text: text);
+    }
+    return ListView.builder(
+      itemCount: _items.length,
+      itemBuilder: (context, index) {
+        final item = _items[index];
+        return _ItemRow(
+          item: item,
+          today: _today,
+          onAdjust: () => _adjustStock(item),
+          onEdit: () => _editItem(item),
+          onRemove: () => _removeItem(item),
+        );
+      },
+    );
+  }
+}
+
+// ─── Table pieces ────────────────────────────────────────────────────────────
+
+const _flex = (medication: 4, sku: 2, onHand: 3, lowAt: 2, price: 2, expiry: 2, action: 3);
+
+class _HeaderRow extends StatelessWidget {
+  const _HeaderRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: _flex.medication, child: const _ColHeader('Medication')),
+          Expanded(flex: _flex.sku, child: const _ColHeader('SKU')),
+          Expanded(flex: _flex.onHand, child: const _ColHeader('On hand')),
+          Expanded(flex: _flex.lowAt, child: const _ColHeader('Low at')),
+          Expanded(flex: _flex.price, child: const _ColHeader('Unit price')),
+          Expanded(flex: _flex.expiry, child: const _ColHeader('Expiry')),
+          Expanded(flex: _flex.action, child: const _ColHeader('Action')),
+        ],
+      ),
+    );
+  }
+}
+
+class _ItemRow extends StatelessWidget {
+  const _ItemRow({
+    required this.item,
+    required this.today,
+    required this.onAdjust,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final InventoryItem item;
+  final DateTime today;
+  final VoidCallback onAdjust;
+  final VoidCallback onEdit;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = [item.dosage, item.genericName]
+        .whereType<String>()
+        .join(' · ');
+    final (stockLabel, stockColour) = item.isOutOfStock
+        ? ('Out of stock', _outRed)
+        : item.isLowStock
+            ? ('Low stock', _lowOrange)
+            : ('In stock', _okGreen);
+
+    final expiry = item.expiryDate;
+    final expiryColour = item.isExpired(today)
+        ? _outRed
+        : item.expiresWithin(expiringSoonDays, today)
+            ? _lowOrange
+            : _textDark;
+
+    return Container(
+      key: ValueKey('inventory-row-${item.id}'),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _rule)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: _flex.medication,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.medicationName,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _textDark,
+                  ),
+                ),
+                if (detail.isNotEmpty)
+                  Text(
+                    detail,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: _textMuted),
+                  ),
+              ],
+            ),
           ),
+          Expanded(
+            flex: _flex.sku,
+            child: Text(
+              item.sku ?? '—',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13, color: _textMuted),
+            ),
+          ),
+          Expanded(
+            flex: _flex.onHand,
+            child: Row(
+              children: [
+                Text(
+                  '${item.quantityOnHand}${item.unit == null ? '' : ' ${item.unit}'}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration:
+                      BoxDecoration(shape: BoxShape.circle, color: stockColour),
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    stockLabel,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: stockColour),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: _flex.lowAt,
+            child: Text(
+              '${item.lowStockThreshold}',
+              style: const TextStyle(fontSize: 13, color: _textMuted),
+            ),
+          ),
+          Expanded(
+            flex: _flex.price,
+            child: Text(
+              item.unitPrice == null ? '—' : formatRand(item.unitPrice!),
+              style: const TextStyle(fontSize: 13, color: _textDark),
+            ),
+          ),
+          Expanded(
+            flex: _flex.expiry,
+            child: Text(
+              expiry == null ? '—' : formatDay(expiry),
+              style: TextStyle(fontSize: 13, color: expiryColour),
+            ),
+          ),
+          Expanded(
+            flex: _flex.action,
+            child: Row(
+              children: [
+                Material(
+                  color: _aqua,
+                  shape: const StadiumBorder(),
+                  child: InkWell(
+                    key: ValueKey('inventory-adjust-${item.id}'),
+                    customBorder: const StadiumBorder(),
+                    onTap: onAdjust,
+                    child: const Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      child: Text(
+                        'Adjust stock',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  key: ValueKey('inventory-menu-${item.id}'),
+                  tooltip: 'More',
+                  icon: const Icon(Icons.more_vert, color: _textMuted),
+                  onSelected: (choice) =>
+                      choice == 'edit' ? onEdit() : onRemove(),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit details')),
+                    PopupMenuItem(value: 'remove', child: Text('Remove')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ColHeader extends StatelessWidget {
+  const _ColHeader(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: _textMuted,
+      ),
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.colour,
+  });
+
+  final String label;
+  final String value;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 170,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border(left: BorderSide(color: colour, width: 4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: _textDark,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: _textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Message extends StatelessWidget {
+  const _Message({required this.icon, required this.text, this.action});
+
+  final IconData icon;
+  final String text;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 36, color: _aqua),
+            const SizedBox(height: 10),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: _textMuted),
+            ),
+            if (action != null) ...[const SizedBox(height: 6), action!],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Add / edit ──────────────────────────────────────────────────────────────
+
+class _ItemFormDialog extends StatefulWidget {
+  const _ItemFormDialog({required this.onSave, this.existing});
+
+  final InventoryItem? existing;
+  final Future<InventoryItem> Function(Map<String, dynamic> fields) onSave;
+
+  @override
+  State<_ItemFormDialog> createState() => _ItemFormDialogState();
+}
+
+class _ItemFormDialogState extends State<_ItemFormDialog> {
+  final _form = GlobalKey<FormState>();
+  late final _name = TextEditingController(text: widget.existing?.medicationName);
+  late final _generic = TextEditingController(text: widget.existing?.genericName);
+  late final _dosage = TextEditingController(text: widget.existing?.dosage);
+  late final _sku = TextEditingController(text: widget.existing?.sku);
+  late final _unit = TextEditingController(text: widget.existing?.unit);
+  late final _packSize =
+      TextEditingController(text: widget.existing?.packSize?.toString());
+  late final _quantity = TextEditingController();
+  late final _threshold = TextEditingController(
+      text: widget.existing?.lowStockThreshold.toString() ?? '');
+  late final _price = TextEditingController(
+      text: widget.existing?.unitPrice?.toStringAsFixed(2));
+  late final _supplier = TextEditingController(text: widget.existing?.supplier);
+  late final _notes = TextEditingController(text: widget.existing?.notes);
+  late DateTime? _expiry = widget.existing?.expiryDate;
+
+  bool _saving = false;
+  String? _error;
+
+  bool get _isNew => widget.existing == null;
+
+  @override
+  void dispose() {
+    for (final c in [
+      _name, _generic, _dosage, _sku, _unit, _packSize, _quantity,
+      _threshold, _price, _supplier, _notes,
+    ]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  String? _blankToNull(TextEditingController c) {
+    final text = c.text.trim();
+    return text.isEmpty ? null : text;
+  }
+
+  Future<void> _pickExpiry() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _expiry ?? DateTime(now.year + 1, now.month, now.day),
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 15),
+    );
+    if (picked != null) setState(() => _expiry = picked);
+  }
+
+  Future<void> _save() async {
+    if (!(_form.currentState?.validate() ?? false)) return;
+    final expiry = _expiry;
+    final fields = <String, dynamic>{
+      'medication_name': _name.text.trim(),
+      'generic_name': _blankToNull(_generic),
+      'dosage': _blankToNull(_dosage),
+      'sku': _blankToNull(_sku),
+      'unit': _blankToNull(_unit),
+      'pack_size': int.tryParse(_packSize.text.trim()),
+      'low_stock_threshold': int.tryParse(_threshold.text.trim()) ?? 0,
+      'unit_price': double.tryParse(_price.text.trim()),
+      'expiry_date': expiry == null ? null : isoDay(expiry),
+      'supplier': _blankToNull(_supplier),
+      'notes': _blankToNull(_notes),
+      if (_isNew) 'quantity_on_hand': int.tryParse(_quantity.text.trim()) ?? 0,
+    };
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final saved = await widget.onSave(fields);
+      if (mounted) Navigator.of(context).pop(saved);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = _messageFor(error, 'It could not be saved.');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_isNew ? 'Add stock item' : 'Edit ${widget.existing!.medicationName}'),
+      content: SizedBox(
+        width: 520,
+        child: Form(
+          key: _form,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _field(_name, 'Medication name *', key: 'name', validator: (v) {
+                  if ((v ?? '').trim().isEmpty) return 'Enter the medication name';
+                  return null;
+                }),
+                _pair(
+                  _field(_dosage, 'Strength and form', hint: '500mg tablet'),
+                  _field(_generic, 'Generic name'),
+                ),
+                _pair(
+                  _field(_sku, 'SKU / code'),
+                  _field(_supplier, 'Supplier'),
+                ),
+                _pair(
+                  _field(_unit, 'Unit', hint: 'tablets, ml, packs'),
+                  _field(_packSize, 'Pack size',
+                      number: true, validator: _wholeOrBlank),
+                ),
+                _pair(
+                  _isNew
+                      ? _field(_quantity, 'Starting quantity',
+                          key: 'quantity', number: true, validator: _wholeOrBlank)
+                      : _readOnly('On hand',
+                          '${widget.existing!.quantityOnHand} (use Adjust stock)'),
+                  _field(_threshold, 'Low stock at',
+                      key: 'threshold', number: true, validator: _wholeOrBlank),
+                ),
+                _pair(
+                  _field(_price, 'Unit price (R)',
+                      decimal: true, validator: _amountOrBlank),
+                  _expiryField(),
+                ),
+                _field(_notes, 'Notes', lines: 2),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(_error!, style: const TextStyle(color: _outRed)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const ValueKey('inventory-save'),
+          style: FilledButton.styleFrom(backgroundColor: _teal),
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'Saving…' : 'Save'),
         ),
       ],
     );
   }
+
+  Widget _pair(Widget left, Widget right) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: left),
+        const SizedBox(width: 12),
+        Expanded(child: right),
+      ],
+    );
+  }
+
+  Widget _field(
+    TextEditingController controller,
+    String label, {
+    String? key,
+    String? hint,
+    bool number = false,
+    bool decimal = false,
+    int lines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        key: key == null ? null : ValueKey('inventory-field-$key'),
+        controller: controller,
+        maxLines: lines,
+        validator: validator,
+        keyboardType: number || decimal
+            ? TextInputType.numberWithOptions(decimal: decimal)
+            : null,
+        inputFormatters: number
+            ? [FilteringTextInputFormatter.digitsOnly]
+            : decimal
+                ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+                : null,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          isDense: true,
+          border: const OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _readOnly(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          isDense: true,
+          border: const OutlineInputBorder(),
+        ),
+        child: Text(value, style: const TextStyle(color: _textMuted)),
+      ),
+    );
+  }
+
+  Widget _expiryField() {
+    final expiry = _expiry;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: _pickExpiry,
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: 'Expiry date',
+            isDense: true,
+            border: const OutlineInputBorder(),
+            suffixIcon: expiry == null
+                ? const Icon(Icons.calendar_today_outlined, size: 18)
+                : IconButton(
+                    tooltip: 'Clear',
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() => _expiry = null),
+                  ),
+          ),
+          child: Text(expiry == null ? 'None' : formatDay(expiry)),
+        ),
+      ),
+    );
+  }
+}
+
+String? _wholeOrBlank(String? value) {
+  final text = (value ?? '').trim();
+  if (text.isEmpty) return null;
+  return int.tryParse(text) == null ? 'Whole number only' : null;
+}
+
+String? _amountOrBlank(String? value) {
+  final text = (value ?? '').trim();
+  if (text.isEmpty) return null;
+  final amount = double.tryParse(text);
+  return amount == null || amount < 0 ? 'Enter an amount like 45.50' : null;
+}
+
+// ─── Adjust stock ────────────────────────────────────────────────────────────
+
+class _AdjustDialog extends StatefulWidget {
+  const _AdjustDialog({required this.item, required this.onSave});
+
+  final InventoryItem item;
+  final Future<InventoryItem> Function(
+      int delta, StockReason reason, String? notes) onSave;
+
+  @override
+  State<_AdjustDialog> createState() => _AdjustDialogState();
+}
+
+class _AdjustDialogState extends State<_AdjustDialog> {
+  StockReason _reason = StockReason.restock;
+
+  /// For a reason that can go either way: true adds stock.
+  bool _adding = true;
+  final _amount = TextEditingController();
+  final _notes = TextEditingController();
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  int get _sign => switch (_reason.direction) {
+        1 => 1,
+        -1 => -1,
+        _ => _adding ? 1 : -1,
+      };
+
+  int? get _delta {
+    final amount = int.tryParse(_amount.text.trim());
+    if (amount == null || amount <= 0) return null;
+    return amount * _sign;
+  }
+
+  Future<void> _save() async {
+    final delta = _delta;
+    if (delta == null) {
+      setState(() => _error = 'Enter how many units, more than 0');
+      return;
+    }
+    if (widget.item.quantityOnHand + delta < 0) {
+      setState(() => _error =
+          'Only ${widget.item.quantityOnHand} on hand, so that many cannot be removed');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final saved = await widget.onSave(delta, _reason, _notes.text);
+      if (mounted) Navigator.of(context).pop(saved);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = _messageFor(error, 'The stock could not be changed.');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = _delta;
+    final after = delta == null ? null : widget.item.quantityOnHand + delta;
+    return AlertDialog(
+      title: Text('Adjust ${widget.item.medicationName}'),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownButtonFormField<StockReason>(
+              key: const ValueKey('inventory-reason'),
+              initialValue: _reason,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Reason',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final reason in StockReason.values)
+                  DropdownMenuItem(value: reason, child: Text(reason.label)),
+              ],
+              onChanged: (reason) {
+                if (reason != null) setState(() => _reason = reason);
+              },
+            ),
+            if (_reason.direction == 0) ...[
+              const SizedBox(height: 12),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: true, label: Text('Add')),
+                  ButtonSegment(value: false, label: Text('Remove')),
+                ],
+                selected: {_adding},
+                onSelectionChanged: (s) => setState(() => _adding = s.first),
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('inventory-amount'),
+              controller: _amount,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: _sign > 0 ? 'Units to add' : 'Units to remove',
+                isDense: true,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notes,
+              decoration: const InputDecoration(
+                labelText: 'Note (optional)',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              after == null
+                  ? 'On hand now: ${widget.item.quantityOnHand}'
+                  : 'On hand: ${widget.item.quantityOnHand} → $after',
+              key: const ValueKey('inventory-after'),
+              style: TextStyle(
+                color: after != null && after < 0 ? _outRed : _textMuted,
+              ),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_error!, style: const TextStyle(color: _outRed)),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const ValueKey('inventory-adjust-save'),
+          style: FilledButton.styleFrom(backgroundColor: _teal),
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'Saving…' : 'Save'),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Formatting ──────────────────────────────────────────────────────────────
+
+const _months = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// "31 Jan 2027".
+String formatDay(DateTime day) =>
+    '${day.day} ${_months[day.month - 1]} ${day.year}';
+
+/// "2027-01-31", as the DATE column takes it.
+String isoDay(DateTime day) =>
+    '${day.year.toString().padLeft(4, '0')}-'
+    '${day.month.toString().padLeft(2, '0')}-'
+    '${day.day.toString().padLeft(2, '0')}';
+
+/// "R 1 250.00", with the space a South African reader expects.
+String formatRand(double amount) {
+  final fixed = amount.toStringAsFixed(2);
+  final parts = fixed.split('.');
+  final whole = parts[0].replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => ' ',
+  );
+  return 'R $whole.${parts[1]}';
+}
+
+String _messageFor(Object error, String fallback) {
+  if (error is ApiException && error.message.trim().isNotEmpty) {
+    return error.message;
+  }
+  return fallback;
 }
