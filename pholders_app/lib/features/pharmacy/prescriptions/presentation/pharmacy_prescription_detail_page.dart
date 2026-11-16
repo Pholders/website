@@ -1,662 +1,480 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:async';
-import 'dart:html' as html;
-import 'dart:typed_data';
+import 'package:redux/redux.dart';
 
+import '../../../../app/app_state.dart';
 import '../../../../core/routing/app_routes.dart';
-import '../data/prescription_sample_data.dart';
-import 'prescription_document_pdf.dart';
+import '../../dispensing_queue/data/models/claimed_prescription.dart';
+import '../../dispensing_queue/redux/dispensing_actions.dart';
+import '../../orders/data/models/pharmacy_order.dart';
+import '../../orders/redux/orders_actions.dart';
+import '../data/pharmacy_script.dart';
+import 'pharmacy_prescriptions_page.dart' show dayMonth;
+import 'script_widgets.dart';
 
-/// Pharmacy Prescription Detail page matching the Figma design.
+/// One claimed script: who it is for, what to give them, how they pay and
+/// whether they collect or want it delivered, and the step it is at.
 ///
-/// Shows full prescription information including patient info,
-/// prescription details, instructions, doctor info, and digital signature.
-class PharmacyPrescriptionDetailPage extends StatefulWidget {
-
+/// Marking it dispensed here is the "processed" step. Accepting the order
+/// and marking it ready happen on the order, which this page links to.
+class PharmacyPrescriptionDetailPage extends StatelessWidget {
   const PharmacyPrescriptionDetailPage({
     super.key,
     required this.prescriptionId,
   });
+
   final String prescriptionId;
 
   @override
-  State<PharmacyPrescriptionDetailPage> createState() =>
-      _PharmacyPrescriptionDetailPageState();
-}
-
-class _PharmacyPrescriptionDetailPageState
-    extends State<PharmacyPrescriptionDetailPage> {
-  // ─── Colors ──────────────────────────────────────────────────────────────
-  static const Color _teal = Color(0xFF309CA3);
-  static const Color _tealBorder = Color(0xFF6DD0D8);
-  static const Color _tealLight = Color(0xFFE8F8F8);
-  static const Color _textDark = Color(0xFF1F2937);
-  static const Color _textMuted = Color(0xFF6B7280);
-  static const Color _fieldBg = Color(0xFFE8F8F8);
-  static const Color _bgLight = Color(0x33309CA3);
-
-  String _currentStatus = 'New';
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F8),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final id = int.tryParse(prescriptionId);
+    return StoreConnector<AppState, _DetailViewModel>(
+      distinct: true,
+      converter: (store) => _DetailViewModel.fromStore(store, id),
+      onInit: (store) {
+        // Opened from a link or a refresh, nothing is in the store yet.
+        if (!store.state.dispensingState.hasLoadedOnce) {
+          store.dispatch(const LoadDispensingQueueAction());
+        }
+        if (!store.state.pharmacyOrdersState.hasLoadedOnce) {
+          store.dispatch(const LoadPharmacyOrdersAction());
+        }
+      },
+      builder: (context, vm) => Scaffold(
+        backgroundColor: const Color(0xFFE8F8F8),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _backLink(context),
+              const SizedBox(height: 12),
+              _body(context, vm),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _backLink(BuildContext context) {
+    return InkWell(
+      onTap: () => context.go(AppRoutes.pharmacyPrescriptions),
+      borderRadius: BorderRadius.circular(20),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildPageHeader(),
-            const SizedBox(height: 16),
-            _buildTabs(),
-            const SizedBox(height: 12),
-            _buildDetailCard(context),
+            Icon(Icons.arrow_back, size: 18, color: scriptTeal),
+            SizedBox(width: 6),
+            Text(
+              'Prescriptions',
+              style: TextStyle(fontSize: 13, color: scriptTeal),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ─── Page Header ─────────────────────────────────────────────────────────
-  Widget _buildPageHeader() {
-    return Row(
+  Widget _body(BuildContext context, _DetailViewModel vm) {
+    final row = vm.row;
+    if (row == null) {
+      if (!vm.loaded) {
+        return vm.error != null
+            ? _notice(vm.error!, retry: vm.onRefresh)
+            : const Padding(
+                padding: EdgeInsets.all(48),
+                child: Center(
+                    child: CircularProgressIndicator(color: scriptTeal)),
+              );
+      }
+      return _notice(
+          'This script is not among the ones claimed for this pharmacy.');
+    }
+
+    final script = row.script;
+    final order = row.order;
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Prescriptions',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: _textDark,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Manage incoming prescriptions and dispensing',
-                style: TextStyle(fontSize: 14, color: _textMuted),
-              ),
-            ],
-          ),
+        _header(row),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _section('Patient', [
+              _line('Name', script.patientName),
+              _line('Email', script.patientEmail ?? '—'),
+              _line('Phone', script.patientPhone ?? '—'),
+            ]),
+            _section('Collection and payment', [
+              if (order == null)
+                const Text(
+                  'No order was placed with this claim.',
+                  style: TextStyle(fontSize: 13, color: scriptTextMuted),
+                )
+              else ...[
+                _line('Payment',
+                    order.isMedicalAid ? 'Medical aid' : 'Self-pay'),
+                _line('Getting it',
+                    order.isDelivery ? 'Delivery' : 'Collect in store'),
+                _line('Order', '${order.reference} · ${order.status.label}'),
+                _line('Patient pays', order.dueLabel),
+              ],
+            ]),
+          ],
         ),
-        _buildScanQrButton(),
+        const SizedBox(height: 16),
+        _medicines(script),
+        const SizedBox(height: 16),
+        _actions(context, row, vm),
       ],
     );
   }
 
-  Widget _buildScanQrButton() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _bgLight,
-        borderRadius: BorderRadius.circular(100),
-      ),
+  Widget _header(PharmacyScript row) {
+    final claimed = row.script.claimedAt?.toLocal();
+    final lastUpdate = row.lastUpdateSent;
+    return _card(
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 32,
-            height: 28,
-            decoration: BoxDecoration(
-              color: _teal,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(5),
-              child: Image.asset('assets/scanner-icon.png', color: Colors.black),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  row.script.number,
+                  key: const ValueKey('script-number'),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: scriptTextDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  [
+                    if (claimed != null) 'Claimed ${dayMonth(claimed)}',
+                    if (row.script.diagnosis != null) row.script.diagnosis!,
+                  ].join(' · '),
+                  style:
+                      const TextStyle(fontSize: 13, color: scriptTextMuted),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          const Text(
-            'Scan QR Code',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: _teal,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              StageBadge(stage: row.stage),
+              if (lastUpdate != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  key: const ValueKey('patient-notified'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PatientNotifiedBell(lastUpdate: lastUpdate),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Patient notified: $lastUpdate',
+                      style: const TextStyle(
+                          fontSize: 12, color: scriptTextMuted),
+                    ),
+                  ],
+                ),
+              ],
+            ],
           ),
-          const SizedBox(width: 12),
         ],
       ),
     );
   }
 
-  // ─── Tabs ────────────────────────────────────────────────────────────────
-  Widget _buildTabs() {
-    final tabs = ['All', 'New', 'Accepted', 'In-Progress', 'Ready', 'Dispensed'];
-    return Row(
-      children: List.generate(tabs.length, (index) {
-        final isActive = index == 0;
-        return Padding(
-          padding: const EdgeInsets.only(right: 4),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-            decoration: BoxDecoration(
-              color: isActive ? Colors.black : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              tabs[index],
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: isActive ? Colors.white : _textMuted,
-              ),
+  Widget _medicines(ClaimedPrescription script) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Medicines',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: scriptTextDark,
             ),
           ),
-        );
-      }),
+          const SizedBox(height: 10),
+          if (script.medicines.isEmpty)
+            const Text('No medicines listed.',
+                style: TextStyle(fontSize: 13, color: scriptTextMuted))
+          else
+            for (final medicine in script.medicines)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2),
+                      child: Icon(Icons.medication_outlined,
+                          size: 18, color: scriptTeal),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            medicine.name,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: scriptTextDark,
+                            ),
+                          ),
+                          if (medicine.detail.isNotEmpty)
+                            Text(medicine.detail,
+                                style: const TextStyle(
+                                    fontSize: 12, color: scriptTextMuted)),
+                          if ((medicine.instructions ?? '').trim().isNotEmpty)
+                            Text(medicine.instructions!,
+                                style: const TextStyle(
+                                    fontSize: 12, color: scriptTextMuted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+        ],
+      ),
     );
   }
 
-  // ─── Detail Card ─────────────────────────────────────────────────────────
-  Widget _buildDetailCard(BuildContext context) {
+  Widget _actions(BuildContext context, PharmacyScript row, _DetailViewModel vm) {
+    final order = row.order;
+    final busy = vm.busy && !row.dispensed;
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (row.dispensed)
+          const Row(
+            key: ValueKey('script-dispensed'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle, size: 18, color: Color(0xFF16A34A)),
+              SizedBox(width: 6),
+              Text('Dispensed',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF16A34A))),
+            ],
+          )
+        else
+          FilledButton.icon(
+            key: const ValueKey('script-dispense'),
+            style: FilledButton.styleFrom(backgroundColor: scriptTeal),
+            onPressed: busy ? null : () => _confirmDispense(context, row, vm),
+            icon: const Icon(Icons.done_all, size: 18),
+            label: Text(busy ? 'Working…' : 'Mark as dispensed'),
+          ),
+        if (order != null)
+          OutlinedButton(
+            key: const ValueKey('script-open-order'),
+            onPressed: () => context.go(AppRoutes.pharmacyOrderDetail
+                .replaceFirst(':orderId', '${order.id}')),
+            child: Text(_orderActionLabel(order)),
+          ),
+        if (vm.dispenseError != null)
+          Text(
+            vm.dispenseError!,
+            key: const ValueKey('script-error'),
+            style: const TextStyle(fontSize: 13, color: Color(0xFFDC2626)),
+          ),
+      ],
+    );
+  }
+
+  String _orderActionLabel(PharmacyOrder order) => switch (order.status) {
+        OrderStatus.pending => 'Accept or reject the order',
+        OrderStatus.accepted ||
+        OrderStatus.claimApproved ||
+        OrderStatus.preparing =>
+          'Update the order',
+        _ => 'Open the order',
+      };
+
+  void _confirmDispense(
+      BuildContext context, PharmacyScript row, _DetailViewModel vm) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Mark this script as dispensed?'),
+        content: Text(
+          'Confirm ${row.script.patientName} has been given '
+          '${row.script.medicineSummary}. The prescribing doctor is told it '
+          'was dispensed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const ValueKey('script-dispense-confirm'),
+            style: FilledButton.styleFrom(backgroundColor: scriptTeal),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              vm.onDispense(row.id);
+            },
+            child: const Text('Dispensed'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _section(String title, List<Widget> children) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 300, maxWidth: 520),
+      child: _card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: scriptTextDark,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _line(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 110,
+              child: Text(label,
+                  style:
+                      const TextStyle(fontSize: 13, color: scriptTextMuted)),
+            ),
+            Expanded(
+              child: Text(value,
+                  style:
+                      const TextStyle(fontSize: 13, color: scriptTextDark)),
+            ),
+          ],
+        ),
+      );
+
+  Widget _card({required Widget child}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(25),
       child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(25),
-        ),
+        color: Colors.white,
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(width: 11, color: _tealBorder),
+              Container(width: 11, color: scriptAqua),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                    _buildDetailHeader(context),
-                    const SizedBox(height: 20),
-                    _buildSignedByInfo(),
-                    const SizedBox(height: 28),
-                    _buildSectionTitle('Patient Information'),
-                    const SizedBox(height: 12),
-                    _buildField('Patient', 'Maria Wilson'),
-                    _buildField('ID', '12345678900'),
-                    _buildField('Date of Birth', '01 Mar 1998'),
-                    const SizedBox(height: 28),
-                    _buildSectionTitle('Medical Aid Details'),
-                    const SizedBox(height: 12),
-                    _buildField('Medical Aid', 'Discovery Health'),
-                    _buildField('Plan', 'KeyCare Plus'),
-                    _buildField('Member No.', 'DH-90012345'),
-                    _buildField('Dependent', 'Principal Member'),
-                    const SizedBox(height: 28),
-                    _buildSectionTitle('Collection & Delivery'),
-                    const SizedBox(height: 12),
-                    _buildField('Preference', 'In-Store Collection'),
-                    _buildField('Pharmacy', 'Pholders Pharmacy — Sandton'),
-                    _buildField('Generic Sub.', 'Allowed on all products'),
-                    const SizedBox(height: 28),
-                    _buildSectionTitle('Payment Status'),
-                    const SizedBox(height: 12),
-                    _buildField('Method', 'Medical Aid'),
-                    _buildField('Status', 'Covered — R0 co-pay'),
-                    const SizedBox(height: 28),
-                    _buildSectionTitle('Prescription Details'),
-                    const SizedBox(height: 12),
-                    _buildField('Medication', 'Panado'),
-                    _buildField('Dosage', '20mg'),
-                    _buildField('Frequency', 'Once daily'),
-                    _buildField('Duration', '30 Days'),
-                    _buildField('Quantity', '30 Tablets'),
-                    const SizedBox(height: 28),
-                    _buildSectionTitle('Instructions'),
-                    const SizedBox(height: 12),
-                    _buildField('Instructions', '1. Take after meals'),
-                    _buildFieldOnly('2. Avoid alcohol'),
-                    const SizedBox(height: 28),
-                    _buildSectionTitle('Doctor Information'),
-                    const SizedBox(height: 12),
-                    _buildField('Doctor', 'Dr Sam Smith'),
-                    _buildField('HPCSA', 'MP12345678'),
-                    _buildField('Practice', 'Mashumu Medical Practice'),
-                    const SizedBox(height: 28),
-                    _buildDigitalSignature(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Detail Header ───────────────────────────────────────────────────────
-  Widget _buildDetailHeader(BuildContext context) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => context.go(AppRoutes.pharmacyPrescriptions),
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: _bgLight,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.arrow_back, size: 16, color: _teal),
-          ),
-        ),
-        const SizedBox(width: 12),
-        const Text(
-          'Details',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: _textDark,
-          ),
-        ),
-        const SizedBox(width: 4),
-        const Text(
-          '> Maria Wilson',
-          style: const TextStyle(fontSize: 14, color: _textMuted),
-        ),
-        const Spacer(),
-        // Action button — changes based on current status
-        InkWell(
-          onTap: _currentStatus != 'Dispensed' ? _handleAction : null,
-          borderRadius: BorderRadius.circular(25),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: _currentStatus != 'Dispensed' ? _tealBorder : const Color(0xFFE5E7EB),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-            ),
-            child: Text(
-              _actionLabel,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: _currentStatus != 'Dispensed' ? Colors.white : const Color(0xFF6B7280),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Action icons
-        _IconBtn(assetPath: 'assets/printer-icon.png', onTap: _printPrescriptionPdf),
-        const SizedBox(width: 8),
-        const _IconBtn(assetPath: 'assets/share-icon.png'),
-        const SizedBox(width: 8),
-        const _IconBtn(assetPath: 'assets/call-icon.png'),
-      ],
-    );
-  }
-
-  // ─── Signed By Info ──────────────────────────────────────────────────────
-  Widget _buildSignedByInfo() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Digitally signed by',
-                style: const TextStyle(fontSize: 12, color: _textMuted),
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'Dr Sam Smith',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: _textDark,
-                ),
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'HPCSA:',
-                style: const TextStyle(fontSize: 12, color: _textMuted),
-              ),
-              const Text(
-                'MP1234567',
-                style: TextStyle(fontSize: 13, color: _textDark),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF003BFC),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF001A8C),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Verified',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+                  padding: const EdgeInsets.all(20),
+                  child: child,
                 ),
               ),
             ],
           ),
         ),
-        // Signature stamp image placeholder
-        const Text(
-          '01 Mar 2026',
-          style: const TextStyle(fontSize: 13, color: _textMuted),
-        ),
-      ],
-    );
-  }
-
-  // ─── Section Title ───────────────────────────────────────────────────────
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: _textDark,
       ),
     );
   }
 
-  // ─── Field Row ───────────────────────────────────────────────────────────
-  Widget _buildField(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 13, color: _textMuted),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: _fieldBg,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Text(
-                value,
-                style: const TextStyle(fontSize: 13, color: _textDark),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Field without a label (continuation of previous field).
-  Widget _buildFieldOnly(String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          const SizedBox(width: 136),
-          Expanded(
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: _fieldBg,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Text(
-                value,
-                style: const TextStyle(fontSize: 13, color: _textDark),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Digital Signature ───────────────────────────────────────────────────
-  Widget _buildDigitalSignature() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Digital Signature',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: _textDark,
-          ),
+  Widget _notice(String text, {VoidCallback? retry}) => _card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(text,
+                style: const TextStyle(fontSize: 14, color: scriptTextMuted)),
+            if (retry != null)
+              TextButton(onPressed: retry, child: const Text('Try again')),
+          ],
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Digital Preview',
-          style: const TextStyle(fontSize: 12, color: _textMuted),
-        ),
-        const SizedBox(height: 12),
-        // Signature box
-        Container(
-          width: 120,
-          height: 100,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _teal.withValues(alpha: 0.4), width: 2),
-          ),
-          child: Center(
-            child: CustomPaint(
-              size: const Size(80, 50),
-              painter: _SignaturePainter(),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Digitally signed on 25 Mar 2026',
-          style: const TextStyle(fontSize: 12, color: _textMuted),
-        ),
-        const SizedBox(height: 2),
-        const Text(
-          'Verification Status',
-          style: const TextStyle(fontSize: 12, color: _textMuted),
-        ),
-      ],
-    );
-  }
-
-  // ─── Claim / Status Progression ────────────────────────────────────────────
-
-  String get _actionLabel {
-    switch (_currentStatus) {
-      case 'New':
-        return 'Accept';
-      case 'Accepted':
-        return 'Process';
-      case 'In-Progress':
-        return 'Dispense';
-      case 'Ready':
-        return 'Complete';
-      case 'Dispensed':
-        return 'Done';
-      default:
-        return 'Accept';
-    }
-  }
-
-  String? get _nextStatus {
-    switch (_currentStatus) {
-      case 'New':
-        return 'Accepted';
-      case 'Accepted':
-        return 'In-Progress';
-      case 'In-Progress':
-        return 'Ready';
-      case 'Ready':
-        return 'Dispensed';
-      default:
-        return null;
-    }
-  }
-
-  void _handleAction() {
-    final next = _nextStatus;
-    if (next == null) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          _currentStatus == 'New' ? 'Claim Prescription?' : 'Update Status?',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          _currentStatus == 'New'
-              ? 'Claiming this prescription will lock it to your pharmacy. No other pharmacy can claim it.'
-              : 'Move prescription status to "$next"? The patient will be notified.',
-          style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() => _currentStatus = next);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('✓ Patient notified — Script status: $next'),
-                  backgroundColor: const Color(0xFF309CA3),
-                  behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF309CA3),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text(_actionLabel),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _printPrescriptionPdf() async {
-    final document = samplePrescriptionDocument(
-      prescriptionId: widget.prescriptionId,
-      currentStatus: _currentStatus,
-    );
-    final Uint8List pdfBytes = await PrescriptionDocumentPdf.build(document);
-    final blob = html.Blob([pdfBytes], 'application/pdf');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..target = '_blank'
-      ..click();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Prescription PDF opened'),
-        backgroundColor: Color(0xFF309CA3),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-
-    unawaited(
-      Future<void>.delayed(const Duration(seconds: 10)).then((_) {
-        html.Url.revokeObjectUrl(url);
-      }),
-    );
-  }
-}
-
-// ─── Helper widgets ──────────────────────────────────────────────────────────
-
-class _IconBtn extends StatelessWidget {
-  const _IconBtn({required this.assetPath, this.onTap});
-  final String assetPath;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(100),
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: const Color(0x33309CA3),
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(7),
-          child: Image.asset(assetPath, width: 16, height: 16),
-        ),
-      ),
-    );
-  }
-}
-
-/// Simple custom painter to draw a mock signature squiggle.
-class _SignaturePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF309CA3)
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path()
-      ..moveTo(size.width * 0.1, size.height * 0.7)
-      ..cubicTo(
-        size.width * 0.25, size.height * 0.2,
-        size.width * 0.35, size.height * 0.9,
-        size.width * 0.5, size.height * 0.5,
-      )
-      ..cubicTo(
-        size.width * 0.65, size.height * 0.1,
-        size.width * 0.75, size.height * 0.8,
-        size.width * 0.9, size.height * 0.4,
       );
+}
 
-    canvas.drawPath(path, paint);
+class _DetailViewModel {
+  _DetailViewModel({
+    required this.row,
+    required this.loaded,
+    required this.busy,
+    required this.error,
+    required this.dispenseError,
+    required this.onRefresh,
+    required this.onDispense,
+  });
+
+  factory _DetailViewModel.fromStore(Store<AppState> store, int? id) {
+    final dispensing = store.state.dispensingState;
+    PharmacyScript? row;
+    if (id != null) {
+      for (final candidate in pharmacyScripts(store.state)) {
+        if (candidate.id == id) row = candidate;
+      }
+    }
+    return _DetailViewModel(
+      row: row,
+      loaded: dispensing.hasLoadedOnce,
+      busy: id != null && dispensing.busyIds.contains(id),
+      error: dispensing.errorMessage,
+      // A failed dispense leaves the error on the slice; show it here only
+      // while the script is still waiting, which it then still is.
+      dispenseError: row != null && !row.dispensed ? dispensing.errorMessage : null,
+      onRefresh: () {
+        store.dispatch(const LoadDispensingQueueAction());
+        store.dispatch(const LoadPharmacyOrdersAction());
+      },
+      onDispense: (prescriptionId) => store
+          .dispatch(DispensePrescriptionAction(prescriptionId: prescriptionId)),
+    );
   }
 
+  final PharmacyScript? row;
+  final bool loaded;
+  final bool busy;
+  final String? error;
+  final String? dispenseError;
+  final VoidCallback onRefresh;
+  final void Function(int prescriptionId) onDispense;
+
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool operator ==(Object other) =>
+      other is _DetailViewModel &&
+      other.row?.id == row?.id &&
+      other.row?.stage == row?.stage &&
+      other.row?.patientNotified == row?.patientNotified &&
+      identical(other.row?.script, row?.script) &&
+      identical(other.row?.order, row?.order) &&
+      other.loaded == loaded &&
+      other.busy == busy &&
+      other.error == error &&
+      other.dispenseError == dispenseError;
+
+  @override
+  int get hashCode =>
+      Object.hash(row?.id, row?.stage, loaded, busy, error, dispenseError);
 }
