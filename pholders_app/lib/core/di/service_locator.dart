@@ -1,12 +1,16 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
+import 'package:redux/redux.dart';
+
+import '../../app/app_state.dart';
+import '../api/http_client.dart';
+import '../auth/auth_actions.dart';
+import '../realtime/realtime_gateway.dart';
 
 import '../../features/auth/data/doctor_auth_repository.dart';
 import '../../features/auth/data/pharmacy_auth_repository.dart';
 import '../../features/doctor/appointments/data/appointments_repository.dart';
-import '../../features/doctor/billing/data/billing_repository.dart';
-import '../../features/doctor/notifications/data/doctor_notifications_repository.dart';
-import '../../features/doctor/patients/data/patient_record_repository.dart';
 import '../../features/doctor/prescriptions/data/prescriptions_repository.dart';
 import '../../features/doctor/reviews/data/reviews_repository.dart';
 import '../../features/pharmacy/dispensing_queue/data/dispensing_repository.dart';
@@ -24,13 +28,11 @@ final GetIt sl = GetIt.instance;
 
 /// Registers all app dependencies.
 ///
-/// Call this once in [main] before [runApp].
+/// Call this once in [main] before creating the Redux store. The store itself
+/// is registered separately in `main.dart` after it's constructed.
 Future<void> setupServiceLocator() async {
-  // ─── Core ──────────────────────────────────────────────────────────────────
   sl.registerLazySingleton<FlutterSecureStorage>(
     () => const FlutterSecureStorage(
-      // Without this, a secure-storage write on web can be lost when the tab
-      // is restored from the back/forward cache.
       webOptions: WebOptions(dbName: 'pholders', publicKey: 'pholders_app'),
     ),
   );
@@ -40,6 +42,19 @@ Future<void> setupServiceLocator() async {
   sl.registerLazySingleton<ApiClient>(
     () => ApiClient(tokenStorage: sl<TokenStorage>()),
   );
+
+  sl.registerLazySingleton<Dio>(
+    () => HttpClient.create(
+      storage: sl<FlutterSecureStorage>(),
+      onUnauthorized: () {
+        if (sl.isRegistered<Store<AppState>>()) {
+          sl<Store<AppState>>().dispatch(const SessionExpiredAction());
+        }
+      },
+    ),
+  );
+
+  sl.registerLazySingleton<RealtimeGateway>(() => RealtimeGateway());
 
   // ─── Repositories ──────────────────────────────────────────────────────────
   sl.registerLazySingleton<DoctorAuthRepository>(
@@ -60,18 +75,6 @@ Future<void> setupServiceLocator() async {
 
   sl.registerLazySingleton<ReviewsRepository>(
     () => ReviewsRepository(sl<ApiClient>()),
-  );
-
-  sl.registerLazySingleton<DoctorNotificationsRepository>(
-    () => DoctorNotificationsRepository(sl<ApiClient>()),
-  );
-
-  sl.registerLazySingleton<BillingRepository>(
-    () => BillingRepository(sl<ApiClient>()),
-  );
-
-  sl.registerLazySingleton<PatientRecordRepository>(
-    () => PatientRecordRepository(sl<ApiClient>()),
   );
 
   sl.registerLazySingleton<DispensingRepository>(

@@ -15,8 +15,6 @@ import 'features/auth/data/doctor_auth_repository.dart';
 import 'features/auth/data/pharmacy_auth_repository.dart';
 import 'features/doctor/appointments/data/appointments_repository.dart';
 import 'features/doctor/appointments/redux/appointments_middleware.dart';
-import 'features/doctor/patients/data/patient_record_repository.dart';
-import 'features/doctor/patients/redux/patient_records_middleware.dart';
 import 'features/doctor/prescriptions/data/prescriptions_repository.dart';
 import 'features/doctor/prescriptions/redux/prescriptions_middleware.dart';
 import 'features/doctor/reviews/data/reviews_repository.dart';
@@ -26,7 +24,6 @@ import 'features/pharmacy/dispensing_queue/redux/dispensing_middleware.dart';
 import 'features/pharmacy/orders/data/orders_repository.dart';
 import 'features/pharmacy/orders/redux/orders_middleware.dart';
 import 'shared/theme/app_theme.dart';
-import 'shared/widgets/splash_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,14 +60,13 @@ Future<void> main() async {
       ...createPharmacyOrdersMiddleware(
         repository: sl<OrdersRepository>(),
       ),
-      // Each patient's record, fetched once in the background after sign-in.
-      ...createPatientRecordsMiddleware(
-        repository: sl<PatientRecordRepository>(),
-      ),
     ],
   );
 
-  // 3. A 401 from the API means the JWT is gone or expired — drop the
+  // Expose the store to the legacy HTTP interceptor and realtime clients.
+  sl.registerSingleton<Store<AppState>>(store);
+
+  // 3. Any 401/403 from the API means the JWT is gone or expired — drop the
   //    session so the router sends the user back to sign in.
   sl<ApiClient>().onUnauthorized =
       () => store.dispatch(const SessionExpiredAction());
@@ -105,8 +101,6 @@ class _PholdersAppState extends State<PholdersApp> {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: _router,
-        // The splash screen stands in as the loader while a session starts.
-        builder: (context, child) => SplashGate(child: child!),
       ),
     );
   }

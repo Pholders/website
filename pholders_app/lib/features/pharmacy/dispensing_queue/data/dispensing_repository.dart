@@ -1,4 +1,5 @@
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_exception.dart';
 import 'models/claimed_prescription.dart';
 
 /// Pharmacy-side dispensing calls.
@@ -22,7 +23,16 @@ class DispensingRepository {
       '/prescriptions/pharmacy/claimed',
       queryParameters: {'limit': limit, 'offset': offset},
     );
-    return _listFrom(data['prescriptions']);
+    final prescriptions = _listFrom(data['prescriptions']);
+    return Future.wait(prescriptions.map((prescription) async {
+      if (prescription.medicines.isNotEmpty) return prescription;
+      try {
+        final medicines = await fetchMedicines(prescription.id);
+        return prescription.withMedicines(medicines);
+      } on ApiException {
+        return prescription;
+      }
+    }));
   }
 
   /// What has already been handed over, newest first.
@@ -40,7 +50,8 @@ class DispensingRepository {
 
   /// The medicines on one claimed prescription.
   Future<List<DispensableMedicine>> fetchMedicines(int prescriptionId) async {
-    final data = await _api.get('/prescriptions/pharmacy/medicines/$prescriptionId');
+    final data =
+        await _api.get('/prescriptions/pharmacy/medicines/$prescriptionId');
     final raw = data['medicines'] ?? data['items'];
     if (raw is! List) return const [];
     return raw

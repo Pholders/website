@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -232,25 +232,19 @@ class _InventoryBodyState extends State<_InventoryBody> {
 
   Widget _buildHeader() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Inventory',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: _textDark,
-                ),
-              ),
+              Text('Inventory',
+                  style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: _textDark)),
               SizedBox(height: 4),
-              Text(
-                'Manage medication stock and availability',
-                style: TextStyle(fontSize: 14, color: _textMuted),
-              ),
+              Text('Manage medication stock and availability',
+                  style: TextStyle(fontSize: 14, color: _textMuted)),
             ],
           ),
         ),
