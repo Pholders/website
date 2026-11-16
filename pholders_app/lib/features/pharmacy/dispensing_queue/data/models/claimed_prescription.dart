@@ -46,6 +46,19 @@ class ClaimedPrescription extends Equatable {
   final DateTime? claimedAt;
   final List<DispensableMedicine> medicines;
 
+  ClaimedPrescription withMedicines(List<DispensableMedicine> value) {
+    return ClaimedPrescription(
+      id: id,
+      number: number,
+      patientName: patientName,
+      patientEmail: patientEmail,
+      patientPhone: patientPhone,
+      diagnosis: diagnosis,
+      claimedAt: claimedAt,
+      medicines: value,
+    );
+  }
+
   /// "Paracetamol, Amoxicillin" for the row, or a count when there are many.
   String get medicineSummary {
     if (medicines.isEmpty) return 'No medicines listed';

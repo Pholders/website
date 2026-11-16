@@ -73,13 +73,20 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Dispensing Queue', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: _textDark)),
+              Text('Dispensing Queue',
+                  style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: _textDark)),
               SizedBox(height: 4),
-              Text('Scripts patients have sent to this pharmacy', style: TextStyle(fontSize: 14, color: _textMuted)),
+              Text('Scripts patients have sent to this pharmacy',
+                  style: TextStyle(fontSize: 14, color: _textMuted)),
             ],
           ),
         ),
-        Text('${vm.awaiting.length} in queue', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted)),
+        Text('${vm.awaiting.length} in queue',
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted)),
       ],
     );
   }
@@ -99,7 +106,11 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
                 color: isActive ? Colors.black : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(_tabs[i], style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isActive ? Colors.white : _textMuted)),
+              child: Text(_tabs[i],
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isActive ? Colors.white : _textMuted)),
             ),
           ),
         );
@@ -113,7 +124,8 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
       borderRadius: BorderRadius.circular(25),
       child: Container(
         margin: const EdgeInsets.only(top: 8),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
+        decoration: BoxDecoration(
+            color: Colors.white, borderRadius: BorderRadius.circular(25)),
         child: Row(
           children: [
             Container(width: 11, color: const Color(0xFF6DD0D8)),
@@ -121,19 +133,58 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 14),
+                    decoration: const BoxDecoration(
+                        border: Border(
+                            bottom: BorderSide(color: Color(0xFFE5E7EB)))),
                     child: const Row(
                       children: [
-                        Expanded(flex: 3, child: Text('Patient', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
-                        Expanded(flex: 3, child: Text('Medication', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
+                        Expanded(
+                            flex: 3,
+                            child: Text('Patient',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280)))),
+                        Expanded(
+                            flex: 3,
+                            child: Text('Medication',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280)))),
                         // The claimed-prescriptions endpoint carries no
                         // prescriber, and a pharmacy quotes the reference
                         // anyway when querying a script.
-                        Expanded(flex: 3, child: Text('Reference', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
-                        Expanded(flex: 2, child: Text('Claimed', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
-                        Expanded(flex: 2, child: Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
-                        Expanded(flex: 2, child: Text('Action', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
+                        Expanded(
+                            flex: 3,
+                            child: Text('Reference',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280)))),
+                        Expanded(
+                            flex: 2,
+                            child: Text('Claimed',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280)))),
+                        Expanded(
+                            flex: 2,
+                            child: Text('Status',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280)))),
+                        Expanded(
+                            flex: 2,
+                            child: Text('Action',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280)))),
                       ],
                     ),
                   ),
@@ -156,7 +207,8 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
             CircularProgressIndicator(color: _teal),
             SizedBox(height: 14),
             // The API sleeps when idle, so a first load can take ~30s.
-            Text('Loading the queue...', style: TextStyle(fontSize: 13, color: _textMuted)),
+            Text('Loading the queue...',
+                style: TextStyle(fontSize: 13, color: _textMuted)),
           ],
         ),
       );
@@ -166,7 +218,8 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
       return _message(
         icon: Icons.cloud_off_outlined,
         title: vm.errorMessage!,
-        action: TextButton(onPressed: vm.onRefresh, child: const Text('Try again')),
+        action:
+            TextButton(onPressed: vm.onRefresh, child: const Text('Try again')),
       );
     }
 
@@ -191,33 +244,72 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6)))),
+      decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6)))),
       child: Row(
         children: [
-          Expanded(flex: 3, child: Row(children: [
-            Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0x33309CA3), border: Border.all(color: _teal, width: 1)), child: const Icon(Icons.person, size: 14, color: _teal)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(item.patientName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textDark), overflow: TextOverflow.ellipsis)),
-          ])),
-          Expanded(flex: 3, child: Text(item.medicineSummary, style: const TextStyle(fontSize: 13, color: _textDark), overflow: TextOverflow.ellipsis)),
-          Expanded(flex: 3, child: Text(item.number, style: const TextStyle(fontSize: 12, color: _textMuted), overflow: TextOverflow.ellipsis)),
-          Expanded(flex: 2, child: Text(item.claimedTime, style: const TextStyle(fontSize: 13, color: _textMuted))),
-          Expanded(flex: 2, child: _StatusDot(status: row.dispensed ? 'Dispensed' : 'Awaiting')),
+          Expanded(
+              flex: 3,
+              child: Row(children: [
+                Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0x33309CA3),
+                        border: Border.all(color: _teal, width: 1)),
+                    child: const Icon(Icons.person, size: 14, color: _teal)),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text(item.patientName,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: _textDark),
+                        overflow: TextOverflow.ellipsis)),
+              ])),
+          Expanded(
+              flex: 3,
+              child: Text(item.medicineSummary,
+                  style: const TextStyle(fontSize: 13, color: _textDark),
+                  overflow: TextOverflow.ellipsis)),
+          Expanded(
+              flex: 3,
+              child: Text(item.number,
+                  style: const TextStyle(fontSize: 12, color: _textMuted),
+                  overflow: TextOverflow.ellipsis)),
+          Expanded(
+              flex: 2,
+              child: Text(item.claimedTime,
+                  style: const TextStyle(fontSize: 13, color: _textMuted))),
+          Expanded(
+              flex: 2,
+              child:
+                  _StatusDot(status: row.dispensed ? 'Dispensed' : 'Awaiting')),
           Expanded(
             flex: 2,
             child: row.dispensed
-                ? const Text('—', style: TextStyle(fontSize: 13, color: _textMuted))
+                ? const Text('—',
+                    style: TextStyle(fontSize: 13, color: _textMuted))
                 : InkWell(
                     onTap: isBusy ? null : () => _confirmDispense(vm, item),
                     borderRadius: BorderRadius.circular(25),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
-                        color: isBusy ? const Color(0xFFB9E4E8) : const Color(0xFF6DD0D8),
+                        color: isBusy
+                            ? const Color(0xFFB9E4E8)
+                            : const Color(0xFF6DD0D8),
                         borderRadius: BorderRadius.circular(25),
-                        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+                        border: Border.all(
+                            color: Colors.black.withValues(alpha: 0.1)),
                       ),
-                      child: Text(isBusy ? 'Working...' : 'Dispense', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                      child: Text(isBusy ? 'Working...' : 'Dispense',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white)),
                     ),
                   ),
           ),
@@ -226,7 +318,8 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
     );
   }
 
-  Widget _message({required IconData icon, required String title, Widget? action}) {
+  Widget _message(
+      {required IconData icon, required String title, Widget? action}) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -235,7 +328,9 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
           children: [
             Icon(icon, size: 36, color: const Color(0xFF9CA3AF)),
             const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: _textMuted)),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: _textMuted)),
             if (action != null) ...[const SizedBox(height: 8), action],
           ],
         ),
@@ -250,34 +345,47 @@ class _DispensingQueuePageState extends State<DispensingQueuePage> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Dispense this prescription?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        title: const Text('Dispense this prescription?',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${item.patientName} — ${item.number}', style: const TextStyle(fontSize: 14, color: _textDark)),
+            Text('${item.patientName} — ${item.number}',
+                style: const TextStyle(fontSize: 14, color: _textDark)),
             const SizedBox(height: 10),
             if (item.medicines.isEmpty)
-              const Text('No medicines are listed on this script.', style: TextStyle(fontSize: 13, color: _textMuted))
+              const Text('No medicines are listed on this script.',
+                  style: TextStyle(fontSize: 13, color: _textMuted))
             else
               ...item.medicines.map(
                 (m) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('• ${m.name}${m.detail.isEmpty ? '' : ' — ${m.detail}'}', style: const TextStyle(fontSize: 13, color: _textMuted)),
+                  child: Text(
+                      '• ${m.name}${m.detail.isEmpty ? '' : ' — ${m.detail}'}',
+                      style: const TextStyle(fontSize: 13, color: _textMuted)),
                 ),
               ),
             const SizedBox(height: 10),
-            const Text('This marks the script as collected and cannot be undone.', style: TextStyle(fontSize: 12, color: _textMuted)),
+            const Text(
+                'This marks the script as collected and cannot be undone.',
+                style: TextStyle(fontSize: 12, color: _textMuted)),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: _textMuted))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: _textMuted))),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               vm.onDispense(item.id);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: _teal, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: _teal,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8))),
             child: const Text('Dispense'),
           ),
         ],
@@ -292,18 +400,27 @@ class _StatusDot extends StatelessWidget {
 
   Color get _color {
     switch (status) {
-      case 'Awaiting': return const Color(0xFFF97316);
-      case 'Dispensed': return const Color(0xFF34D399);
-      default: return const Color(0xFF9CA3AF);
+      case 'Awaiting':
+        return const Color(0xFFF97316);
+      case 'Dispensed':
+        return const Color(0xFF34D399);
+      default:
+        return const Color(0xFF9CA3AF);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: _color)),
+      Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: _color)),
       const SizedBox(width: 6),
-      Flexible(child: Text(status, style: TextStyle(fontSize: 12, color: _color), overflow: TextOverflow.ellipsis)),
+      Flexible(
+          child: Text(status,
+              style: TextStyle(fontSize: 12, color: _color),
+              overflow: TextOverflow.ellipsis)),
     ]);
   }
 }

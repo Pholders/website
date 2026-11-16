@@ -11,13 +11,11 @@ import '../realtime/realtime_gateway.dart';
 import '../../features/auth/data/doctor_auth_repository.dart';
 import '../../features/auth/data/pharmacy_auth_repository.dart';
 import '../../features/doctor/appointments/data/appointments_repository.dart';
-import '../../features/doctor/billing/data/billing_repository.dart';
-import '../../features/doctor/notifications/data/doctor_notifications_repository.dart';
-import '../../features/doctor/patients/data/patient_record_repository.dart';
 import '../../features/doctor/prescriptions/data/prescriptions_repository.dart';
 import '../../features/doctor/reviews/data/reviews_repository.dart';
 import '../../features/pharmacy/dispensing_queue/data/dispensing_repository.dart';
 import '../../features/pharmacy/orders/data/orders_repository.dart';
+import '../../features/pharmacy/inventory/data/inventory_repository.dart';
 import '../auth/token_storage.dart';
 import '../network/api_client.dart';
 
@@ -78,23 +76,15 @@ Future<void> setupServiceLocator() async {
     () => ReviewsRepository(sl<ApiClient>()),
   );
 
-  sl.registerLazySingleton<DoctorNotificationsRepository>(
-    () => DoctorNotificationsRepository(sl<ApiClient>()),
-  );
-
-  sl.registerLazySingleton<BillingRepository>(
-    () => BillingRepository(sl<ApiClient>()),
-  );
-
-  sl.registerLazySingleton<PatientRecordRepository>(
-    () => PatientRecordRepository(sl<ApiClient>()),
-  );
-
   sl.registerLazySingleton<DispensingRepository>(
     () => DispensingRepository(sl<ApiClient>()),
   );
 
   sl.registerLazySingleton<OrdersRepository>(
     () => OrdersRepository(sl<ApiClient>()),
+  );
+  
+    sl.registerLazySingleton<InventoryRepository>(
+    () => InventoryRepository(sl<ApiClient>()),
   );
 }

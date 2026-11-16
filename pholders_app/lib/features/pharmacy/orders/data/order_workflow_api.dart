@@ -136,13 +136,14 @@ class OrderWorkflowApi {
     return _dataMap(response.data);
   }
 
-  Future<OrderJson> dispenseItems(
-    String orderId,
-    List<OrderJson> items,
-  ) async {
+  Future<OrderJson> dispenseItems(String orderId, List<OrderJson> items,
+      {String? notes}) async {
     final response = await _dio.post<dynamic>(
       'orders/$orderId/dispense-items',
-      data: {'items': items},
+      data: {
+        'items': items,
+        if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      },
     );
     return _dataMap(response.data);
   }

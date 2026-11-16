@@ -916,8 +916,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             children: [
               // Header
               const Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
                     SizedBox(width: 24),
@@ -1000,9 +999,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Method: In-Store Pickup', style: const TextStyle(fontSize: 13, color: _textMuted)),
+              const Text('Method: In-Store Pickup',
+                  style: const TextStyle(fontSize: 13, color: _textMuted)),
               const SizedBox(height: 6),
-              const Text('ETA: 25 Mar 2026 • 11:00 AM', style: const TextStyle(fontSize: 13, color: _textMuted)),
+              const Text('ETA: 25 Mar 2026 • 11:00 AM',
+                  style: const TextStyle(fontSize: 13, color: _textMuted)),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -1015,7 +1016,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text(_orderStatus, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text(_orderStatus,
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
                 ],
               ),
             ],
@@ -1196,19 +1199,29 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   String get _orderActionLabel {
     switch (_orderStatus) {
-      case 'Processing': return 'Mark Ready';
-      case 'Ready': return 'Out for Delivery';
-      case 'Out for Delivery': return 'Complete';
-      default: return 'View';
+      case 'Processing':
+        return 'Mark Ready';
+      case 'Ready':
+        return 'Out for Delivery';
+      case 'Out for Delivery':
+        return 'Complete';
+      default:
+        return 'View';
     }
   }
 
   void _handleOrderAction() {
     String? next;
     switch (_orderStatus) {
-      case 'Processing': next = 'Ready'; break;
-      case 'Ready': next = 'Out for Delivery'; break;
-      case 'Out for Delivery': next = 'Completed'; break;
+      case 'Processing':
+        next = 'Ready';
+        break;
+      case 'Ready':
+        next = 'Out for Delivery';
+        break;
+      case 'Out for Delivery':
+        next = 'Completed';
+        break;
     }
     if (next == null) return;
 
@@ -1216,7 +1229,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Move order to "$next"?', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        title: Text('Move order to "$next"?',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: Text(
           next == 'Ready'
               ? 'This will mark the order as ready for collection. The patient will be notified.'
@@ -1226,7 +1240,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280)))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel',
+                  style: TextStyle(color: Color(0xFF6B7280)))),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
@@ -1237,7 +1254,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 behavior: SnackBarBehavior.floating,
               ));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: _teal, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: _teal,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8))),
             child: const Text('Confirm'),
           ),
         ],
