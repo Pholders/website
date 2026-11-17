@@ -1,5 +1,7 @@
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
+import '../../shared/constants/app_constants.dart';
+
 typedef RealtimeOrderEventCallback = void Function(
   String eventName,
   dynamic payload,
@@ -9,17 +11,12 @@ typedef RealtimeOrderEventCallback = void Function(
 ///
 /// Handles order events for active pharmacy screens.
 class RealtimeGateway {
-  static const String defaultWsUrl = 'http://localhost:3000';
+  RealtimeGateway({String? wsUrl}) : wsUrl = wsUrl ?? defaultWsUrl;
+
+  static String get defaultWsUrl => AppConstants.realtimeBaseUrl;
 
   final String wsUrl;
   io.Socket? _socket;
-
-  RealtimeGateway({String? wsUrl})
-      : wsUrl = wsUrl ??
-            const String.fromEnvironment(
-              'WS_URL',
-              defaultValue: defaultWsUrl,
-            );
 
   bool get isConnected => _socket?.connected ?? false;
 

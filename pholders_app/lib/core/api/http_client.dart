@@ -10,16 +10,13 @@ import 'api_exception.dart';
 /// backend dev URL. Attaches a Bearer token from [FlutterSecureStorage] on
 /// every request and normalizes errors into [ApiException].
 class HttpClient {
-  static const String defaultBaseUrl = 'http://localhost:3000/api';
-
   static Dio create({
     required FlutterSecureStorage storage,
     required void Function() onUnauthorized,
   }) {
-    const baseUrl = String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: defaultBaseUrl,
-    );
+    final baseUrl = AppConstants.apiBaseUrl.endsWith('/')
+        ? AppConstants.apiBaseUrl
+        : '${AppConstants.apiBaseUrl}/';
 
     final dio = Dio(
       BaseOptions(

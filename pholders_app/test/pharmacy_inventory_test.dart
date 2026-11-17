@@ -18,17 +18,36 @@ class _FakeRepo implements InventoryRepository {
   Object? failWith;
 
   @override
-  Future<List<InventoryItem>> fetchItems({
+  Future<InventoryPageResult> fetchItems({
     InventoryFilter filter = InventoryFilter.all,
     String? search,
+    bool lowStock = false,
+    int? expiringWithinDays,
+    bool includeInactive = false,
+    int limit = 50,
+    int offset = 0,
   }) async {
     filters.add(filter);
     if (failWith != null) throw failWith!;
-    final items = rows.map(InventoryItem.fromJson).toList();
-    return switch (filter) {
-      InventoryFilter.lowStock => items.where((i) => i.isLowStock).toList(),
-      _ => items,
-    };
+    var items = rows
+        .map(InventoryItem.fromJson)
+        .where((item) => includeInactive || item.isActive)
+        .where((item) =>
+            !lowStock && filter != InventoryFilter.lowStock || item.isLowStock)
+        .toList();
+    if (search != null && search.trim().isNotEmpty) {
+      items = items
+          .where((item) => item.medicationName
+              .toLowerCase()
+              .contains(search.trim().toLowerCase()))
+          .toList();
+    }
+    return InventoryPageResult(
+      items: items.skip(offset).take(limit).toList(),
+      total: items.length,
+      limit: limit,
+      offset: offset,
+    );
   }
 
   @override
@@ -81,6 +100,44 @@ class _FakeRepo implements InventoryRepository {
     removed.add(id);
     rows.removeWhere((r) => r['id'] == id);
   }
+
+  @override
+  Future<InventoryItem> createItem(Map<String, dynamic> fields) =>
+      create(fields);
+
+  @override
+  Future<InventoryItem> updateItem(
+    String id,
+    Map<String, dynamic> fields,
+  ) =>
+      update(int.parse(id), fields);
+
+  @override
+  Future<InventoryItem> adjustQuantity(
+    String id, {
+    required int delta,
+    required String reason,
+    String? notes,
+  }) =>
+      adjust(
+        int.parse(id),
+        delta: delta,
+        reason:
+            StockReason.values.firstWhere((value) => value.wireName == reason),
+        notes: notes,
+      );
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchAdjustments(String id) async =>
+      const [];
+
+  @override
+  Future<InventoryItem> deactivateItem(String id) async {
+    final row = rows.firstWhere((r) => r['id'].toString() == id);
+    row['is_active'] = false;
+    removed.add(int.parse(id));
+    return InventoryItem.fromJson(row);
+  }
 }
 
 Map<String, dynamic> _row({
@@ -128,11 +185,15 @@ void main() {
     });
 
     test('at the threshold is low, and none at all is out', () {
-      expect(InventoryItem.fromJson(_row(id: 1, name: 'A', onHand: 10)).isLowStock,
+      expect(
+          InventoryItem.fromJson(_row(id: 1, name: 'A', onHand: 10)).isLowStock,
           isTrue);
-      expect(InventoryItem.fromJson(_row(id: 1, name: 'A', onHand: 11)).isLowStock,
+      expect(
+          InventoryItem.fromJson(_row(id: 1, name: 'A', onHand: 11)).isLowStock,
           isFalse);
-      expect(InventoryItem.fromJson(_row(id: 1, name: 'A', onHand: 0)).isOutOfStock,
+      expect(
+          InventoryItem.fromJson(_row(id: 1, name: 'A', onHand: 0))
+              .isOutOfStock,
           isTrue);
     });
 
@@ -152,7 +213,8 @@ void main() {
     });
   });
 
-  testWidgets('the stock on the server is what the table shows', (tester) async {
+  testWidgets('the stock on the server is what the table shows',
+      (tester) async {
     final repo = _FakeRepo([
       _row(id: 1, name: 'Amoxicillin', dosage: '500mg capsule', price: '45.50'),
       _row(id: 2, name: 'Paracetamol', onHand: 4),
@@ -187,7 +249,8 @@ void main() {
     expect(find.text('Amoxicillin'), findsOneWidget);
   });
 
-  testWidgets('the low stock tab asks the server for low stock', (tester) async {
+  testWidgets('the low stock tab asks the server for low stock',
+      (tester) async {
     final repo = _FakeRepo([
       _row(id: 1, name: 'Amoxicillin'),
       _row(id: 2, name: 'Paracetamol', onHand: 4),
@@ -263,8 +326,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Damaged').last);
     await tester.pumpAndSettle();
-    await tester.enterText(
-        find.byKey(const ValueKey('inventory-amount')), '5');
+    await tester.enterText(find.byKey(const ValueKey('inventory-amount')), '5');
     await tester.tap(find.byKey(const ValueKey('inventory-adjust-save')));
     await tester.pumpAndSettle();
 

@@ -97,12 +97,16 @@ class _InventoryBodyState extends State<_InventoryBody> {
     });
     try {
       final results = await Future.wait<Object>([
-        widget.repository.fetchItems(filter: _filter, search: _search.text),
+        widget.repository.fetchItems(
+          filter: _filter,
+          search: _search.text,
+          limit: 200,
+        ),
         widget.repository.fetchSummary(),
       ]);
       if (!mounted || generation != _generation) return;
       setState(() {
-        _items = results[0] as List<InventoryItem>;
+        _items = (results[0] as InventoryPageResult).items;
         _summary = results[1] as InventorySummary;
         _loading = false;
       });
@@ -393,8 +397,7 @@ class _InventoryBodyState extends State<_InventoryBody> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final width =
-                      math.max(constraints.maxWidth, _tableMinWidth);
+                  final width = math.max(constraints.maxWidth, _tableMinWidth);
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: SizedBox(
@@ -460,7 +463,15 @@ class _InventoryBodyState extends State<_InventoryBody> {
 
 // ─── Table pieces ────────────────────────────────────────────────────────────
 
-const _flex = (medication: 4, sku: 2, onHand: 3, lowAt: 2, price: 2, expiry: 2, action: 3);
+const _flex = (
+  medication: 4,
+  sku: 2,
+  onHand: 3,
+  lowAt: 2,
+  price: 2,
+  expiry: 2,
+  action: 3
+);
 
 class _HeaderRow extends StatelessWidget {
   const _HeaderRow();
@@ -474,7 +485,8 @@ class _HeaderRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(flex: _flex.medication, child: const _ColHeader('Medication')),
+          Expanded(
+              flex: _flex.medication, child: const _ColHeader('Medication')),
           Expanded(flex: _flex.sku, child: const _ColHeader('SKU')),
           Expanded(flex: _flex.onHand, child: const _ColHeader('On hand')),
           Expanded(flex: _flex.lowAt, child: const _ColHeader('Low at')),
@@ -504,9 +516,8 @@ class _ItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final detail = [item.dosage, item.genericName]
-        .whereType<String>()
-        .join(' · ');
+    final detail =
+        [item.dosage, item.genericName].whereType<String>().join(' · ');
     final (stockLabel, stockColour) = item.isOutOfStock
         ? ('Out of stock', _outRed)
         : item.isLowStock
@@ -759,8 +770,10 @@ class _ItemFormDialog extends StatefulWidget {
 
 class _ItemFormDialogState extends State<_ItemFormDialog> {
   final _form = GlobalKey<FormState>();
-  late final _name = TextEditingController(text: widget.existing?.medicationName);
-  late final _generic = TextEditingController(text: widget.existing?.genericName);
+  late final _name =
+      TextEditingController(text: widget.existing?.medicationName);
+  late final _generic =
+      TextEditingController(text: widget.existing?.genericName);
   late final _dosage = TextEditingController(text: widget.existing?.dosage);
   late final _sku = TextEditingController(text: widget.existing?.sku);
   late final _unit = TextEditingController(text: widget.existing?.unit);
@@ -783,8 +796,17 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
   @override
   void dispose() {
     for (final c in [
-      _name, _generic, _dosage, _sku, _unit, _packSize, _quantity,
-      _threshold, _price, _supplier, _notes,
+      _name,
+      _generic,
+      _dosage,
+      _sku,
+      _unit,
+      _packSize,
+      _quantity,
+      _threshold,
+      _price,
+      _supplier,
+      _notes,
     ]) {
       c.dispose();
     }
@@ -843,7 +865,9 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(_isNew ? 'Add stock item' : 'Edit ${widget.existing!.medicationName}'),
+      title: Text(_isNew
+          ? 'Add stock item'
+          : 'Edit ${widget.existing!.medicationName}'),
       content: SizedBox(
         width: 520,
         child: Form(
@@ -853,7 +877,8 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _field(_name, 'Medication name *', key: 'name', validator: (v) {
-                  if ((v ?? '').trim().isEmpty) return 'Enter the medication name';
+                  if ((v ?? '').trim().isEmpty)
+                    return 'Enter the medication name';
                   return null;
                 }),
                 _pair(
@@ -872,7 +897,9 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
                 _pair(
                   _isNew
                       ? _field(_quantity, 'Starting quantity',
-                          key: 'quantity', number: true, validator: _wholeOrBlank)
+                          key: 'quantity',
+                          number: true,
+                          validator: _wholeOrBlank)
                       : _readOnly('On hand',
                           '${widget.existing!.quantityOnHand} (use Adjust stock)'),
                   _field(_threshold, 'Low stock at',
@@ -887,7 +914,8 @@ class _ItemFormDialogState extends State<_ItemFormDialog> {
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(_error!, style: const TextStyle(color: _outRed)),
+                    child:
+                        Text(_error!, style: const TextStyle(color: _outRed)),
                   ),
               ],
             ),
@@ -1176,8 +1204,18 @@ class _AdjustDialogState extends State<_AdjustDialog> {
 // ─── Formatting ──────────────────────────────────────────────────────────────
 
 const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "31 Jan 2027".
@@ -1185,8 +1223,7 @@ String formatDay(DateTime day) =>
     '${day.day} ${_months[day.month - 1]} ${day.year}';
 
 /// "2027-01-31", as the DATE column takes it.
-String isoDay(DateTime day) =>
-    '${day.year.toString().padLeft(4, '0')}-'
+String isoDay(DateTime day) => '${day.year.toString().padLeft(4, '0')}-'
     '${day.month.toString().padLeft(2, '0')}-'
     '${day.day.toString().padLeft(2, '0')}';
 

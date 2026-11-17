@@ -12,6 +12,11 @@ flutter pub get
 flutter run -d chrome
 ```
 
+The app uses the hosted API by default. To point it at another deployment, pass
+`--dart-define=API_BASE_URL=https://your-backend.example/api`. Socket.IO uses
+that same host by default; if it is hosted separately, also pass
+`--dart-define=WS_URL=https://your-realtime.example`.
+
 ---
 
 ## Folder structure

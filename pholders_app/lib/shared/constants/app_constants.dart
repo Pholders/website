@@ -17,6 +17,18 @@ class AppConstants {
     defaultValue: 'https://backend-system-u8s2.onrender.com/api',
   );
 
+  /// Socket.IO defaults to the API host, without its `/api` path.
+  ///
+  /// Set `WS_URL` at build time when realtime events use a separate host.
+  static String get realtimeBaseUrl {
+    const configuredUrl = String.fromEnvironment('WS_URL');
+    if (configuredUrl.isNotEmpty) return configuredUrl;
+
+    final apiUri = Uri.parse(apiBaseUrl);
+    final apiPath = apiUri.path.replaceFirst(RegExp(r'/api/?$'), '');
+    return apiUri.replace(path: apiPath).toString();
+  }
+
   /// The API is hosted on Render's free tier, which suspends the instance
   /// after inactivity. The first request after a spin-down has been measured
   /// at ~32s, so the timeouts are deliberately generous.
