@@ -569,13 +569,17 @@ class _Column extends StatelessWidget {
                           color: good ? Colors.white : PublicColors.body),
                     ),
                     const SizedBox(width: 14),
-                    Text(title,
+                    Expanded(
+                      child: Text(
+                        title,
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.4,
                           color: fg,
-                        )),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 26),

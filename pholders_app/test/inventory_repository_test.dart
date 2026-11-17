@@ -169,17 +169,18 @@ void main() {
     );
     await repository.remove(5);
 
-    expect(items.single.medicationName, 'Paracetamol');
-    expect(items.single.unitPrice, 2.5);
-    expect(items.single.quantityOnHand, 100);
+    expect(items.items.single.medicationName, 'Paracetamol');
+    expect(items.items.single.unitPrice, 2.5);
+    expect(items.items.single.quantityOnHand, 100);
     expect(summary.totalActive, 1);
     expect(created.medicationName, 'Paracetamol');
     expect(updated.medicationName, 'Paracetamol');
     expect(adjusted.quantityOnHand, 125);
     expect(server.requests[0].queryParameters, {
+      'limit': 50,
+      'offset': 0,
       'search': 'para',
-      'low_stock': 'true',
-      'limit': 200,
+      'low_stock': true,
     });
     expect(server.requests[5].method, 'DELETE');
     expect(server.requests[5].path, '/inventory/5');

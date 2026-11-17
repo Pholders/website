@@ -56,8 +56,13 @@ void main() {
 
   testWidgets('the form writes the email to support', (tester) async {
     await show(tester, const Size(1440, 1000));
-    await tester.scrollUntilVisible(find.text('Write the email'), 300,
-        scrollable: scrollable());
+    final writeEmail = find.text('Write the email');
+    await tester.scrollUntilVisible(writeEmail, 300, scrollable: scrollable());
+    await Scrollable.ensureVisible(
+      tester.element(writeEmail),
+      alignment: 0.5,
+    );
+    await tester.pumpAndSettle();
 
     // Nothing to write yet: it asks rather than opening an empty email.
     await tester.tap(find.text('Write the email'));

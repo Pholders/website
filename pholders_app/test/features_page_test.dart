@@ -28,7 +28,15 @@ void main() {
 
   testWidgets('the switch shows what each audience gets', (tester) async {
     await show(tester, const Size(1440, 1000));
-    await tester.tap(find.text('For Pharmacies'));
+    final pharmacies = find.text('For Pharmacies');
+    await tester.scrollUntilVisible(
+      pharmacies,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await Scrollable.ensureVisible(tester.element(pharmacies), alignment: 0.5);
+    await tester.pumpAndSettle();
+    await tester.tap(pharmacies);
     await tester.pumpAndSettle();
     expect(find.text('Dispensing queue'), findsOneWidget);
     expect(find.text('Digital prescriptions'), findsNothing);

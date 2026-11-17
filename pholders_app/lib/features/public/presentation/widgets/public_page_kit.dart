@@ -226,7 +226,10 @@ class _PillButtonState extends State<PillButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           transform: Matrix4.translationValues(0, _hover ? -2 : 0, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.sizeOf(context).width < 400 ? 16 : 26,
+            vertical: 16,
+          ),
           decoration: BoxDecoration(
             color: dark ? PublicColors.ink : Colors.white,
             borderRadius: BorderRadius.circular(40),
