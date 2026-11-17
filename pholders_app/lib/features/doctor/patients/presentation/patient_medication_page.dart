@@ -1,15 +1,22 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/patient_scope.dart';
+import 'package:pholders_app/features/doctor/patients/presentation/medication_screen.dart';
 
-/// PatientMedicationPage — placeholder until Figma design is implemented.
+/// PatientMedicationPage — displays the medication for a patient.
+///
+/// The patient comes from the id in the address, resolved against the
+/// doctor's own list. It used to be a fixed, invented record.
 class PatientMedicationPage extends StatelessWidget {
-  final String patientId;
-
   const PatientMedicationPage({super.key, required this.patientId});
+  final String patientId;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(child: Text('PatientMedicationPage')),
+      body: PatientScope(
+        patientId: patientId,
+        builder: (context, patient) => MedicationScreen(patient: patient),
+      ),
     );
   }
 }

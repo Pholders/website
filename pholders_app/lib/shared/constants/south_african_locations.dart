@@ -1,0 +1,98 @@
+class SouthAfricanLocations {
+  SouthAfricanLocations._();
+
+  static const provinces = <String>[
+    'Eastern Cape',
+    'Free State',
+    'Gauteng',
+    'KwaZulu-Natal',
+    'Limpopo',
+    'Mpumalanga',
+    'North West',
+    'Northern Cape',
+    'Western Cape',
+  ];
+
+  static const citiesByProvince = <String, List<String>>{
+    'Eastern Cape': [
+      'Bhisho',
+      'East London',
+      'Grahamstown',
+      'King Williams Town',
+      'Mthatha',
+      'Port Elizabeth',
+      'Uitenhage',
+    ],
+    'Free State': [
+      'Bloemfontein',
+      'Kroonstad',
+      'Parys',
+      'Phuthaditjhaba',
+      'Sasolburg',
+      'Welkom',
+    ],
+    'Gauteng': [
+      'Benoni',
+      'Boksburg',
+      'Braamfontein',
+      'Germiston',
+      'Johannesburg',
+      'Kempton Park',
+      'Midrand',
+      'Pretoria',
+      'Randburg',
+      'Roodepoort',
+      'Sandton',
+      'Soweto',
+      'Springs',
+    ],
+    'KwaZulu-Natal': [
+      'Durban',
+      'Empangeni',
+      'Ladysmith',
+      'Newcastle',
+      'Pietermaritzburg',
+      'Pinetown',
+      'Richards Bay',
+      'Umlazi',
+    ],
+    'Limpopo': [
+      'Giyani',
+      'Lebowakgomo',
+      'Louis Trichardt',
+      'Mokopane',
+      'Phalaborwa',
+      'Polokwane',
+      'Thohoyandou',
+    ],
+    'Mpumalanga': [
+      'Emalahleni',
+      'Middelburg',
+      'Nelspruit',
+      'Secunda',
+      'White River',
+    ],
+    'North West': [
+      'Klerksdorp',
+      'Mahikeng',
+      'Mmabatho',
+      'Potchefstroom',
+      'Rustenburg',
+    ],
+    'Northern Cape': [
+      'Kimberley',
+      'Kuruman',
+      'Springbok',
+      'Upington',
+    ],
+    'Western Cape': [
+      'Bellville',
+      'Cape Town',
+      'George',
+      'Paarl',
+      'Stellenbosch',
+      'Wellington',
+      'Worcester',
+    ],
+  };
+}

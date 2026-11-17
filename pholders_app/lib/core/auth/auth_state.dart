@@ -1,13 +1,39 @@
 import 'package:equatable/equatable.dart';
 
+import '../../features/auth/data/models/doctor.dart';
+
 /// Represents the authentication slice of the Redux store.
 ///
 /// This is the single source of truth for the current user's auth status,
 /// JWT token, and resolved role.
 class AuthState extends Equatable {
+  const AuthState({
+    this.token,
+    this.role,
+    this.userName,
+    this.doctor,
+    this.isLoading = false,
+    this.isSigningIn = false,
+    this.isSigningOut = false,
+    this.errorMessage,
+    this.isRestoring = true,
+    this.signupEmail,
+    this.signupRole,
+    this.devOtpCode,
+    this.isEmailVerified = false,
+    this.medicalAidCatalogue = const [],
+  });
+
+  /// The initial state before any login attempt.
+  factory AuthState.initial() => const AuthState();
+
   /// The JWT token returned by the REST API on successful login.
   /// Null when the user is not authenticated.
   final String? token;
+
+  /// Schemes the doctor can choose from. Survives logout — it is reference
+  /// data, not anything belonging to the signed-in doctor.
+  final List<MedicalAidScheme> medicalAidCatalogue;
 
   /// The authenticated user's role: 'doctor' or 'pharmacy'.
   /// Null when the user is not authenticated.
@@ -16,44 +42,106 @@ class AuthState extends Equatable {
   /// The authenticated user's display name.
   final String? userName;
 
-  /// True while an auth request (login / refresh) is in flight.
+  /// The signed-in doctor's full profile, once loaded. Null for other roles.
+  final Doctor? doctor;
+
+  /// True while an auth request (login / signup) is in flight.
   final bool isLoading;
+
+  /// True only while a login request is in flight. Unlike [isLoading], which
+  /// profile saves and sign-up also set, this means "signing in", and the
+  /// splash screen shows for it.
+  final bool isSigningIn;
+
+  /// True from the click on sign out until the server has ended the
+  /// session. The local session is gone already; the splash covers the wait.
+  final bool isSigningOut;
 
   /// Non-null when the last auth operation failed.
   final String? errorMessage;
 
-  const AuthState({
-    this.token,
-    this.role,
-    this.userName,
-    this.isLoading = false,
-    this.errorMessage,
-  });
+  /// True until the stored session has been read from secure storage at
+  /// startup. The router waits on this so it does not bounce an
+  /// already-signed-in user to the login page on a page refresh.
+  final bool isRestoring;
 
-  /// The initial state before any login attempt.
-  factory AuthState.initial() => const AuthState();
+  /// The email an account was just registered with, so the verification
+  /// screen can prefill it.
+  final String? signupEmail;
+
+  /// Who registered with [signupEmail]: 'doctor' or 'pharmacy'. The two
+  /// verify and resend their codes at different endpoints.
+  final String? signupRole;
+
+  /// True when the account being verified is a pharmacy's.
+  bool get isPharmacySignup => signupRole == 'pharmacy';
+
+  /// The activation code, when the backend returns it instead of emailing it.
+  /// The deployed API does this while it runs with NODE_ENV=development.
+  final String? devOtpCode;
+
+  /// True once the activation code has been accepted.
+  final bool isEmailVerified;
 
   /// Returns true when a valid token and role are present.
   bool get isAuthenticated => token != null && role != null;
+
+  /// True when the signed-in user is a doctor.
+  bool get isDoctor => role == 'doctor';
 
   AuthState copyWith({
     String? token,
     String? role,
     String? userName,
+    Doctor? doctor,
     bool? isLoading,
+    bool? isSigningIn,
+    bool? isSigningOut,
     String? errorMessage,
+    bool? isRestoring,
+    String? signupEmail,
+    String? signupRole,
+    String? devOtpCode,
+    bool? isEmailVerified,
+    List<MedicalAidScheme>? medicalAidCatalogue,
     bool clearError = false,
     bool clearToken = false,
+    bool clearSignup = false,
   }) {
     return AuthState(
       token: clearToken ? null : (token ?? this.token),
       role: clearToken ? null : (role ?? this.role),
       userName: clearToken ? null : (userName ?? this.userName),
+      doctor: clearToken ? null : (doctor ?? this.doctor),
       isLoading: isLoading ?? this.isLoading,
+      isSigningIn: isSigningIn ?? this.isSigningIn,
+      isSigningOut: isSigningOut ?? this.isSigningOut,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      isRestoring: isRestoring ?? this.isRestoring,
+      signupEmail: clearSignup ? null : (signupEmail ?? this.signupEmail),
+      signupRole: clearSignup ? null : (signupRole ?? this.signupRole),
+      devOtpCode: clearSignup ? null : (devOtpCode ?? this.devOtpCode),
+      isEmailVerified:
+          clearSignup ? false : (isEmailVerified ?? this.isEmailVerified),
+      medicalAidCatalogue: medicalAidCatalogue ?? this.medicalAidCatalogue,
     );
   }
 
   @override
-  List<Object?> get props => [token, role, userName, isLoading, errorMessage];
+  List<Object?> get props => [
+        token,
+        role,
+        userName,
+        doctor,
+        isLoading,
+        isSigningIn,
+        isSigningOut,
+        errorMessage,
+        isRestoring,
+        signupEmail,
+        signupRole,
+        devOtpCode,
+        isEmailVerified,
+        medicalAidCatalogue
+      ];
 }

@@ -38,10 +38,26 @@ class PharmacySettingsPage extends StatelessWidget {
     );
   }
 
-  void _navigate(BuildContext context, String id) {
+    void _navigate(BuildContext context, String id) {
     switch (id) {
+      case 'personal_information':
+        context.go(AppRoutes.pharmacySettingsPersonalInfo);
+        break;
+      case 'pharmacy_details':
+        context.go(AppRoutes.pharmacySettingsPharmacyDetails);
+        break;
+      case 'professional':
+        context.go(AppRoutes.pharmacySettingsProfessional);
+        break;
+      case 'notification_settings':
+      case 'preferences_notifications':
+        context.go(AppRoutes.pharmacySettingsNotifications);
+        break;
+      case 'notification_center':
+        context.go(AppRoutes.pharmacySettingsNotificationCenter);
+        break;
       case 'profile':
-        context.go(AppRoutes.pharmacySettingsLinkedServices);
+        context.go(AppRoutes.pharmacySettingsProfile);
         break;
       case 'linked_services':
         context.go(AppRoutes.pharmacySettingsLinkedServices);
@@ -79,11 +95,27 @@ class PharmacySettingsPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      const Text(
                         'Select a category from the sidebar to manage your settings.',
-                        style: TextStyle(fontSize: 14, color: _textMuted),
+                        style: const TextStyle(fontSize: 14, color: _textMuted),
                       ),
-                      const SizedBox(height: 32),
+                                            const SizedBox(height: 32),
+                      _buildQuickLink(
+                        context,
+                        icon: Icons.notifications_active_outlined,
+                        label: 'Notification Settings',
+                        subtitle: 'Manage how script, order, and system alerts are delivered',
+                        onTap: () => context.go(AppRoutes.pharmacySettingsNotifications),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildQuickLink(
+                        context,
+                        icon: Icons.inbox_outlined,
+                        label: 'Notification Centre',
+                        subtitle: 'Review sent notifications and alert history',
+                        onTap: () => context.go(AppRoutes.pharmacySettingsNotificationCenter),
+                      ),
+                      const SizedBox(height: 12),
                       _buildQuickLink(
                         context,
                         icon: Icons.cable_outlined,
@@ -146,7 +178,7 @@ class PharmacySettingsPage extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: _textMuted),
+                    style: const TextStyle(fontSize: 12, color: _textMuted),
                   ),
                 ],
               ),

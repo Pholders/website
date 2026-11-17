@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:redux/redux.dart';
 
@@ -9,16 +9,15 @@ import 'app_routes.dart';
 // ─── Auth pages ──────────────────────────────────────────────────────────────
 import '../../features/auth/presentation/splash_page.dart';
 import '../../features/auth/presentation/landing_page.dart';
-import '../../features/auth/presentation/login_page.dart';
-import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/doctor_register_step2_page.dart';
+import '../../features/auth/data/models/doctor_registration_draft.dart';
 import '../../features/auth/presentation/verify_account_page.dart';
 import '../../features/auth/presentation/forgot_password_page.dart';
 import '../../features/public/presentation/features_page.dart';
 import '../../features/public/presentation/about_page.dart';
 import '../../features/public/presentation/services_page.dart';
 import '../../features/public/presentation/how_it_works_page.dart';
-import '../../features/public/presentation/support_page.dart';
+import '../../features/public/presentation/contact_page.dart';
 
 // ─── Doctor pages ─────────────────────────────────────────────────────────────
 import '../../features/doctor/dashboard/presentation/doctor_dashboard_page.dart';
@@ -39,6 +38,7 @@ import '../../features/doctor/prescriptions/presentation/search_scripts_page.dar
 import '../../features/doctor/sick_notes/presentation/sick_notes_page.dart';
 import '../../features/doctor/appointments/presentation/appointments_page.dart';
 import '../../features/doctor/billing/presentation/billing_page.dart';
+import '../../features/doctor/notifications/presentation/notifications_page.dart';
 import '../../features/doctor/settings/presentation/settings_page.dart';
 import '../../features/doctor/settings/presentation/account_settings.dart';
 import '../../features/doctor/settings/presentation/practice_settings.dart';
@@ -46,6 +46,7 @@ import '../../features/doctor/settings/presentation/security_settings.dart';
 import '../../features/doctor/settings/presentation/preferences_settings.dart';
 import '../../features/doctor/settings/presentation/integrations_settings.dart';
 import '../../features/doctor/settings/presentation/login_activity.dart';
+import '../../features/public/presentation/qr_prescription_page.dart';
 import '../../features/doctor/settings/presentation/support_legal_settings.dart';
 import '../../shared/pages/linked_services_page.dart';
 
@@ -60,7 +61,11 @@ import '../../features/pharmacy/dispensing_queue/presentation/dispensing_queue_p
 import '../../features/pharmacy/patients/presentation/pharmacy_patients_page.dart';
 import '../../features/pharmacy/billing/presentation/pharmacy_billing_page.dart';
 import '../../features/pharmacy/reports/presentation/pharmacy_reports_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_details_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_personal_info_page.dart';
 import '../../features/pharmacy/settings/presentation/pharmacy_settings_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_professional_page.dart';
+import '../../features/pharmacy/settings/presentation/pharmacy_profile_page.dart';
 
 // ─── Shell layouts ────────────────────────────────────────────────────────────
 import '../../shared/widgets/shell_layout.dart';
@@ -69,34 +74,67 @@ import '../../shared/widgets/shell_layout.dart';
 ///
 /// The router reads auth state from the Redux [Store] to handle redirects.
 /// All route strings come from [AppRoutes] — never hardcoded here.
+/// Several settings screens are one widget holding two or more panels chosen
+/// by `?tab=`. The links have always carried the query string; nothing read it.
+int _tab(GoRouterState state) =>
+    int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
+
+/// /get-started, /login and /register share this page key. The Navigator
+/// then treats them as one page and updates it in place rather than replacing
+/// it, so [LandingPage] keeps its state and animates between the doctors, the
+/// sign-in form and the signup form.
+const _landingPageKey = ValueKey('public-landing');
+
+Page<void> _landingPage(LandingPanel panel) => NoTransitionPage(
+      key: _landingPageKey,
+      child: LandingPage(panel: panel),
+    );
+
 GoRouter createRouter(Store<AppState> store) {
   return GoRouter(
     // Let GoRouter use the browser URL instead of forcing splash.
     // initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
-    // TODO: Re-enable auth guards once authentication is implemented.
-    // redirect: (BuildContext context, GoRouterState state) { ... },
+    // Re-run [_guard] whenever the auth slice changes (login, logout, or the
+    // stored session finishing its restore).
+    refreshListenable: _AuthChangeNotifier(store),
+    redirect: (context, state) => _guard(store, state),
     routes: [
       // ─── Public routes ──────────────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashPage(),
       ),
+      // Landing, Login and Signup are one page: [_landingPage] keeps it under
+      // a single key, so moving between them swaps the teal circle's contents
+      // in place.
       GoRoute(
         path: AppRoutes.landing,
-        builder: (context, state) => const LandingPage(),
+        pageBuilder: (context, state) => _landingPage(LandingPanel.landing),
+      ),
+      // Public: opened by scanning a prescription QR or following its link.
+      // Outside the shell and outside the guard, which only covers /doctor
+      // and /pharmacy — whoever holds the link holds the prescription.
+      GoRoute(
+        path: AppRoutes.prescriptionQr,
+        builder: (context, state) => QrPrescriptionPage(
+          token: state.pathParameters['token'] ?? '',
+        ),
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => const LoginPage(),
+        pageBuilder: (context, state) => _landingPage(LandingPanel.login),
       ),
       GoRoute(
         path: AppRoutes.register,
-        builder: (context, state) => const RegisterPage(),
+        pageBuilder: (context, state) => _landingPage(LandingPanel.signup),
       ),
       GoRoute(
         path: AppRoutes.registerStep2,
-        builder: (context, state) => const DoctorRegisterStep2Page(),
+        // Step 1 hands the personal details across as `extra`.
+        builder: (context, state) => DoctorRegisterStep2Page(
+          draft: state.extra as DoctorRegistrationDraft?,
+        ),
       ),
       GoRoute(
         path: AppRoutes.verifyAccount,
@@ -123,8 +161,14 @@ GoRouter createRouter(Store<AppState> store) {
         builder: (context, state) => const HowItWorksPage(),
       ),
       GoRoute(
+        // Support is answered by the Contact page, which has the support
+        // inbox; the old link keeps working.
         path: AppRoutes.support,
-        builder: (context, state) => const SupportPage(),
+        builder: (context, state) => const ContactPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.contact,
+        builder: (context, state) => const ContactPage(),
       ),
 
       // ─── Doctor shell (authenticated, role = doctor) ─────────────────────────
@@ -226,6 +270,12 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.doctorBilling,
             builder: (context, state) => const BillingPage(),
           ),
+          // The top bar's bell links here; without the route it led to a
+          // blank page.
+          GoRoute(
+            path: AppRoutes.doctorNotifications,
+            builder: (context, state) => const DoctorNotificationsPage(),
+          ),
           GoRoute(
             path: AppRoutes.doctorSettings,
             builder: (context, state) => const SettingsPage(),
@@ -236,15 +286,33 @@ GoRouter createRouter(Store<AppState> store) {
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsProfessional,
-            builder: (context, state) => const AccountSettings(),
+            // Both halves of Account settings are one widget picked by tab, so
+            // without this the Professional Details link showed Personal
+            // Information.
+            builder: (context, state) => const AccountSettings(initialTab: 1),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsFees,
             builder: (context, state) => const PracticeSettings(),
           ),
           GoRoute(
+            path: AppRoutes.doctorSettingsPractice,
+            builder: (context, state) =>
+                PracticeSettings(initialTab: _tab(state)),
+          ),
+          GoRoute(
             path: AppRoutes.doctorSettingsNotifications,
             builder: (context, state) => const PreferencesSettings(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsPreferences,
+            builder: (context, state) =>
+                PreferencesSettings(initialTab: _tab(state)),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorSettingsSupportLegal,
+            builder: (context, state) =>
+                SupportLegalSettings(initialTab: _tab(state)),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsSecurity,
@@ -252,7 +320,10 @@ GoRouter createRouter(Store<AppState> store) {
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsDevices,
-            builder: (context, state) => const SecuritySettingsPage(),
+            // Without the tab the Device Management link opened Security
+            // Settings.
+            builder: (context, state) =>
+                const SecuritySettingsPage(initialTab: 1),
           ),
           GoRoute(
             path: AppRoutes.doctorSettingsLoginActivity,
@@ -324,8 +395,98 @@ GoRouter createRouter(Store<AppState> store) {
             path: AppRoutes.pharmacySettingsLinkedServices,
             builder: (context, state) => const LinkedServicesPage(),
           ),
+          // Recovered as route names but never registered, so every link
+          // to them from the settings sidebar went nowhere.
+          GoRoute(
+            path: AppRoutes.pharmacySettingsPersonalInfo,
+            builder: (context, state) => const PharmacyPersonalInfoPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsPharmacyDetails,
+            builder: (context, state) => const PharmacyDetailsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsProfessional,
+            builder: (context, state) => const PharmacyProfessionalPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.pharmacySettingsProfile,
+            builder: (context, state) => const PharmacyProfilePage(),
+          ),
         ],
       ),
     ],
   );
+}
+
+/// Route guard: keeps signed-out users out of the app shells, and signed-in
+/// users out of the login and registration pages.
+///
+/// Returns null to allow the requested location, or a path to redirect to.
+String? _guard(Store<AppState> store, GoRouterState state) {
+  final auth = store.state.authState;
+  final location = state.matchedLocation;
+
+  final isDoctorArea = location.startsWith('/doctor');
+  final isPharmacyArea = location.startsWith('/pharmacy');
+  final isProtected = isDoctorArea || isPharmacyArea;
+
+  // While the stored session is still being read, let the request through.
+  // This listenable fires again once the restore finishes, and the guard runs
+  // a second time with the real answer — so a refresh on /doctor/dashboard
+  // does not bounce a signed-in doctor to the login page.
+  if (auth.isRestoring) return null;
+
+  if (isProtected && !auth.isAuthenticated) return AppRoutes.login;
+
+  if (auth.isAuthenticated) {
+    final home = auth.role == AppConstants.roleDoctor
+        ? AppRoutes.doctorDashboard
+        : AppRoutes.pharmacyDashboard;
+
+    // Already signed in — skip the auth pages.
+    const authPages = {
+      AppRoutes.login,
+      AppRoutes.register,
+      AppRoutes.registerStep2,
+      AppRoutes.splash,
+    };
+    if (authPages.contains(location)) return home;
+
+    // Signed in with the wrong role for this area.
+    if (isDoctorArea && auth.role != AppConstants.roleDoctor) return home;
+    if (isPharmacyArea && auth.role != AppConstants.rolePharmacy) return home;
+  }
+
+  return null;
+}
+
+/// Bridges the Redux [Store] to GoRouter's [Listenable] based refresh.
+///
+/// Notifies only when the fields the guard actually reads change, so routing
+/// is not re-evaluated on every unrelated dispatch.
+class _AuthChangeNotifier extends ChangeNotifier {
+  _AuthChangeNotifier(Store<AppState> store) {
+    var last = _snapshot(store);
+    _unsubscribe = store.onChange.listen((_) {
+      final next = _snapshot(store);
+      if (next != last) {
+        last = next;
+        notifyListeners();
+      }
+    }).cancel;
+  }
+
+  late final Future<void> Function() _unsubscribe;
+
+  static String _snapshot(Store<AppState> store) {
+    final a = store.state.authState;
+    return '${a.isAuthenticated}|${a.role}|${a.isRestoring}';
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe();
+    super.dispose();
+  }
 }

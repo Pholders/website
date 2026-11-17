@@ -5,16 +5,34 @@ import '../../../../shared/theme/app_theme.dart';
 /// Asset path for the PHolders logo image.
 const String kPholdersIconPath = 'assets/PHolders-icon.png';
 
+class AuthFieldPair extends StatelessWidget {
+  const AuthFieldPair({super.key, required this.first, required this.second});
+
+  final Widget first;
+  final Widget second;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 420) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [first, const SizedBox(height: 8), second],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: first),
+              const SizedBox(width: 10),
+              Expanded(child: second),
+            ],
+          );
+        },
+      );
+}
+
 /// Reusable text field for all auth screens.
 class AuthTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData icon;
-  final bool obscureText;
-  final Widget? suffixIcon;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
-
   const AuthTextField({
     super.key,
     required this.controller,
@@ -24,7 +42,18 @@ class AuthTextField extends StatelessWidget {
     this.suffixIcon,
     this.keyboardType,
     this.validator,
+    this.autofillHints,
   });
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final bool obscureText;
+  final Widget? suffixIcon;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+
+  /// What the browser's password manager should fill in here.
+  final Iterable<String>? autofillHints;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +62,7 @@ class AuthTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      autofillHints: autofillHints,
       style: const TextStyle(fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
@@ -68,16 +98,15 @@ class AuthTextField extends StatelessWidget {
 
 /// Gradient submit button used across all auth screens.
 class AuthSubmitButton extends StatelessWidget {
-  final String label;
-  final bool isLoading;
-  final VoidCallback onPressed;
-
   const AuthSubmitButton({
     super.key,
     required this.label,
     required this.isLoading,
     required this.onPressed,
   });
+  final String label;
+  final bool isLoading;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -119,8 +148,8 @@ class AuthSubmitButton extends StatelessWidget {
 /// Displays the actual PHolders-icon.png asset, sized to fit the navbar.
 /// The "P" letter box has been removed in favour of the real brand image.
 class PholdersLogoMark extends StatelessWidget {
-  final double size;
   const PholdersLogoMark({super.key, this.size = 40});
+  final double size;
 
   @override
   Widget build(BuildContext context) {

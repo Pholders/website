@@ -12,10 +12,16 @@ class SettingsSidebar extends StatefulWidget {
     super.key,
     required this.onMenuItemSelected,
     this.selectedItemId,
+    this.embedded = false,
   });
 
   final Function(String) onMenuItemSelected;
   final String? selectedItemId;
+
+  /// The doctor's settings, as in the design: the menu sits inside the
+  /// settings card with every section open, rather than as its own white
+  /// column of accordions. The pharmacy keeps the accordion.
+  final bool embedded;
 
   @override
   State<SettingsSidebar> createState() => _SettingsSidebarState();
@@ -58,72 +64,74 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
     }
   }
 
-  void _initializeMenuItems() {
-    menuItems = [
-      SettingsMenuItem(
-        id: 'account',
-        label: 'Account',
-        icon: IconType.account,
-        subItems: [
-          SettingsSubMenuItem(id: 'profile', label: 'Profile'),
-          SettingsSubMenuItem(id: 'professional', label: 'Professional'),
-        ],
-      ),
-      SettingsMenuItem(
-        id: 'practice',
-        label: 'Practice',
-        icon: IconType.practice,
-        subItems: [
-          SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
-          SettingsSubMenuItem(id: 'notifications', label: 'Notifications'),
-        ],
-      ),
-      SettingsMenuItem(
+        void _initializeMenuItems() {
+        menuItems = [
+                const SettingsMenuItem(
+            id: 'account',
+            label: 'Account',
+            icon: IconType.account,
+            subItems: [
+              const SettingsSubMenuItem(id: 'personal_information', label: 'Personal Information'),
+              const SettingsSubMenuItem(id: 'professional', label: 'Professional Details'),
+            ],
+          ),
+          const SettingsMenuItem(
+            id: 'practice',
+            label: 'Practice',
+            icon: IconType.practice,
+            subItems: [
+              const SettingsSubMenuItem(id: 'fees_setup', label: 'Fees Setup'),
+              const SettingsSubMenuItem(id: 'notification_settings', label: 'Notification Settings'),
+            ],
+          ),
+      const SettingsMenuItem(
         id: 'security',
         label: 'Security',
         icon: IconType.security,
         subItems: [
-          SettingsSubMenuItem(id: 'security_settings', label: 'Security Settings'),
-          SettingsSubMenuItem(id: 'device_management', label: 'Device Management'),
-          SettingsSubMenuItem(id: 'login_activity', label: 'Login Activity'),
+          const SettingsSubMenuItem(id: 'security_settings', label: 'Security Settings'),
+          const SettingsSubMenuItem(id: 'device_management', label: 'Device Management'),
+          const SettingsSubMenuItem(id: 'login_activity', label: 'Login Activity'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'preferences',
         label: 'Preferences',
         icon: IconType.preferences,
         subItems: [
-          SettingsSubMenuItem(id: 'preferences_notifications', label: 'Notifications'),
+          const SettingsSubMenuItem(id: 'preferences_settings', label: 'Preferences Settings'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'integrations',
         label: 'Integrations',
         icon: IconType.integrations,
         subItems: [
-          SettingsSubMenuItem(id: 'linked_services', label: 'Linked Services'),
+          const SettingsSubMenuItem(id: 'linked_services', label: 'Linked Services'),
         ],
       ),
-      SettingsMenuItem(
+      const SettingsMenuItem(
         id: 'support_legal',
         label: 'Support & Legal',
         icon: IconType.supportLegal,
         subItems: [
-          SettingsSubMenuItem(id: 'help_center', label: 'Help Center'),
-          SettingsSubMenuItem(id: 'privacy_policy', label: 'Privacy Policy'),
-          SettingsSubMenuItem(id: 'terms_of_service', label: 'Terms of Service'),
-          SettingsSubMenuItem(id: 'contact_support', label: 'Contact Support'),
+          const SettingsSubMenuItem(id: 'help_center', label: 'Help Center'),
+          const SettingsSubMenuItem(id: 'privacy_policy', label: 'Privacy Policy'),
+          const SettingsSubMenuItem(id: 'terms_of_service', label: 'Terms of Service'),
+          const SettingsSubMenuItem(id: 'contact_support', label: 'Contact Support'),
         ],
       ),
     ];
   }
 
-  IconData _getIconData(IconType iconType) {
+    IconData _getIconData(IconType iconType) {
     switch (iconType) {
       case IconType.account:
         return Icons.person_outline;
       case IconType.practice:
         return Icons.business_outlined;
+      case IconType.notifications:
+        return Icons.notifications_outlined;
       case IconType.security:
         return Icons.security_outlined;
       case IconType.preferences:
@@ -139,6 +147,7 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) return _buildEmbedded();
     return Container(
       width: 250,
       decoration: const BoxDecoration(
@@ -149,11 +158,11 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
             child: Text(
               'Settings',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: _textDark,
@@ -170,6 +179,70 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── Embedded (doctor) style ─────────────────────────────────────────────
+  // Every section open: a round icon and a bold heading, with its pages
+  // listed under it in grey, the current one in teal.
+  Widget _buildEmbedded() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 22, 12, 22),
+      children: [
+        for (final item in menuItems) ...[
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFD3EEF0),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_getIconData(item.icon),
+                    size: 16, color: Colors.black),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  item.label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (final sub in item.subItems ?? const <SettingsSubMenuItem>[])
+            _buildEmbeddedSubItem(sub),
+          const SizedBox(height: 14),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildEmbeddedSubItem(SettingsSubMenuItem subItem) {
+    final isSelected = selectedItemId == subItem.id;
+    return InkWell(
+      onTap: () {
+        widget.onMenuItemSelected(subItem.id);
+        setState(() => selectedItemId = subItem.id);
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(38, 6, 8, 6),
+        child: Text(
+          subItem.label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? _teal : const Color(0xFFA8A8A8),
+          ),
+        ),
       ),
     );
   }
@@ -277,12 +350,16 @@ class _SettingsSidebarState extends State<SettingsSidebar> {
         child: Row(
           children: [
             const SizedBox(width: 8),
-            Text(
-              subItem.label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? _teal : _textMuted,
+            // Flexible: a long label shortens instead of overflowing.
+            Flexible(
+              child: Text(
+                subItem.label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? _teal : _textMuted,
+                ),
               ),
             ),
           ],

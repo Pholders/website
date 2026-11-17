@@ -1,67 +1,102 @@
 import 'package:flutter/material.dart';
 
-class LoginActivityPage extends StatelessWidget {
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_exception.dart';
+import '../../../auth/data/doctor_auth_repository.dart';
+import '../../../auth/data/models/doctor_activity.dart';
+import 'settings_frame.dart';
+
+class LoginActivityPage extends StatefulWidget {
   const LoginActivityPage({super.key});
 
   @override
+  State<LoginActivityPage> createState() => _LoginActivityPageState();
+}
+
+class _LoginActivityPageState extends State<LoginActivityPage> {
+  // Read-only screen, so it reads the repository directly rather than adding
+  // a store slice nothing else would use.
+  late Future<List<DoctorActivity>> _activity;
+
+  @override
+  void initState() {
+    super.initState();
+    _activity = sl<DoctorAuthRepository>().fetchActivityLog();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Login Activity', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-
-            _activityEntry('April 13, 10:30', 'Johannesburg', 'Chrome - Windows', 'Successful', Icons.check_circle, Colors.teal),
-            const Divider(),
-            _activityEntry('April 12, 22:10', 'Unknown Location', 'Unknown', 'Failed Login', Icons.error, Colors.red),
-            const SizedBox(height: 16),
-
-            // Suspicious activity card
-            Card(
-              color: Colors.white,
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.warning, color: Colors.orange),
-                        SizedBox(width: 8),
-                        Text('Suspicious Activity!', style: TextStyle(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Text('This login was from a new location.'),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE2F6F7), foregroundColor: Colors.black, elevation: 0),
-                      child: const Text('Secure Account'),
+    return DoctorSettingsLayout(
+      selectedItemId: 'login_activity',
+      child: doctorSettingsCard(
+        context,
+        title: 'Login Activity',
+        children: [
+          FutureBuilder<List<DoctorActivity>>(
+            future: _activity,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError) {
+                final e = snapshot.error;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    e is ApiException
+                        ? e.message
+                        : 'Could not load your account activity.',
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                );
+              }
+              final entries = snapshot.data ?? const <DoctorActivity>[];
+              if (entries.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text('No account activity recorded yet.'),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < entries.length; i++) ...[
+                    if (i > 0) const Divider(),
+                    _activityEntry(
+                      entries[i].formattedTime,
+                      entries[i].ipAddress ?? 'Unknown location',
+                      entries[i].label,
+                      entries[i].succeeded ? 'Successful' : 'Failed',
+                      entries[i].succeeded ? Icons.check_circle : Icons.error,
+                      entries[i].succeeded ? Colors.teal : Colors.red,
                     ),
                   ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE2F6F7), foregroundColor: Colors.black, elevation: 0, minimumSize: const Size.fromHeight(44)),
-              child: const Text('Report Suspicious Activity'),
-            ),
-          ],
-        ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          // A "Suspicious Activity! This login was from a new location"
+          // card sat here for every doctor, whatever their sign-ins, with
+          // two buttons marked not in this phase. Nothing checks for
+          // suspicious sign-ins, so it is gone. Signing out a device you do
+          // not recognise is on Device Management.
+          Text(
+            'Do not recognise a sign-in? Sign that device out on Device '
+            'Management, and change your password on Security Settings.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+        ],
       ),
     );
   }
+
+  // The menu's links are in navigateDoctorSettings. This page had its own
+  // copy, which matched 'profile' where the menu sends
+  // 'personal_information', so Profile did nothing from here.
 
   Widget _activityEntry(String date, String location, String device, String status, IconData icon, Color iconColor) {
     return ListTile(

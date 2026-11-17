@@ -42,6 +42,12 @@ class AppTheme {
   static const Color sidebarText = Color(0xFF374151);
   static const Color sidebarActiveItem = Color(0xFF309CA3);
 
+  /// Deep teal of the public pages: the hero circle, the "Smarter" accent.
+  static const Color landingTeal = Color(0xFF309CA3);
+
+  /// Light aqua of the public pages: the Login and Get Started pills.
+  static const Color landingAqua = Color(0xFF6DD0D8);
+
   // ─── Spacing ────────────────────────────────────────────────────────────────
   static const double spacingXs = 4.0;
   static const double spacingSm = 8.0;
