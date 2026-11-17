@@ -9,6 +9,7 @@ class InventoryItem {
     required this.medicationName,
     required this.quantityOnHand,
     required this.lowStockThreshold,
+    this.isActive = true,
     this.sku,
     this.genericName,
     this.dosage,
@@ -26,6 +27,7 @@ class InventoryItem {
       medicationName: (json['medication_name'] as String?)?.trim() ?? '',
       quantityOnHand: _int(json['quantity_on_hand']) ?? 0,
       lowStockThreshold: _int(json['low_stock_threshold']) ?? 0,
+      isActive: json['is_active'] != false && json['is_active'] != 0,
       sku: _text(json['sku']),
       genericName: _text(json['generic_name']),
       dosage: _text(json['dosage']),
@@ -43,6 +45,7 @@ class InventoryItem {
   final String medicationName;
   final int quantityOnHand;
   final int lowStockThreshold;
+  final bool isActive;
   final String? sku;
   final String? genericName;
   final String? dosage;
@@ -100,6 +103,20 @@ class InventorySummary {
   final int expired;
 }
 
+class InventoryPageResult {
+  const InventoryPageResult({
+    required this.items,
+    required this.total,
+    required this.limit,
+    required this.offset,
+  });
+
+  final List<InventoryItem> items;
+  final int total;
+  final int limit;
+  final int offset;
+}
+
 /// Why stock moved. Only the reasons a person chooses by hand: `dispense`
 /// is written by the order flow and `initial_stock` by creating the item.
 enum StockReason {
@@ -143,5 +160,7 @@ String? _text(Object? value) {
 DateTime? _day(Object? value) {
   if (value is! String || value.length < 10) return null;
   final parsed = DateTime.tryParse(value.substring(0, 10));
-  return parsed == null ? null : DateTime(parsed.year, parsed.month, parsed.day);
+  return parsed == null
+      ? null
+      : DateTime(parsed.year, parsed.month, parsed.day);
 }
