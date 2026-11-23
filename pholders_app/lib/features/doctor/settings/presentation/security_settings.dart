@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/routing/app_routes.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/settings_shell.dart';
 import '../../../auth/data/doctor_auth_repository.dart';
 import '../../../auth/data/models/doctor_activity.dart';
@@ -33,11 +34,16 @@ class SecuritySettingsPage extends StatelessWidget {
   }
 }
 
+/// Inline text for the password form. The backend's own wording ("Your
+/// current password is not right") is what the doctor needs here.
 String _messageOf(Object error) =>
     error is ApiException ? error.message : 'Something went wrong. Try again.';
 
 void _tell(BuildContext context, String text) =>
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    AppFeedback.success(context, text);
+
+void _fail(BuildContext context, Object error) =>
+    AppFeedback.error(context, error, title: 'Security change not made');
 
 String _devicesSignedOut(int n) => n == 0
     ? 'No other devices were signed in.'
@@ -122,7 +128,7 @@ class _SecuritySettingsState extends State<_SecuritySettings> {
       final n = await widget.repo.revokeOtherSessions();
       if (mounted) _tell(context, _devicesSignedOut(n));
     } catch (e) {
-      if (mounted) _tell(context, _messageOf(e));
+      if (mounted) _fail(context, e);
     } finally {
       if (mounted) setState(() => _signingOut = false);
     }
@@ -276,7 +282,7 @@ class _DeviceManagementState extends State<_DeviceManagement> {
       await widget.repo.revokeSession(session.id);
       if (mounted) _tell(context, '${session.device} was signed out.');
     } catch (e) {
-      if (mounted) _tell(context, _messageOf(e));
+      if (mounted) _fail(context, e);
     } finally {
       if (mounted) {
         _busy.remove(session.id);
@@ -291,7 +297,7 @@ class _DeviceManagementState extends State<_DeviceManagement> {
       final n = await widget.repo.revokeOtherSessions();
       if (mounted) _tell(context, _devicesSignedOut(n));
     } catch (e) {
-      if (mounted) _tell(context, _messageOf(e));
+      if (mounted) _fail(context, e);
     } finally {
       if (mounted) {
         _busy.remove('*');

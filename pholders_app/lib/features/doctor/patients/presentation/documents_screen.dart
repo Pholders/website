@@ -8,6 +8,8 @@ import 'package:pholders_app/features/doctor/patients/presentation/patients_scre
     show Patient;
 import 'package:pholders_app/features/doctor/patients/presentation/record_card.dart';
 
+import '../../../../shared/widgets/app_feedback.dart';
+
 /// The Documents tab of a patient's profile: the files the patient stored in
 /// the patient app, with a real download. Read-only.
 ///
@@ -68,8 +70,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       await Printing.sharePdf(bytes: bytes, filename: doc.name);
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppFeedback.error(context, e, title: 'Document not downloaded');
       }
     } finally {
       if (mounted) setState(() => _downloadingId = null);

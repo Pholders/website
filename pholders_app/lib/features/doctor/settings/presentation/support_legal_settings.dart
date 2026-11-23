@@ -6,6 +6,7 @@ import '../../../../app/app_state.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/routing/app_routes.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/settings_shell.dart';
 import '../../../auth/data/doctor_auth_repository.dart';
 import '../../../auth/data/models/doctor.dart';
@@ -211,9 +212,8 @@ class _ContactSupportState extends State<_ContactSupport> {
       if (!mounted) return;
       _subject.clear();
       _message.clear();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Sent. The Pholders team will reply to ${doctor.email}.'),
-      ));
+      AppFeedback.success(
+          context, 'Sent. The Pholders team will reply to ${doctor.email}.');
     } on ApiException catch (e) {
       if (mounted) setState(() => _problem = e.message);
     } finally {

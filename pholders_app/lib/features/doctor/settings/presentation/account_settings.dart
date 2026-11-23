@@ -5,6 +5,7 @@ import 'package:redux/redux.dart';
 import '../../../../app/app_state.dart';
 import '../../../../core/auth/auth_actions.dart';
 import '../../../../core/network/secure_url.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../auth/data/models/doctor.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -118,9 +119,7 @@ class _ProfileDetailsState extends State<_ProfileDetails> {
     _awaitingSave = false;
     if (vm.errorMessage == null) {
       setState(() => _isEditing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your profile is saved')),
-      );
+      AppFeedback.success(context, 'Your profile is saved');
     }
   }
 
@@ -699,9 +698,7 @@ class _ProfessionalDetailsState extends State<_ProfessionalDetails> {
     if (!_awaitingSave || vm.isSaving) return;
     _awaitingSave = false;
     if (vm.errorMessage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your professional details are saved')),
-      );
+      AppFeedback.success(context, 'Your professional details are saved');
     }
   }
 

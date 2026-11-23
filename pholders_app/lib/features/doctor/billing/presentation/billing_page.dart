@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../data/billing_repository.dart';
 import 'pdf_download_stub.dart'
     if (dart.library.html) 'pdf_download_web.dart';
@@ -655,14 +656,7 @@ class _TxRowState extends State<_TxRow> {
                               'Status         : ${statusInfo.label}\n'
                               '─────────────────────────';
                           Clipboard.setData(ClipboardData(text: receiptText));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Receipt copied to clipboard'),
-                              backgroundColor: AppColors.activeTeal,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          );
+                          AppFeedback.success(context, 'Receipt copied to clipboard');
                         },
                         icon: const Icon(Icons.copy, size: 16),
                         label: const Text('Copy to Clipboard'),
@@ -681,29 +675,21 @@ class _TxRowState extends State<_TxRow> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
                           Navigator.pop(dialogContext);
                           try {
                             await _downloadReceiptPDF(tx);
                           } catch (e) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('Could not create the receipt PDF: $e'),
-                                backgroundColor: Colors.red.shade400,
-                                behavior: SnackBarBehavior.floating,
-                              ),
+                            if (!context.mounted) return;
+                            AppFeedback.error(
+                              context,
+                              "We couldn't create the receipt PDF. Try again, "
+                              'or use "Copy to Clipboard" instead.',
+                              title: 'Receipt not downloaded',
                             );
                             return;
                           }
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: const Text('Receipt PDF downloaded'),
-                              backgroundColor: AppColors.activeTeal,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
+                          if (!context.mounted) return;
+                          AppFeedback.success(context, 'Receipt PDF downloaded');
                         },
                         icon: const Icon(Icons.download, size: 16),
                         label: const Text('Download as PDF'),

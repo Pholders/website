@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:redux/redux.dart';
 
 import 'package:pholders_app/app/app_state.dart';
+import 'package:pholders_app/shared/widgets/app_feedback.dart';
 import 'package:pholders_app/features/doctor/patients/presentation/patients_screen.dart'
     show Patient;
 import 'package:pholders_app/features/doctor/prescriptions/data/models/prescription.dart'
@@ -181,8 +184,33 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    StoreProvider.of<AppState>(context)
-        .dispatch(SignPrescriptionAction(prescriptionId: int.parse(rx.id)));
+    final result = Completer<RxActionOutcome>();
+    StoreProvider.of<AppState>(context).dispatch(SignPrescriptionAction(
+        prescriptionId: int.parse(rx.id), result: result));
+    try {
+      final outcome = await result.future;
+      if (!mounted) return;
+      // With a QR code the receipt dialog is the confirmation; a toast
+      // behind it would only be hidden.
+      if (outcome.hasReceipt) return;
+      final ref = outcome.number ?? rx.dosage;
+      AppFeedback.success(
+        context,
+        outcome.serverErrorAfterSave
+            ? 'Prescription $ref is signed, but the patient may not have been '
+                'notified by email.'
+            : 'Prescription $ref is signed and valid for dispensing. No QR '
+                'code was returned for it.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppFeedback.error(
+        context,
+        e,
+        title: 'Prescription not signed',
+        onRetry: () => _signPrescription(rx),
+      );
+    }
   }
 
   /// Revokes a signed prescription so it can no longer be dispensed.
@@ -238,12 +266,29 @@ class _PrescriptionsScreenState extends State<PrescriptionsScreen> {
     );
     controller.dispose();
     if (reason == null || !mounted) return;
+    final result = Completer<RxActionOutcome>();
     StoreProvider.of<AppState>(context).dispatch(
       RevokePrescriptionAction(
         prescriptionId: int.parse(rx.id),
         reason: reason,
+        result: result,
       ),
     );
+    try {
+      final outcome = await result.future;
+      if (!mounted) return;
+      final ref = outcome.number ?? rx.dosage;
+      AppFeedback.success(
+        context,
+        outcome.serverErrorAfterSave
+            ? 'Prescription $ref is revoked and can no longer be dispensed, '
+                'but the patient may not have been notified by email.'
+            : 'Prescription $ref is revoked and can no longer be dispensed.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppFeedback.error(context, e, title: 'Prescription not revoked');
+    }
   }
 
   /// Maps an API prescription onto the row model this screen renders.

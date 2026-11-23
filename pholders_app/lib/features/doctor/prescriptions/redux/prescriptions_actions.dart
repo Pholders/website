@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../data/models/medicine_draft.dart';
 import '../data/models/prescription.dart';
 import '../data/models/safety_report.dart';
@@ -25,8 +27,13 @@ class PrescriptionsLoadFailedAction {
 
 /// Dispatched when the doctor signs a prescription.
 class SignPrescriptionAction {
-  const SignPrescriptionAction({required this.prescriptionId});
+  const SignPrescriptionAction({required this.prescriptionId, this.result});
   final int prescriptionId;
+
+  /// Completed once the list has been refetched, so the screen can say what
+  /// actually happened. Completes with an error only if the prescription is
+  /// still unsigned afterwards.
+  final Completer<RxActionOutcome>? result;
 }
 
 /// Dispatched when the doctor revokes a prescription.
@@ -37,9 +44,36 @@ class RevokePrescriptionAction {
   const RevokePrescriptionAction({
     required this.prescriptionId,
     required this.reason,
+    this.result,
   });
   final int prescriptionId;
   final String reason;
+
+  /// Completed once the list has been refetched. Completes with an error only
+  /// if the prescription is still not revoked afterwards.
+  final Completer<RxActionOutcome>? result;
+}
+
+/// What a sign or revoke turned out to do, judged from the refetched list.
+///
+/// The backend can save the change and then answer 500 because its
+/// notification email failed, so the HTTP result alone would report a
+/// failure for work that was done.
+class RxActionOutcome {
+  const RxActionOutcome({
+    this.number,
+    this.hasReceipt = false,
+    this.serverErrorAfterSave = false,
+  });
+
+  /// The prescription's reference number, when the refetch found it.
+  final String? number;
+
+  /// True when signing returned a QR receipt, which the screen shows itself.
+  final bool hasReceipt;
+
+  /// True when the change was saved but the request still reported an error.
+  final bool serverErrorAfterSave;
 }
 
 /// Dispatched once a prescription is signed, carrying the QR payload and
@@ -77,12 +111,37 @@ class CreatePrescriptionAction {
     required this.diagnosis,
     required this.medicines,
     this.clinicalNotes,
+    this.result,
   });
 
   final int appointmentId;
   final String diagnosis;
   final List<MedicineDraft> medicines;
   final String? clinicalNotes;
+
+  /// Completed with the new prescription's id once every medicine is saved.
+  /// On failure it completes with an error, which is a
+  /// [PartialPrescriptionException] if the draft itself was created.
+  final Completer<int>? result;
+}
+
+/// The prescription was created but not every medicine could be added.
+///
+/// The draft exists on the server, so submitting the form again would make a
+/// second prescription for the same consultation.
+class PartialPrescriptionException implements Exception {
+  const PartialPrescriptionException({
+    required this.prescriptionId,
+    required this.saved,
+    required this.total,
+    required this.failedMedicine,
+    required this.cause,
+  });
+  final int prescriptionId;
+  final int saved;
+  final int total;
+  final String failedMedicine;
+  final Object cause;
 }
 
 /// Dispatched once a prescription and all its medicines are saved.

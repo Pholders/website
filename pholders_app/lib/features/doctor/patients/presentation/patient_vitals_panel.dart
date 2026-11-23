@@ -7,6 +7,8 @@ import 'package:pholders_app/features/doctor/patients/presentation/patient_profi
     show AppProfileColors;
 import 'package:pholders_app/features/doctor/patients/presentation/record_card.dart';
 
+import '../../../../shared/widgets/app_feedback.dart';
+
 /// The Vitals tab of a patient's profile.
 ///
 /// Vitals are taken by the doctor at a consultation; the patient only views
@@ -85,8 +87,7 @@ class _PatientVitalsPanelState extends State<PatientVitalsPanel> {
       ),
     );
     if (saved == null || !mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Vitals recorded')));
+    AppFeedback.success(context, 'Vitals recorded');
     // Reload rather than insert: the server works out BMI and who recorded it.
     await _load();
   }

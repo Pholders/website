@@ -8,6 +8,8 @@ import 'package:pholders_app/features/doctor/patients/presentation/patients_scre
     show Patient;
 import 'package:pholders_app/features/doctor/patients/presentation/record_card.dart';
 
+import '../../../../shared/widgets/app_feedback.dart';
+
 const _aqua = Color(0xFF6DD0D8);
 const _darkTeal = Color(0xFF2E9FA5);
 const _paleTeal = Color(0xFFDFF4F6);
@@ -296,8 +298,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
       await Printing.sharePdf(bytes: bytes, filename: doc.name);
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppFeedback.error(context, e, title: 'Document not downloaded');
       }
     }
   }

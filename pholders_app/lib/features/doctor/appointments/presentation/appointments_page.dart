@@ -1,9 +1,12 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
 import '../../../../shared/theme/app_theme.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../data/models/appointment.dart';
 import '../redux/appointments_actions.dart';
 
@@ -1065,10 +1068,23 @@ class _AppointmentActionsDialog extends StatelessWidget {
         _ => null,
       };
 
-  void _accept(BuildContext context) {
-    StoreProvider.of<AppState>(context)
-        .dispatch(AcceptAppointmentAction(appointmentId: data.id));
-    Navigator.pop(context);
+  Future<void> _accept(BuildContext context) async {
+    final result = Completer<void>();
+    StoreProvider.of<AppState>(context).dispatch(
+        AcceptAppointmentAction(appointmentId: data.id, result: result));
+    // The dialog closes at once, so report through the navigator, which
+    // outlives it.
+    final nav = Navigator.of(context);
+    nav.pop();
+    try {
+      await result.future;
+      if (!nav.mounted) return;
+      AppFeedback.success(nav.context,
+          'Appointment with ${data.patientName} accepted. The patient will be notified.');
+    } catch (e) {
+      if (!nav.mounted) return;
+      AppFeedback.error(nav.context, e, title: 'Appointment not accepted');
+    }
   }
 
   @override
@@ -1082,13 +1098,15 @@ class _AppointmentActionsDialog extends StatelessWidget {
       onDidChange: (previous, current) {
         // Only the complete call keeps this dialog open while it runs.
         if (previous?.busy != true || current.busy) return;
-        final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context);
-        messenger.showSnackBar(SnackBar(
-          content: Text(current.error ??
-              'Consultation with ${data.patientName} marked complete'),
-          backgroundColor: current.error == null ? null : Colors.red.shade700,
-        ));
+        final nav = Navigator.of(context);
+        nav.pop();
+        if (current.error == null) {
+          AppFeedback.success(nav.context,
+              'Consultation with ${data.patientName} marked complete');
+        } else {
+          AppFeedback.error(nav.context, current.error!,
+              title: 'Consultation not completed');
+        }
       },
       builder: (context, vm) {
         final isBusy = vm.busy;

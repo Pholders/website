@@ -141,6 +141,12 @@ void main() {
     expect(find.textContaining('Amoxicillin'), findsOneWidget);
 
     await tester.tap(find.text('Create prescription'));
+    await tester.pumpAndSettle();
+
+    // FR-G-013: nothing is sent until the doctor has reviewed the script.
+    expect(find.text('Review prescription'), findsOneWidget);
+    expect(h.dispatched.whereType<CreatePrescriptionAction>(), isEmpty);
+    await tester.tap(find.text('Save draft'));
     await tester.pump();
 
     final action =
@@ -169,5 +175,62 @@ void main() {
       route: MedicineRoute.oral,
     );
     expect(draft.summary, 'Amoxicillin · 500mg · Three times daily');
+  });
+
+  group('closing the form', () {
+    Widget opener(Store<AppState> store) => StoreProvider<AppState>(
+          store: store,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showDialog<bool>(
+                    context: context,
+                    builder: (_) => const NewPrescriptionDialog(),
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('an empty form closes without asking', (tester) async {
+      final h = _harness(appointments: [_appointment]);
+      await tester.pumpWidget(opener(h.store));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('New Prescription'), findsNothing);
+      expect(find.text('Discard this prescription?'), findsNothing);
+    });
+
+    testWidgets('a form with a diagnosis asks before it is thrown away',
+        (tester) async {
+      final h = _harness(appointments: [_appointment]);
+      await tester.pumpWidget(opener(h.store));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'e.g. Upper respiratory infection'),
+          'Acute bronchitis');
+
+      // Clicking outside the form is the easy way to lose it by accident.
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Discard this prescription?'), findsOneWidget);
+
+      await tester.tap(find.text('Keep editing'));
+      await tester.pumpAndSettle();
+      expect(find.text('New Prescription'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Discard'));
+      await tester.pumpAndSettle();
+      expect(find.text('New Prescription'), findsNothing);
+    });
   });
 }

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:redux/redux.dart';
 
 import '../../../../app/app_state.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../appointments/data/models/appointment.dart';
 import '../../appointments/redux/appointments_actions.dart';
 import '../data/models/medicine_draft.dart';
@@ -79,7 +82,7 @@ class _NewPrescriptionDialogState extends State<NewPrescriptionDialog> {
     if (medicine != null) setState(() => _medicines.add(medicine));
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final appointment = _appointment ??
         _onlyConsultationFor(
             StoreProvider.of<AppState>(context).state.appointmentsState.appointments);
@@ -100,28 +103,131 @@ class _NewPrescriptionDialogState extends State<NewPrescriptionDialog> {
     }
     setState(() => _error = null);
 
-    StoreProvider.of<AppState>(context).dispatch(
-      CreatePrescriptionAction(
-        appointmentId: appointment!.id,
-        diagnosis: _diagnosisCtrl.text.trim(),
-        clinicalNotes: _notesCtrl.text.trim().isEmpty
-            ? null
-            : _notesCtrl.text.trim(),
+    // FR-G-013: the doctor sees the whole script before it is saved. After
+    // this point it can only be signed or left as a draft, not edited.
+    final diagnosis = _diagnosisCtrl.text.trim();
+    final notes = _notesCtrl.text.trim();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ReviewDialog(
+        patientName: appointment!.patientName,
+        consultation: appointment.formattedDate,
+        diagnosis: diagnosis,
+        notes: notes.isEmpty ? null : notes,
         medicines: List.of(_medicines),
       ),
     );
+    if (confirmed != true || !mounted) return;
+
+    final result = Completer<int>();
+    StoreProvider.of<AppState>(context).dispatch(
+      CreatePrescriptionAction(
+        appointmentId: appointment!.id,
+        diagnosis: diagnosis,
+        clinicalNotes: notes.isEmpty ? null : notes,
+        medicines: List.of(_medicines),
+        result: result,
+      ),
+    );
+
+    try {
+      await result.future;
+      if (!mounted) return;
+      AppFeedback.success(
+        context,
+        'Prescription for ${appointment.patientName} saved as a draft. '
+        'Sign it from your prescriptions list to make it valid.',
+      );
+      _close(true);
+    } on PartialPrescriptionException catch (e) {
+      if (!mounted) return;
+      // The draft exists, so the form must close: submitting it again would
+      // create a second prescription for the same consultation.
+      await AppFeedback.error(
+        context,
+        'The prescription was saved as a draft with ${e.saved} of ${e.total} '
+        'medicines, but ${e.failedMedicine} could not be added. '
+        '${AppFeedback.describe(e.cause)}\n\n'
+        'The draft is in your prescriptions list. Don\'t sign it until it is '
+        'complete.',
+        title: 'Prescription only partly saved',
+      );
+      _close(true);
+    } catch (_) {
+      // Nothing was saved. The form stays open with the reason shown under
+      // it, so the doctor can fix it and save again.
+    }
+  }
+
+  /// Set just before the form closes itself, so the discard check is skipped.
+  bool _closing = false;
+
+  /// True once the doctor has typed or added anything worth keeping.
+  bool get _hasInput =>
+      _medicines.isNotEmpty ||
+      _diagnosisCtrl.text.trim().isNotEmpty ||
+      _notesCtrl.text.trim().isNotEmpty;
+
+  /// Asks before an outside click, Esc or Cancel throws the form away.
+  Future<void> _confirmDiscard() async {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Discard this prescription?'),
+        content: const Text(
+            'The diagnosis and medicines you entered will be lost.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (discard == true) _close(false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return StoreConnector<AppState, _FormViewModel>(
-      converter: _FormViewModel.fromStore,
-      onWillChange: (previous, next) {
-        // Close once the whole sequence has saved.
-        if (previous?.createdId == null && next.createdId != null) {
-          Navigator.of(context).pop(true);
+    return PopScope(
+      canPop: _closing,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        // Never close while saving; the result is still on its way.
+        if (StoreProvider.of<AppState>(context, listen: false)
+            .state
+            .prescriptionsState
+            .isCreating) {
+          return;
+        }
+        if (_hasInput) {
+          _confirmDiscard();
+        } else {
+          _close(false);
         }
       },
+      child: _buildForm(context),
+    );
+  }
+
+  /// Closes the form past the [PopScope] guard.
+  void _close(bool saved) {
+    if (!mounted) return;
+    setState(() => _closing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop(saved);
+    });
+  }
+
+  Widget _buildForm(BuildContext context) {
+    return StoreConnector<AppState, _FormViewModel>(
+      converter: _FormViewModel.fromStore,
       builder: (context, vm) {
         return Dialog(
           shape:
@@ -254,7 +360,7 @@ class _NewPrescriptionDialogState extends State<NewPrescriptionDialog> {
                       TextButton(
                         onPressed: vm.isCreating
                             ? null
-                            : () => Navigator.of(context).pop(false),
+                            : () => Navigator.of(context).maybePop(),
                         child: const Text('Cancel'),
                       ),
                       const SizedBox(width: 8),
@@ -641,7 +747,6 @@ class _FormViewModel {
     required this.appointmentsLoading,
     required this.isCreating,
     this.errorMessage,
-    this.createdId,
   });
 
   factory _FormViewModel.fromStore(Store<AppState> store) {
@@ -650,7 +755,6 @@ class _FormViewModel {
       appointmentsLoading: store.state.appointmentsState.isLoading,
       isCreating: store.state.prescriptionsState.isCreating,
       errorMessage: store.state.prescriptionsState.errorMessage,
-      createdId: store.state.prescriptionsState.lastCreatedId,
     );
   }
 
@@ -658,5 +762,120 @@ class _FormViewModel {
   final bool appointmentsLoading;
   final bool isCreating;
   final String? errorMessage;
-  final int? createdId;
+}
+
+// Review step -----------------------------------------------------------------
+
+/// The whole script as it will be saved, shown before saving (FR-G-013).
+///
+/// Pops `true` to save, or `false` / null to go back and edit.
+class _ReviewDialog extends StatelessWidget {
+  const _ReviewDialog({
+    required this.patientName,
+    required this.consultation,
+    required this.diagnosis,
+    required this.medicines,
+    this.notes,
+  });
+
+  final String patientName;
+  final String consultation;
+  final String diagnosis;
+  final String? notes;
+  final List<MedicineDraft> medicines;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget field(String label, String value) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 11, color: _textSecondary)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(fontSize: 14, color: _textPrimary)),
+            ],
+          ),
+        );
+
+    String detail(MedicineDraft m) => [
+          '${m.dosage} ${m.form.name}',
+          m.frequency,
+          m.route.name,
+          'Qty ${m.quantity}',
+          if (m.duration != null && m.duration!.trim().isNotEmpty) m.duration!,
+        ].where((p) => p.trim().isNotEmpty).join(' · ');
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Review prescription'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480, maxHeight: 460),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              field('Patient', patientName),
+              if (consultation.isNotEmpty) field('Consultation', consultation),
+              field('Diagnosis', diagnosis),
+              if (notes != null) field('Clinical notes', notes!),
+              Text('Medicines (${medicines.length})',
+                  style: const TextStyle(fontSize: 11, color: _textSecondary)),
+              const SizedBox(height: 6),
+              for (final m in medicines)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _border),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(m.name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: _textPrimary)),
+                      const SizedBox(height: 2),
+                      Text(detail(m),
+                          style: const TextStyle(
+                              fontSize: 12, color: _textSecondary)),
+                      if (m.instructions != null &&
+                          m.instructions!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(m.instructions!,
+                            style: const TextStyle(
+                                fontSize: 12, color: _textSecondary)),
+                      ],
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 4),
+              const Text(
+                'This saves the prescription as a draft. Once you sign it, it '
+                'can no longer be edited.',
+                style: TextStyle(fontSize: 12, color: _textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Back to edit'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: _teal),
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Save draft'),
+        ),
+      ],
+    );
+  }
 }

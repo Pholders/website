@@ -8,6 +8,8 @@ import 'package:pholders_app/core/network/api_exception.dart';
 import 'package:pholders_app/features/doctor/prescriptions/data/prescriptions_repository.dart';
 import 'package:pholders_app/features/doctor/prescriptions/presentation/prescriptions_screen.dart';
 
+import '../../../../shared/widgets/app_feedback.dart';
+
 // ─── Prescription Details Screen ──────────────────────────────────────────────
 class PrescriptionDetailsScreen extends StatefulWidget {
   const PrescriptionDetailsScreen({
@@ -49,8 +51,7 @@ class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
       await use(bytes);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      AppFeedback.error(context, e, title: 'Prescription PDF not ready');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

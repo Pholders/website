@@ -5,6 +5,7 @@ import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../shared/theme/app_theme.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../data/doctor_notifications_repository.dart';
 
 /// The doctor's notifications: bookings to accept, cancellations and moves,
@@ -83,9 +84,7 @@ class _DoctorNotificationsPageState extends State<DoctorNotificationsPage> {
       if (!mounted) return;
       setState(() => notifications = before);
       _repo.unread.value = _unread;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$failure: ${e.message}')),
-      );
+      AppFeedback.error(context, e, title: failure);
     }
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../data/appointments_repository.dart';
 import '../data/models/appointment.dart';
 
@@ -24,8 +26,11 @@ class AppointmentsLoadFailedAction {
 
 /// Dispatched when the doctor accepts an appointment.
 class AcceptAppointmentAction {
-  const AcceptAppointmentAction({required this.appointmentId});
+  const AcceptAppointmentAction({required this.appointmentId, this.result});
   final int appointmentId;
+
+  /// Completed when the accept call returns, or completed with its error.
+  final Completer<void>? result;
 }
 
 /// Dispatched when the doctor marks a consultation finished.

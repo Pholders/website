@@ -100,39 +100,18 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   ),
                 ),
               )
-            : _tabIndex >= 2 && _tabIndex <= 6
-                // These tabs scroll inside their cards, under fixed
-                // headers, so they are given the panel's height.
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
-                    child: switch (_tabIndex) {
-                      2 => PrescriptionsScreen(patient: widget.patient),
-                      3 => AppointmentsScreen(patient: widget.patient),
-                      4 => DocumentsScreen(patient: widget.patient),
-                      5 => MedicalHistoryScreen(patient: widget.patient),
-                      _ => PatientVitalsPanel(patientId: widget.patient.id),
-                    },
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Tab content ──────────────────────────────────────────
-                        ...[
-                          const SizedBox(height: 40),
-                          Center(
-                            child: Text(
-                              '${_profileTabs[_tabIndex]} — coming soon',
-                              style: const TextStyle(
-                                  color: AppProfileColors.textSecondary,
-                                  fontSize: 15),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  );
+            // The other tabs scroll inside their cards, under fixed headers,
+            // so they are given the panel's height.
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                child: switch (_tabIndex) {
+                  2 => PrescriptionsScreen(patient: widget.patient),
+                  3 => AppointmentsScreen(patient: widget.patient),
+                  4 => DocumentsScreen(patient: widget.patient),
+                  5 => MedicalHistoryScreen(patient: widget.patient),
+                  _ => PatientVitalsPanel(patientId: widget.patient.id),
+                },
+              );
   }
 
   // ── Top bar ──────────────────────────────────────────────────────────────────

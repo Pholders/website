@@ -7,6 +7,7 @@ import 'package:redux/redux.dart';
 import '../../../../app/app_state.dart';
 import '../../../../core/auth/auth_actions.dart';
 import '../../../../core/routing/app_routes.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/settings_shell.dart';
 import '../../../auth/data/models/doctor.dart';
 import 'settings_frame.dart';
@@ -97,9 +98,7 @@ class _FeesSetupState extends State<_FeesSetup> {
     if (!_awaitingSave || vm.isSaving) return;
     _awaitingSave = false;
     if (vm.errorMessage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your consultation fee is saved')),
-      );
+      AppFeedback.success(context, 'Your consultation fee is saved');
     }
   }
 
@@ -249,9 +248,7 @@ class _NotificationSettingsState extends State<_NotificationSettings> {
     _awaitingSave = false;
     if (vm.errorMessage == null) {
       setState(() => _choices = null); // the saved profile is the truth now
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your notification settings are saved')),
-      );
+      AppFeedback.success(context, 'Your notification settings are saved');
     }
   }
 

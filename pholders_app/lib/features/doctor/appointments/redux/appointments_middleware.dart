@@ -29,6 +29,7 @@ List<Middleware<AppState>> createAppointmentsMiddleware({
       await repository.accept(action.appointmentId);
       store.dispatch(
           AppointmentActionSucceededAction(appointmentId: action.appointmentId));
+      action.result?.complete();
       // Accepting flips doctor_accepted, which changes which scopes the
       // appointment falls into, so refetch rather than patching in place.
       await load(store);
@@ -37,6 +38,7 @@ List<Middleware<AppState>> createAppointmentsMiddleware({
         appointmentId: action.appointmentId,
         errorMessage: e.message,
       ));
+      action.result?.completeError(e);
     }
   }
 
