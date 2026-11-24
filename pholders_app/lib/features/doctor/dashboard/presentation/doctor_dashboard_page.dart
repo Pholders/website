@@ -847,17 +847,30 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                   child: Padding(
                     // Lines up with the bars, above the month labels.
                     padding: const EdgeInsets.only(bottom: 18),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (var i = 4; i >= 0; i--)
-                          Text(
-                            '${top * i ~/ 4}',
-                            style: const TextStyle(
-                                fontSize: 11, color: faint, height: 1),
-                          ),
-                      ],
+                    // Five labels need about 14px each. On a short window
+                    // there is not room for them (it overflowed by 2.5px),
+                    // so only the top and zero are shown, which still line
+                    // up with the top and bottom grid lines.
+                    child: LayoutBuilder(
+                      builder: (context, c) {
+                        final steps = c.maxHeight >= 5 * 14
+                            ? const [4, 3, 2, 1, 0]
+                            : c.maxHeight >= 2 * 14
+                                ? const [4, 0]
+                                : const <int>[];
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final i in steps)
+                              Text(
+                                '${top * i ~/ 4}',
+                                style: const TextStyle(
+                                    fontSize: 11, color: faint, height: 1),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),

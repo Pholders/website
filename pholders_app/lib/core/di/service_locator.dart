@@ -11,6 +11,9 @@ import '../realtime/realtime_gateway.dart';
 import '../../features/auth/data/doctor_auth_repository.dart';
 import '../../features/auth/data/pharmacy_auth_repository.dart';
 import '../../features/doctor/appointments/data/appointments_repository.dart';
+import '../../features/doctor/billing/data/billing_repository.dart';
+import '../../features/doctor/notifications/data/doctor_notifications_repository.dart';
+import '../../features/doctor/patients/data/patient_record_repository.dart';
 import '../../features/doctor/prescriptions/data/prescriptions_repository.dart';
 import '../../features/doctor/reviews/data/reviews_repository.dart';
 import '../../features/pharmacy/dispensing_queue/data/dispensing_repository.dart';
@@ -75,6 +78,21 @@ Future<void> setupServiceLocator() async {
 
   sl.registerLazySingleton<ReviewsRepository>(
     () => ReviewsRepository(sl<ApiClient>()),
+  );
+
+  // These three were lost in a merge on 2026-11-16 (4badbef), which turned
+  // Billing, Notifications and every patient profile tab into a red error
+  // screen. test/service_locator_test.dart now checks they stay registered.
+  sl.registerLazySingleton<DoctorNotificationsRepository>(
+    () => DoctorNotificationsRepository(sl<ApiClient>()),
+  );
+
+  sl.registerLazySingleton<BillingRepository>(
+    () => BillingRepository(sl<ApiClient>()),
+  );
+
+  sl.registerLazySingleton<PatientRecordRepository>(
+    () => PatientRecordRepository(sl<ApiClient>()),
   );
 
   sl.registerLazySingleton<DispensingRepository>(
