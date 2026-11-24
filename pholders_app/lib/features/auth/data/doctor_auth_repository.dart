@@ -261,6 +261,39 @@ class DoctorAuthRepository {
     return int.tryParse('${data['otherDevicesSignedOut']}') ?? 0;
   }
 
+  /// Emails a 6-digit password reset code to a doctor who is signed out.
+  ///
+  /// The answer is the same whether or not the email has a doctor account,
+  /// so it returns the server's wording rather than a yes or no.
+  Future<String> requestPasswordReset({required String email}) async {
+    final data = await _api.post(
+      '/users/doctor/forgot-password',
+      body: {'email': email},
+    );
+    final message = data['message'];
+    return message is String && message.isNotEmpty
+        ? message
+        : 'If a doctor account exists for this email, a reset code has been sent.';
+  }
+
+  /// Sets a new password using the emailed code. Every device is signed out.
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    await _api.post(
+      '/users/doctor/reset-password',
+      body: {
+        'email': email,
+        'otp': code,
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      },
+    );
+  }
+
   /// Signs out one of the doctor's other devices.
   Future<void> revokeSession(String sessionId) =>
       _api.delete('/users/doctor/sessions/${Uri.encodeComponent(sessionId)}');
