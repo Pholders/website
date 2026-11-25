@@ -31,7 +31,26 @@ AuthState authReducer(AuthState state, dynamic action) {
       isSigningIn: false,
       isRestoring: false,
       clearError: true,
+      clearPendingCode: true,
     );
+  }
+
+  if (action is LoginCodeRequiredAction) {
+    // Back from the splash to the login form, now asking for the code.
+    return state.copyWith(
+      isLoading: false,
+      isSigningIn: false,
+      pendingCodeEmail: action.email,
+      clearError: true,
+    );
+  }
+
+  if (action is VerifyLoginCodeAction) {
+    return state.copyWith(isLoading: true, isSigningIn: true, clearError: true);
+  }
+
+  if (action is CancelLoginCodeAction) {
+    return state.copyWith(clearPendingCode: true, clearError: true);
   }
 
   if (action is LoginFailureAction) {
@@ -53,6 +72,11 @@ AuthState authReducer(AuthState state, dynamic action) {
       // session has nothing left to end.
       isSigningOut: action is LogoutAction,
       medicalAidCatalogue: state.medicalAidCatalogue,
+      // Shown on the login form, so nobody wonders why they were signed out.
+      errorMessage: action is InactivityLogoutAction
+          ? 'You were signed out after 30 minutes without activity. '
+              'Sign in again to continue.'
+          : null,
     );
   }
 

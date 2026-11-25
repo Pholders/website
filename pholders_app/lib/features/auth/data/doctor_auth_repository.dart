@@ -9,10 +9,29 @@ import 'models/doctor_activity.dart';
 
 /// The result of a successful doctor login: a JWT plus the signed-in doctor.
 class DoctorSession {
-  const DoctorSession({required this.token, required this.doctor});
+  const DoctorSession({
+    required this.token,
+    required this.doctor,
+    this.trustedDeviceToken,
+  });
 
   final String token;
   final Doctor doctor;
+
+  /// Given after a two-factor code: sent with later logins, it skips the code
+  /// on this browser until midnight. Null for a plain password login.
+  final String? trustedDeviceToken;
+}
+
+/// The password was right, but this doctor has two-factor sign-in on and
+/// this browser has not entered a code today. A code has been emailed; finish
+/// with [DoctorAuthRepository.verifyLoginCode].
+///
+/// Not an [ApiException]: the password was accepted, so the login must not
+/// fall back to trying the pharmacy endpoint.
+class TwoFactorRequired implements Exception {
+  const TwoFactorRequired({required this.email});
+  final String email;
 }
 
 /// All doctor authentication calls.
@@ -80,15 +99,43 @@ class DoctorAuthRepository {
   /// Despite what the API docs claim, this endpoint does **not** issue an OTP
   /// challenge — it returns the JWT directly in `data.token`. There is no
   /// second step, and email verification is not enforced at login.
+  ///
+  /// With two-factor sign-in on, the server answers `requiresOtp` instead of
+  /// a token unless [trustedDeviceToken] shows this browser entered a code
+  /// today; that is thrown as [TwoFactorRequired].
   Future<DoctorSession> login({
     required String email,
     required String password,
+    String? trustedDeviceToken,
   }) async {
     final data = await _api.post(
       '/users/doctor/login',
-      body: {'email': email, 'password': password},
+      body: {
+        'email': email,
+        'password': password,
+        if (trustedDeviceToken != null) 'trusted_device_token': trustedDeviceToken,
+      },
     );
 
+    if (data['requiresOtp'] == true) {
+      throw TwoFactorRequired(email: '${data['email'] ?? email}');
+    }
+    return _sessionFrom(data);
+  }
+
+  /// Finishes a two-factor sign-in with the emailed code.
+  Future<DoctorSession> verifyLoginCode({
+    required String email,
+    required String code,
+  }) async {
+    final data = await _api.post(
+      '/users/doctor/verify-otp',
+      body: {'email': email, 'otp_code': code},
+    );
+    return _sessionFrom(data);
+  }
+
+  DoctorSession _sessionFrom(Map<String, dynamic> data) {
     final token = data['token'];
     if (token is! String || token.isEmpty) {
       throw const ApiException(
@@ -97,7 +144,12 @@ class DoctorAuthRepository {
       );
     }
 
-    return DoctorSession(token: token, doctor: Doctor.fromJson(data));
+    final trusted = data['trustedDeviceToken'];
+    return DoctorSession(
+      token: token,
+      doctor: Doctor.fromJson(data),
+      trustedDeviceToken: trusted is String && trusted.isNotEmpty ? trusted : null,
+    );
   }
 
   /// Activates an account with the OTP emailed after signup.
@@ -260,6 +312,23 @@ class DoctorAuthRepository {
     );
     return int.tryParse('${data['otherDevicesSignedOut']}') ?? 0;
   }
+
+  /// Starts turning on two-factor sign-in: emails the doctor a code.
+  Future<void> startTwoFactor() => _api.post('/users/doctor/2fa/start');
+
+  /// Turns two-factor sign-in on with the emailed code. Returns the
+  /// "verified today" token for this browser, which the caller should keep.
+  Future<String?> enableTwoFactor({required String code}) async {
+    final data =
+        await _api.post('/users/doctor/2fa/enable', body: {'code': code});
+    final trusted = data['trustedDeviceToken'];
+    return trusted is String && trusted.isNotEmpty ? trusted : null;
+  }
+
+  /// Turns two-factor sign-in off. Needs the current password.
+  Future<void> disableTwoFactor({required String currentPassword}) =>
+      _api.post('/users/doctor/2fa/disable',
+          body: {'current_password': currentPassword});
 
   /// Emails a 6-digit password reset code to a doctor who is signed out.
   ///

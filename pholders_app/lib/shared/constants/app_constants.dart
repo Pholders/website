@@ -45,6 +45,15 @@ class AppConstants {
   /// session, so signing out leaves it.
   static const String rememberedEmailStorageKey = 'remembered_email';
 
+  /// Prefix for a doctor's "verified today" token, one per email. It lets
+  /// this browser skip the two-factor code until midnight, so it is kept on
+  /// sign-out; the server ends it at midnight or on a password change.
+  static const String trustedDevicePrefix = 'doctor_2fa_trusted_';
+
+  /// When the signed-in user last touched the app, for the 30-minute
+  /// inactivity sign-out. Also checked when a closed tab is reopened.
+  static const String lastActiveStorageKey = 'last_active_at';
+
   /// Where an earlier build kept the password. Nothing is written here now;
   /// the key is only deleted, so a password left from then does not linger.
   static const String legacyRememberedPasswordStorageKey =

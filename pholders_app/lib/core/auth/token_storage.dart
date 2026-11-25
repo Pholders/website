@@ -55,6 +55,26 @@ class TokenStorage {
     }
   }
 
+  /// The "verified today" token the server gave this browser for [email]
+  /// after a two-factor code, or null.
+  Future<String?> readTrustedDeviceToken(String email) =>
+      _read(_trustedKey(email));
+
+  Future<void> saveTrustedDeviceToken(String email, String token) =>
+      _write(_trustedKey(email), token);
+
+  static String _trustedKey(String email) =>
+      '${AppConstants.trustedDevicePrefix}${email.trim().toLowerCase()}';
+
+  /// When the signed-in user last used the app, or null.
+  Future<DateTime?> readLastActive() async {
+    final raw = await _read(AppConstants.lastActiveStorageKey);
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
+
+  Future<void> saveLastActive(DateTime when) =>
+      _write(AppConstants.lastActiveStorageKey, when.toUtc().toIso8601String());
+
   /// Removes every stored credential. Called on logout and session expiry.
   Future<void> clear() async {
     for (final key in const [
@@ -63,6 +83,7 @@ class TokenStorage {
       AppConstants.userRoleStorageKey,
       AppConstants.userNameStorageKey,
       AppConstants.legacyRememberedPasswordStorageKey,
+      AppConstants.lastActiveStorageKey,
     ]) {
       try {
         await _storage.delete(key: key);

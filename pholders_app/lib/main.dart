@@ -7,6 +7,7 @@ import 'app/app_reducer.dart';
 import 'app/app_state.dart';
 import 'core/auth/auth_actions.dart';
 import 'core/auth/auth_middleware.dart';
+import 'core/auth/inactivity_watcher.dart';
 import 'core/auth/token_storage.dart';
 import 'core/di/service_locator.dart';
 import 'core/network/api_client.dart';
@@ -96,11 +97,14 @@ class _PholdersAppState extends State<PholdersApp> {
   Widget build(BuildContext context) {
     return StoreProvider<AppState>(
       store: widget.store,
-      child: MaterialApp.router(
-        title: 'PHolders',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        routerConfig: _router,
+      child: InactivityWatcher(
+        store: widget.store,
+        child: MaterialApp.router(
+          title: 'PHolders',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          routerConfig: _router,
+        ),
       ),
     );
   }

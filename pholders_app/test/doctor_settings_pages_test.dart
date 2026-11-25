@@ -53,6 +53,33 @@ class _FakeRepo extends DoctorAuthRepository {
   @override
   Future<List<ActiveSession>> fetchSessions() async => sessions;
 
+  bool twoFaOn = false;
+
+  @override
+  Future<void> startTwoFactor() async => calls.add('2fa start');
+
+  @override
+  Future<String?> enableTwoFactor({required String code}) async {
+    calls.add('2fa enable $code');
+    twoFaOn = true;
+    return 'trusted-today';
+  }
+
+  @override
+  Future<void> disableTwoFactor({required String currentPassword}) async {
+    calls.add('2fa disable $currentPassword');
+    twoFaOn = false;
+  }
+
+  @override
+  Future<Doctor> fetchProfile() async => Doctor(
+        id: 17,
+        firstName: 'Thandi',
+        lastName: 'Nkosi',
+        email: 'dr.check@pholders.test',
+        twoFaEnabled: twoFaOn,
+      );
+
   @override
   Future<void> contactSupport({
     required String email,
@@ -152,6 +179,35 @@ void main() {
   });
 
   group('Security Settings', () {
+    testWidgets('two-factor sign-in turns on with the emailed code, off with the password',
+        (tester) async {
+      final repo = _FakeRepo();
+      await show(tester, SecuritySettingsPage(repository: repo));
+      expect(find.text('Two-factor Sign-in'), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const ValueKey('twofa-status')), matching: find.text('Off')),
+          findsOneWidget);
+
+      await tester.tap(find.text('Turn on two-factor sign-in'));
+      await tester.pumpAndSettle();
+      expect(repo.calls, ['2fa start']);
+      await tester.enterText(find.byKey(const ValueKey('twofa-code')), '123456');
+      await tester.tap(find.widgetWithText(FilledButton, 'Turn on'));
+      await tester.pumpAndSettle();
+      expect(repo.calls, ['2fa start', '2fa enable 123456']);
+      expect(sent.whereType<DoctorProfileLoadedAction>().last.doctor.twoFaEnabled, isTrue);
+      expect(find.descendant(of: find.byKey(const ValueKey('twofa-status')), matching: find.text('On')),
+          findsOneWidget);
+
+      await tester.tap(find.text('Turn off'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('twofa-password')), 'OldPass!2026');
+      await tester.tap(find.widgetWithText(FilledButton, 'Turn off'));
+      await tester.pumpAndSettle();
+      expect(repo.calls.last, '2fa disable OldPass!2026');
+      expect(find.descendant(of: find.byKey(const ValueKey('twofa-status')), matching: find.text('Off')),
+          findsOneWidget);
+    });
+
     testWidgets('changing the password checks it first, then confirms', (tester) async {
       final repo = _FakeRepo();
       await show(tester, SecuritySettingsPage(repository: repo));

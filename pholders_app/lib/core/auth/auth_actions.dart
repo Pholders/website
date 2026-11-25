@@ -56,6 +56,36 @@ class LoginFailureAction {
   final String errorMessage;
 }
 
+/// The password was right but two-factor sign-in needs the emailed code.
+/// The login form switches to its code step.
+class LoginCodeRequiredAction {
+  const LoginCodeRequiredAction({required this.email});
+  final String email;
+}
+
+/// Dispatched when the doctor submits the emailed sign-in code.
+class VerifyLoginCodeAction {
+  const VerifyLoginCodeAction({
+    required this.email,
+    required this.code,
+    this.rememberMe,
+  });
+  final String email;
+  final String code;
+  final bool? rememberMe;
+}
+
+/// Leaves the code step and goes back to the email and password.
+class CancelLoginCodeAction {
+  const CancelLoginCodeAction();
+}
+
+/// Dispatched when the app signs a doctor out after 30 minutes without use.
+/// Behaves like [LogoutAction], and the login page says why.
+class InactivityLogoutAction extends LogoutAction {
+  const InactivityLogoutAction();
+}
+
 /// Dispatched when the user taps logout.
 class LogoutAction {
   const LogoutAction();

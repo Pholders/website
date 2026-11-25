@@ -20,6 +20,7 @@ class AuthState extends Equatable {
     this.signupEmail,
     this.signupRole,
     this.devOtpCode,
+    this.pendingCodeEmail,
     this.isEmailVerified = false,
     this.medicalAidCatalogue = const [],
   });
@@ -80,6 +81,10 @@ class AuthState extends Equatable {
   /// The deployed API does this while it runs with NODE_ENV=development.
   final String? devOtpCode;
 
+  /// Set while the login form waits for a two-factor code emailed to this
+  /// address; null otherwise.
+  final String? pendingCodeEmail;
+
   /// True once the activation code has been accepted.
   final bool isEmailVerified;
 
@@ -102,6 +107,8 @@ class AuthState extends Equatable {
     String? signupEmail,
     String? signupRole,
     String? devOtpCode,
+    String? pendingCodeEmail,
+    bool clearPendingCode = false,
     bool? isEmailVerified,
     List<MedicalAidScheme>? medicalAidCatalogue,
     bool clearError = false,
@@ -121,6 +128,9 @@ class AuthState extends Equatable {
       signupEmail: clearSignup ? null : (signupEmail ?? this.signupEmail),
       signupRole: clearSignup ? null : (signupRole ?? this.signupRole),
       devOtpCode: clearSignup ? null : (devOtpCode ?? this.devOtpCode),
+      pendingCodeEmail: clearPendingCode || clearToken
+          ? null
+          : (pendingCodeEmail ?? this.pendingCodeEmail),
       isEmailVerified:
           clearSignup ? false : (isEmailVerified ?? this.isEmailVerified),
       medicalAidCatalogue: medicalAidCatalogue ?? this.medicalAidCatalogue,
@@ -141,6 +151,7 @@ class AuthState extends Equatable {
         signupEmail,
         signupRole,
         devOtpCode,
+        pendingCodeEmail,
         isEmailVerified,
         medicalAidCatalogue
       ];

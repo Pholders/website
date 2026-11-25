@@ -56,6 +56,7 @@ class _Doctors extends DoctorAuthRepository {
   Future<DoctorSession> login({
     required String email,
     required String password,
+    String? trustedDeviceToken,
   }) async {
     logins++;
     if (failWith != null) throw failWith!;

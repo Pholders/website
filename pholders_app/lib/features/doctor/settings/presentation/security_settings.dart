@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/app_state.dart';
+import '../../../../core/auth/auth_actions.dart';
+import '../../../../core/auth/token_storage.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/routing/app_routes.dart';
@@ -211,6 +215,10 @@ class _SecuritySettingsState extends State<_SecuritySettings> {
               const SizedBox(height: 26),
               const SettingsDivider(),
               const SizedBox(height: 14),
+              _TwoFactorSection(widget.repo),
+              const SizedBox(height: 26),
+              const SettingsDivider(),
+              const SizedBox(height: 14),
               const SettingsSectionTitle('Signed-in Devices'),
               const SizedBox(height: 6),
               const Text(
@@ -248,6 +256,324 @@ class _SecuritySettingsState extends State<_SecuritySettings> {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Two-factor sign-in ─────────────────────────────────────────────────────
+
+/// Turns the emailed sign-in code on or off (agreed with the team on
+/// 2026-11-25). On: a code is emailed and must be entered, which proves the
+/// address receives them. Off: needs the current password.
+class _TwoFactorSection extends StatefulWidget {
+  const _TwoFactorSection(this.repo);
+
+  final DoctorAuthRepository repo;
+
+  @override
+  State<_TwoFactorSection> createState() => _TwoFactorSectionState();
+}
+
+class _TwoFactorSectionState extends State<_TwoFactorSection> {
+  bool _busy = false;
+
+  TokenStorage? get _storage =>
+      sl.isRegistered<TokenStorage>() ? sl<TokenStorage>() : null;
+
+  /// The profile is where the switch lives, so reload it after a change.
+  Future<void> _refreshProfile() async {
+    try {
+      final doctor = await widget.repo.fetchProfile();
+      if (mounted) {
+        StoreProvider.of<AppState>(context, listen: false)
+            .dispatch(DoctorProfileLoadedAction(doctor: doctor));
+      }
+    } catch (_) {
+      // The change is saved; the switch catches up on the next profile load.
+    }
+  }
+
+  Future<void> _turnOn(String email) async {
+    setState(() => _busy = true);
+    try {
+      await widget.repo.startTwoFactor();
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.error(context, e, title: 'Code not sent');
+        setState(() => _busy = false);
+      }
+      return;
+    }
+    if (!mounted) return;
+    final trusted = await showDialog<String?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _CodeDialog(repo: widget.repo, email: email),
+    );
+    if (!mounted) return;
+    if (trusted != null) {
+      // This browser just proved the code, so it is not asked again today.
+      if (trusted.isNotEmpty) await _storage?.saveTrustedDeviceToken(email, trusted);
+      await _refreshProfile();
+      if (mounted) {
+        _tell(context,
+            'Two-factor sign-in is on. Each browser will ask for an emailed '
+            'code on the first sign-in of the day.');
+      }
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _turnOff() async {
+    final done = await showDialog<bool>(
+      context: context,
+      builder: (_) => _DisableDialog(repo: widget.repo),
+    );
+    if (done != true || !mounted) return;
+    await _refreshProfile();
+    if (mounted) _tell(context, 'Two-factor sign-in is off.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StoreConnector<AppState, ({bool on, String email})>(
+      converter: (store) => (
+        on: store.state.authState.doctor?.twoFaEnabled ?? false,
+        email: store.state.authState.doctor?.email ?? '',
+      ),
+      builder: (context, vm) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SettingsSectionTitle('Two-factor Sign-in'),
+              const SizedBox(width: 10),
+              Container(
+                key: const ValueKey('twofa-status'),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: vm.on ? const Color(0xFFDDF3EA) : const Color(0xFFEFF1F1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(vm.on ? 'On' : 'Off',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: vm.on ? const Color(0xFF1D7A4A) : Colors.black54)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'When it is on, the first sign-in of the day on each browser asks '
+            'for a 6-digit code we email you, so your password alone is not '
+            'enough to get in. Signing prescriptions does not ask for a code. '
+            'You are also signed out after 30 minutes without activity.',
+            style: settingsNote,
+          ),
+          const SizedBox(height: 12),
+          SettingsButton(
+            vm.on
+                ? 'Turn off'
+                : (_busy ? 'Sending code…' : 'Turn on two-factor sign-in'),
+            icon: vm.on ? Icons.lock_open_outlined : Icons.verified_user_outlined,
+            width: vm.on ? 140 : 250,
+            height: 34,
+            filled: !vm.on,
+            onTap: _busy || vm.email.isEmpty
+                ? null
+                : (vm.on ? _turnOff : () => _turnOn(vm.email)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Asks for the code emailed to turn two-factor on. Pops the "verified
+/// today" token (empty if none came back) once it is on, or null if closed.
+class _CodeDialog extends StatefulWidget {
+  const _CodeDialog({required this.repo, required this.email});
+
+  final DoctorAuthRepository repo;
+  final String email;
+
+  @override
+  State<_CodeDialog> createState() => _CodeDialogState();
+}
+
+class _CodeDialogState extends State<_CodeDialog> {
+  final _code = TextEditingController();
+  bool _busy = false;
+  String? _problem;
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirm() async {
+    final code = _code.text.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+      setState(() => _problem = 'Enter the 6-digit code from the email.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _problem = null;
+    });
+    try {
+      final trusted = await widget.repo.enableTwoFactor(code: code);
+      if (mounted) Navigator.pop(context, trusted ?? '');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _problem = AppFeedback.describe(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Enter the code'),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('We emailed a 6-digit code to ${widget.email}. It expires in '
+                '10 minutes.'),
+            const SizedBox(height: 14),
+            TextField(
+              key: const ValueKey('twofa-code'),
+              controller: _code,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              onSubmitted: (_) => _confirm(),
+              decoration: const InputDecoration(
+                labelText: '6-digit code',
+                counterText: '',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            if (_problem != null) ...[
+              const SizedBox(height: 8),
+              Text(_problem!,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111))),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _confirm,
+          child: Text(_busy ? 'Checking…' : 'Turn on'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Asks for the current password before turning two-factor off.
+class _DisableDialog extends StatefulWidget {
+  const _DisableDialog({required this.repo});
+
+  final DoctorAuthRepository repo;
+
+  @override
+  State<_DisableDialog> createState() => _DisableDialogState();
+}
+
+class _DisableDialogState extends State<_DisableDialog> {
+  final _password = TextEditingController();
+  bool _busy = false;
+  String? _problem;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirm() async {
+    if (_password.text.isEmpty) {
+      setState(() => _problem = 'Enter your current password.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _problem = null;
+    });
+    try {
+      await widget.repo.disableTwoFactor(currentPassword: _password.text);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _problem = _messageOf(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Turn off two-factor sign-in?'),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Your password alone will be enough to sign in. '
+                'Enter it to confirm.'),
+            const SizedBox(height: 14),
+            TextField(
+              key: const ValueKey('twofa-password'),
+              controller: _password,
+              autofocus: true,
+              obscureText: true,
+              onSubmitted: (_) => _confirm(),
+              decoration: const InputDecoration(
+                labelText: 'Current password',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            if (_problem != null) ...[
+              const SizedBox(height: 8),
+              Text(_problem!,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFCC1111))),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB42318)),
+          onPressed: _busy ? null : _confirm,
+          child: Text(_busy ? 'Turning off…' : 'Turn off'),
         ),
       ],
     );

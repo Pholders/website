@@ -58,6 +58,7 @@ class Doctor extends Equatable {
     this.medicalAids = const [],
     this.availability,
     this.notificationPreferences = const {},
+    this.twoFaEnabled = false,
   });
 
   /// Builds a [Doctor] from either the login or the profile payload.
@@ -89,6 +90,7 @@ class Doctor extends Equatable {
       availability: _availabilityFrom(json['availability']),
       notificationPreferences:
           _preferencesFrom(json['notification_preferences']),
+      twoFaEnabled: json['two_fa_enabled'] == true,
     );
   }
 
@@ -137,6 +139,10 @@ class Doctor extends Equatable {
   /// missing key means on.
   final Map<String, bool> notificationPreferences;
 
+  /// Whether the first sign-in of the day on each browser asks for an
+  /// emailed code. Only the profile carries it; the login summary does not.
+  final bool twoFaEnabled;
+
   bool wantsNotification(String key) => notificationPreferences[key] ?? true;
 
   /// "John Smith", or the email local part when the name is missing.
@@ -172,7 +178,7 @@ class Doctor extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, firstName, lastName, email, hpcsaNumber, medicalAids];
+      [id, firstName, lastName, email, hpcsaNumber, medicalAids, twoFaEnabled];
 
   static Map<String, List<String>>? _availabilityFrom(dynamic raw) {
     if (raw is! Map) return null;

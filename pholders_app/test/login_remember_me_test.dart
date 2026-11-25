@@ -51,6 +51,7 @@ class _Doctors extends DoctorAuthRepository {
   Future<DoctorSession> login({
     required String email,
     required String password,
+    String? trustedDeviceToken,
   }) async {
     if (password != _password) throw _wrong;
     return const DoctorSession(

@@ -34,6 +34,7 @@ class _LoginPanelState extends State<LoginPanel> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _codeController = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePassword = true;
 
@@ -64,7 +65,39 @@ class _LoginPanelState extends State<LoginPanel> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _codeController.dispose();
     super.dispose();
+  }
+
+  /// Two-factor: checks the code emailed after a right password.
+  void _submitCode(BuildContext context, String email) {
+    final code = _codeController.text.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+      StoreProvider.of<AppState>(context).dispatch(const LoginFailureAction(
+          errorMessage: 'Enter the 6-digit code from the email.'));
+      return;
+    }
+    StoreProvider.of<AppState>(context).dispatch(VerifyLoginCodeAction(
+      email: email,
+      code: code,
+      rememberMe: _rememberMe,
+    ));
+  }
+
+  /// Signs in again with the same email and password, which emails a new
+  /// code and makes the old one stop working.
+  void _resendCode(BuildContext context) {
+    _codeController.clear();
+    StoreProvider.of<AppState>(context).dispatch(LoginRequestAction(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      rememberMe: _rememberMe,
+    ));
+  }
+
+  void _cancelCode(BuildContext context) {
+    _codeController.clear();
+    StoreProvider.of<AppState>(context).dispatch(const CancelLoginCodeAction());
   }
 
   void _submit(BuildContext context) {
@@ -102,6 +135,10 @@ class _LoginPanelState extends State<LoginPanel> {
       onSubmit: () => _submit(context),
       onForgotPassword: () => context.go(AppRoutes.forgotPassword),
       onSignUp: () => context.go(AppRoutes.register),
+      codeController: _codeController,
+      onSubmitCode: (email) => _submitCode(context, email),
+      onResendCode: () => _resendCode(context),
+      onCancelCode: () => _cancelCode(context),
     );
   }
 }
@@ -123,8 +160,16 @@ class _LoginForm extends StatelessWidget {
     required this.onSubmit,
     required this.onForgotPassword,
     required this.onSignUp,
+    required this.codeController,
+    required this.onSubmitCode,
+    required this.onResendCode,
+    required this.onCancelCode,
   });
   final GlobalKey<FormState> formKey;
+  final TextEditingController codeController;
+  final ValueChanged<String> onSubmitCode;
+  final VoidCallback onResendCode;
+  final VoidCallback onCancelCode;
 
   /// Width of the fields column; the rule above "Sign up" is always full width.
   final double fieldWidth;
@@ -150,8 +195,22 @@ class _LoginForm extends StatelessWidget {
       converter: (store) => _LoginViewModel(
         isLoading: store.state.authState.isLoading,
         errorMessage: store.state.authState.errorMessage,
+        pendingCodeEmail: store.state.authState.pendingCodeEmail,
       ),
       builder: (context, vm) {
+        final pending = vm.pendingCodeEmail;
+        if (pending != null) {
+          return _CodeStep(
+            email: pending,
+            fieldWidth: fieldWidth,
+            controller: codeController,
+            isLoading: vm.isLoading,
+            errorMessage: vm.errorMessage,
+            onSubmit: () => onSubmitCode(pending),
+            onResend: onResendCode,
+            onCancel: onCancelCode,
+          );
+        }
         // Grouping the fields lets the browser's password manager see them
         // as one login, to save and fill in together.
         return AutofillGroup(
@@ -374,9 +433,11 @@ class _LoginViewModel {
   const _LoginViewModel({
     required this.isLoading,
     this.errorMessage,
+    this.pendingCodeEmail,
   });
   final bool isLoading;
   final String? errorMessage;
+  final String? pendingCodeEmail;
 }
 
 // ─── "Let's start" button ─────────────────────────────────────────────────────
@@ -384,10 +445,15 @@ class _LoginViewModel {
 /// Raised teal pill that submits the form. While signing in it ignores
 /// further clicks; the splash screen is the loader, so it shows no spinner.
 class _LetsStartButton extends StatelessWidget {
-  const _LetsStartButton({required this.isLoading, required this.onPressed});
+  const _LetsStartButton({
+    required this.isLoading,
+    required this.onPressed,
+    this.label = "Let's start",
+  });
 
   final bool isLoading;
   final VoidCallback onPressed;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -410,9 +476,9 @@ class _LetsStartButton extends StatelessWidget {
             ],
           ),
           alignment: Alignment.center,
-          child: const Text(
-            "Let's start",
-            style: TextStyle(
+          child: Text(
+            label,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.w400,
@@ -420,6 +486,117 @@ class _LetsStartButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Two-factor code step ─────────────────────────────────────────────────────
+
+/// Shown after a right password when the doctor has two-factor sign-in on
+/// and this browser has not entered a code today.
+class _CodeStep extends StatelessWidget {
+  const _CodeStep({
+    required this.email,
+    required this.fieldWidth,
+    required this.controller,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.onSubmit,
+    required this.onResend,
+    required this.onCancel,
+  });
+
+  final String email;
+  final double fieldWidth;
+  final TextEditingController controller;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onSubmit;
+  final VoidCallback onResend;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.mark_email_read_outlined, size: 72, color: Colors.white),
+        const SizedBox(height: 10),
+        const Text(
+          'Check your email',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 32, color: Colors.black, height: 1.1),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: fieldWidth,
+          child: Text(
+            'We sent a 6-digit sign-in code to $email. It expires in '
+            '10 minutes. You only need it on the first sign-in of the day.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, color: _LoginForm._mutedOnTeal, height: 1.4),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: fieldWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    border: Border.all(color: AppTheme.error.withValues(alpha: 0.5)),
+                  ),
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: AppTheme.error, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+              KeyedSubtree(
+                key: const ValueKey('login-code'),
+                child: AuthTextField(
+                  controller: controller,
+                  hint: '6-digit code',
+                  icon: Icons.pin_outlined,
+                  keyboardType: TextInputType.number,
+                  autofillHints: const [AutofillHints.oneTimeCode],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: _LetsStartButton(
+                  label: 'Verify',
+                  isLoading: isLoading,
+                  onPressed: onSubmit,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                children: [
+                  TextButton(
+                    onPressed: isLoading ? null : onResend,
+                    child: const Text('Send a new code',
+                        style: TextStyle(color: _LoginForm._linkBlue, fontSize: 12)),
+                  ),
+                  TextButton(
+                    onPressed: isLoading ? null : onCancel,
+                    child: const Text('Back',
+                        style: TextStyle(color: _LoginForm._linkBlue, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

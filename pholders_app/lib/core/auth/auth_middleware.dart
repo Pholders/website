@@ -12,6 +12,10 @@ import 'token_storage.dart';
 ///
 /// Reducers stay pure; every network call and every write to secure storage
 /// happens here.
+/// How long a doctor can leave the app untouched before being signed out
+/// (agreed with the team on 2026-11-24).
+const Duration inactivityLimit = Duration(minutes: 30);
+
 List<Middleware<AppState>> createAuthMiddleware({
   required DoctorAuthRepository doctorAuth,
   required PharmacyAuthRepository pharmacyAuth,
@@ -30,6 +34,18 @@ List<Middleware<AppState>> createAuthMiddleware({
     store.dispatch(
       RestoreSessionAction(token: token, role: role, userName: userName),
     );
+
+    // A doctor's tab reopened after more than 30 minutes away is signed out,
+    // as it would have been had it stayed open. No record (an older build)
+    // means no evidence of idling, so the session is kept.
+    if (role == AppConstants.roleDoctor) {
+      final lastActive = await tokenStorage.readLastActive();
+      if (lastActive != null &&
+          DateTime.now().difference(lastActive) > inactivityLimit) {
+        store.dispatch(const InactivityLogoutAction());
+        return;
+      }
+    }
 
     // Refresh the profile in the background. This also validates the stored
     // token: if it has expired the API returns 401 and we sign the user out.
@@ -54,15 +70,17 @@ List<Middleware<AppState>> createAuthMiddleware({
   bool rejectsCredentials(ApiException e) =>
       const {400, 401, 403, 404}.contains(e.statusCode);
 
-  /// Signs in as a doctor. Throws [ApiException] when the login call fails.
-  Future<void> loginDoctor(
+  /// Everything after the server has accepted a doctor: keep the session,
+  /// report success, and load the full profile.
+  Future<void> completeDoctorSignIn(
     Store<AppState> store,
-    LoginRequestAction action,
+    DoctorSession session,
   ) async {
-    final session = await doctorAuth.login(
-      email: action.email,
-      password: action.password,
-    );
+    final trusted = session.trustedDeviceToken;
+    if (trusted != null) {
+      await tokenStorage.saveTrustedDeviceToken(session.doctor.email, trusted);
+    }
+    await tokenStorage.saveLastActive(DateTime.now());
 
     // Store the token before anything else — the ApiClient interceptor reads
     // it from storage, so the profile call below depends on it being there.
@@ -87,6 +105,23 @@ List<Middleware<AppState>> createAuthMiddleware({
     } on ApiException {
       // Non-fatal: the user is signed in with the summary from login.
     }
+  }
+
+  /// Signs in as a doctor. Throws [ApiException] when the login call fails.
+  ///
+  /// With two-factor sign-in on, this throws [TwoFactorRequired] unless the
+  /// browser entered a code today; [handleLogin] then asks for the code.
+  Future<void> loginDoctor(
+    Store<AppState> store,
+    LoginRequestAction action,
+  ) async {
+    final session = await doctorAuth.login(
+      email: action.email,
+      password: action.password,
+      trustedDeviceToken:
+          await tokenStorage.readTrustedDeviceToken(action.email),
+    );
+    await completeDoctorSignIn(store, session);
   }
 
   /// Signs in as a pharmacy. Throws [ApiException] when the login call fails.
@@ -148,10 +183,38 @@ List<Middleware<AppState>> createAuthMiddleware({
         case null:
           break;
       }
+    } on TwoFactorRequired catch (required) {
+      // The password was right; the form now asks for the emailed code.
+      store.dispatch(LoginCodeRequiredAction(email: required.email));
     } on ApiException catch (e) {
       if (action.rememberMe == false) {
         await tokenStorage.rememberEmail(null);
       }
+      store.dispatch(LoginFailureAction(errorMessage: e.message));
+    }
+  }
+
+  /// Finishes a two-factor sign-in with the emailed code. A wrong code keeps
+  /// the form on the code step, with the reason shown.
+  Future<void> handleVerifyLoginCode(
+    Store<AppState> store,
+    VerifyLoginCodeAction action,
+  ) async {
+    try {
+      final session = await doctorAuth.verifyLoginCode(
+        email: action.email,
+        code: action.code,
+      );
+      await completeDoctorSignIn(store, session);
+      switch (action.rememberMe) {
+        case true:
+          await tokenStorage.rememberEmail(action.email);
+        case false:
+          await tokenStorage.rememberEmail(null);
+        case null:
+          break;
+      }
+    } on ApiException catch (e) {
       store.dispatch(LoginFailureAction(errorMessage: e.message));
     }
   }
@@ -334,19 +397,25 @@ List<Middleware<AppState>> createAuthMiddleware({
     }
   }
 
-  Future<void> handleLogout(Store<AppState> store) async {
-    final wasDoctor = store.state.authState.isDoctor;
-    final wasPharmacy = store.state.authState.role == AppConstants.rolePharmacy;
-    // Clear locally first so the UI signs out immediately even if the network
-    // call hangs on a cold-started server.
+  /// Ends the session on the server, then forgets it here.
+  ///
+  /// [role] is the role from before the reducer cleared the state. Reading it
+  /// here was always null, and the token was deleted before the call that
+  /// needed it, so the server session was never actually ended: the token
+  /// stayed valid for its full 24 hours. The UI is already signed out by the
+  /// reducer; the splash covers this call, capped so a cold-started server
+  /// cannot hold it up.
+  Future<void> handleLogout(Store<AppState> store, String? role) async {
     try {
-      await tokenStorage.clear();
-      if (wasDoctor) await doctorAuth.logout();
-      if (wasPharmacy) await pharmacyAuth.logout();
-    } on ApiException {
-      // The local session is already gone; a failed server-side revoke is
-      // not worth blocking the user on.
+      if (role == AppConstants.roleDoctor) {
+        await doctorAuth.logout().timeout(const Duration(seconds: 6));
+      } else if (role == AppConstants.rolePharmacy) {
+        await pharmacyAuth.logout().timeout(const Duration(seconds: 6));
+      }
+    } catch (_) {
+      // Offline, timed out or already revoked: the local session still goes.
     } finally {
+      await tokenStorage.clear();
       store.dispatch(const LogoutCompletedAction());
     }
   }
@@ -356,6 +425,9 @@ List<Middleware<AppState>> createAuthMiddleware({
     dynamic action,
     NextDispatcher next,
   ) {
+    // Signing out clears the role in the reducer, so note it first.
+    final roleBefore = store.state.authState.role;
+
     // Let the reducer update state first (e.g. set isLoading), then run the
     // side effect.
     next(action);
@@ -378,8 +450,10 @@ List<Middleware<AppState>> createAuthMiddleware({
       requestOtp(store, action);
     } else if (action is VerifyEmailRequestAction) {
       verifyEmail(store, action);
+    } else if (action is VerifyLoginCodeAction) {
+      handleVerifyLoginCode(store, action);
     } else if (action is LogoutAction) {
-      handleLogout(store);
+      handleLogout(store, roleBefore);
     } else if (action is SessionExpiredAction) {
       tokenStorage.clear();
     }
